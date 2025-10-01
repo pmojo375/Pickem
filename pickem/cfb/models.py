@@ -22,6 +22,65 @@ class League(models.Model):
             raise ValidationError({"name": "A league with this name already exists."})
 
 
+class LeagueRules(models.Model):
+    """
+    Season-specific rules for a league.
+    Each league can have different rules for different seasons.
+    """
+    WEEKDAY_CHOICES = [
+        (0, "Monday"),
+        (1, "Tuesday"),
+        (2, "Wednesday"),
+        (3, "Thursday"),
+        (4, "Friday"),
+        (5, "Saturday"),
+        (6, "Sunday"),
+    ]
+    
+    league = models.ForeignKey(League, on_delete=models.CASCADE, related_name="rules")
+    season = models.ForeignKey('Season', on_delete=models.CASCADE, related_name="league_rules")
+    
+    # Scoring Rules
+    points_per_correct_pick = models.IntegerField(default=1, help_text="Points awarded for each correct pick")
+    key_pick_extra_points = models.IntegerField(default=1, help_text="Extra points for correct key picks")
+    
+    # Game Selection Rules
+    spread_lock_weekday = models.IntegerField(
+        choices=WEEKDAY_CHOICES, 
+        default=2,  # Wednesday
+        help_text="Day of the week when spreads lock in place"
+    )
+    pickable_games_per_week = models.IntegerField(
+        default=10, 
+        help_text="Maximum number of games available for picking each week"
+    )
+    picks_per_week = models.IntegerField(
+        default=0,
+        help_text="Number of picks required per week (0 = must pick all available games)"
+    )
+    
+    # Key Pick Rules
+    key_picks_enabled = models.BooleanField(
+        default=True,
+        help_text="Allow users to designate key picks for bonus points"
+    )
+    number_of_key_picks = models.IntegerField(
+        default=1,
+        help_text="Number of key picks allowed per week"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("league", "season")
+        ordering = ["-season__year"]
+        verbose_name_plural = "League rules"
+
+    def __str__(self) -> str:
+        return f"{self.league.name} - {self.season.year} Rules"
+
+
 class LeagueMembership(models.Model):
     ROLE_CHOICES = [
         ("owner", "Owner"),

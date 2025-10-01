@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Season, Team, Game, GameSpread, Rules, Pick, League, LeagueMembership, LeagueGame
+from .models import Season, Team, Game, GameSpread, Rules, Pick, League, LeagueMembership, LeagueGame, LeagueRules
 
 
 @admin.register(Season)
@@ -98,6 +98,43 @@ class LeagueMembershipAdmin(admin.ModelAdmin):
     search_fields = ("league__name", "user__username")
     autocomplete_fields = ("league", "user")
     readonly_fields = ("joined_at",)
+
+
+@admin.register(LeagueRules)
+class LeagueRulesAdmin(admin.ModelAdmin):
+    list_display = (
+        "league",
+        "season",
+        "points_per_correct_pick",
+        "key_pick_extra_points",
+        "spread_lock_weekday",
+        "pickable_games_per_week",
+        "key_picks_enabled",
+        "updated_at",
+    )
+    list_filter = ("league", "season", "key_picks_enabled")
+    search_fields = ("league__name", "season__year")
+    autocomplete_fields = ("league", "season")
+    readonly_fields = ("created_at", "updated_at")
+    
+    fieldsets = (
+        ("League & Season", {
+            "fields": ("league", "season")
+        }),
+        ("Scoring Rules", {
+            "fields": ("points_per_correct_pick", "key_pick_extra_points")
+        }),
+        ("Game Selection Rules", {
+            "fields": ("spread_lock_weekday", "pickable_games_per_week", "picks_per_week")
+        }),
+        ("Key Pick Rules", {
+            "fields": ("key_picks_enabled", "number_of_key_picks")
+        }),
+        ("Timestamps", {
+            "fields": ("created_at", "updated_at"),
+            "classes": ("collapse",)
+        }),
+    )
 
 
 @admin.register(LeagueGame)

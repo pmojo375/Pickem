@@ -114,6 +114,178 @@
     </div>
 </div>
 
+<!-- League Rules -->
+<div class="card bg-base-100 shadow-xl mb-6">
+    <div class="card-body">
+        <h2 class="card-title">
+            <i class="fas fa-gavel text-primary mr-2"></i>
+            League Rules
+        </h2>
+        <p class="text-sm text-base-content/70 mb-4">Configure scoring, picking, and other rules for this league. Rules are season-specific.</p>
+        
+        {% if not active_season %}
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>No active season found. Please create a season first.</span>
+        </div>
+        {% else %}
+        <form method="post" action="" id="league-rules-form">
+            {% csrf_token %}
+            <input type="hidden" name="do" value="save_league_rules" />
+            <input type="hidden" name="league_id" value="{{ current_league.id }}" />
+            <input type="hidden" name="season_id" value="{{ active_season.id }}" />
+            
+            <!-- Season Selector -->
+            <div class="alert alert-info mb-4">
+                <i class="fas fa-calendar-alt"></i>
+                <div>
+                    <div class="font-bold">Editing Rules for Season: {{ active_season.year }}</div>
+                    <div class="text-sm">These rules apply only to the {{ active_season.year }} season</div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Points per Correct Pick -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">
+                            <i class="fas fa-trophy text-warning mr-1"></i>
+                            Points per Correct Pick
+                        </span>
+                    </label>
+                    <input type="number" 
+                           name="points_per_correct_pick" 
+                           value="{{ league_rules.points_per_correct_pick }}" 
+                           min="0"
+                           class="input input-bordered" />
+                    <label class="label">
+                        <span class="label-text-alt text-base-content/60">Points awarded for each correct pick</span>
+                    </label>
+                </div>
+                
+                <!-- Key Pick Extra Points -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">
+                            <i class="fas fa-star text-warning mr-1"></i>
+                            Key Pick Extra Points
+                        </span>
+                    </label>
+                    <input type="number" 
+                           name="key_pick_extra_points" 
+                           value="{{ league_rules.key_pick_extra_points }}" 
+                           min="0"
+                           class="input input-bordered" />
+                    <label class="label">
+                        <span class="label-text-alt text-base-content/60">Bonus points for correct key picks</span>
+                    </label>
+                </div>
+                
+                <!-- Spread Lock Weekday -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">
+                            <i class="fas fa-calendar text-info mr-1"></i>
+                            Spread Lock Day
+                        </span>
+                    </label>
+                    <select name="spread_lock_weekday" class="select select-bordered">
+                        <option value="0" {% if league_rules.spread_lock_weekday == 0 %}selected{% endif %}>Monday</option>
+                        <option value="1" {% if league_rules.spread_lock_weekday == 1 %}selected{% endif %}>Tuesday</option>
+                        <option value="2" {% if league_rules.spread_lock_weekday == 2 %}selected{% endif %}>Wednesday</option>
+                        <option value="3" {% if league_rules.spread_lock_weekday == 3 %}selected{% endif %}>Thursday</option>
+                        <option value="4" {% if league_rules.spread_lock_weekday == 4 %}selected{% endif %}>Friday</option>
+                        <option value="5" {% if league_rules.spread_lock_weekday == 5 %}selected{% endif %}>Saturday</option>
+                        <option value="6" {% if league_rules.spread_lock_weekday == 6 %}selected{% endif %}>Sunday</option>
+                    </select>
+                    <label class="label">
+                        <span class="label-text-alt text-base-content/60">Day when spreads lock in place</span>
+                    </label>
+                </div>
+                
+                <!-- Pickable Games per Week -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">
+                            <i class="fas fa-football text-success mr-1"></i>
+                            Pickable Games per Week
+                        </span>
+                    </label>
+                    <input type="number" 
+                           name="pickable_games_per_week" 
+                           value="{{ league_rules.pickable_games_per_week }}" 
+                           min="1"
+                           class="input input-bordered" />
+                    <label class="label">
+                        <span class="label-text-alt text-base-content/60">Max games available for picking weekly</span>
+                    </label>
+                </div>
+                
+                <!-- Picks per Week -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">
+                            <i class="fas fa-list-check text-primary mr-1"></i>
+                            Required Picks per Week
+                        </span>
+                    </label>
+                    <input type="number" 
+                           name="picks_per_week" 
+                           value="{{ league_rules.picks_per_week }}" 
+                           min="0"
+                           class="input input-bordered" />
+                    <label class="label">
+                        <span class="label-text-alt text-base-content/60">0 = must pick all available games</span>
+                    </label>
+                </div>
+                
+                <!-- Key Picks Enabled -->
+                <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                        <input type="checkbox" 
+                               name="key_picks_enabled" 
+                               {% if league_rules.key_picks_enabled %}checked{% endif %}
+                               class="checkbox checkbox-primary" />
+                        <div>
+                            <span class="label-text font-semibold">
+                                <i class="fas fa-key text-warning mr-1"></i>
+                                Enable Key Picks
+                            </span>
+                            <p class="text-sm text-base-content/60">Allow bonus key picks</p>
+                        </div>
+                    </label>
+                </div>
+                
+                <!-- Number of Key Picks -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">
+                            <i class="fas fa-hashtag text-warning mr-1"></i>
+                            Key Picks per Week
+                        </span>
+                    </label>
+                    <input type="number" 
+                           name="number_of_key_picks" 
+                           value="{{ league_rules.number_of_key_picks }}" 
+                           min="0"
+                           class="input input-bordered" />
+                    <label class="label">
+                        <span class="label-text-alt text-base-content/60">Number of key picks allowed weekly</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="card-actions justify-end mt-6">
+                <button type="submit" class="btn btn-primary btn-lg gap-2">
+                    <i class="fas fa-save"></i>
+                    Save League Rules
+                </button>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
 <!-- Spread Locking Option -->
 <div class="card bg-base-100 shadow-xl mb-6">
     <div class="card-body">

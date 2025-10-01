@@ -5,7 +5,7 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.core.exceptions import ValidationError
-from .models import Game, Pick, Team, League, LeagueMembership, LeagueGame
+from .models import Game, Pick, Team, League, LeagueMembership, LeagueGame, LeagueRules, Season
 from . import services
 from django.conf import settings
 
@@ -412,6 +412,54 @@ def settings_view(request):
             updated = services.live.fetch_and_store_live_scores()
             messages.success(request, f"Updated live scores for {updated} games (stub).")
             return redirect(f"/settings/?league_id={league.id}")
+        
+        if action == "save_league_rules":
+            # Get league from form
+            form_league_id = request.POST.get("league_id")
+            season_id = request.POST.get("season_id")
+            
+            if form_league_id and season_id:
+                if request.user.is_staff:
+                    target_league = get_object_or_404(League, pk=form_league_id)
+                else:
+                    target_league = get_object_or_404(League, pk=form_league_id, memberships__user=request.user, memberships__role__in=['owner', 'admin'])
+                
+                target_season = get_object_or_404(Season, pk=season_id)
+                
+                # Get or create league rules for this season
+                try:
+                    league_rules, created = LeagueRules.objects.get_or_create(
+                        league=target_league,
+                        season=target_season,
+                        defaults={
+                            'points_per_correct_pick': int(request.POST.get("points_per_correct_pick", 1)),
+                            'key_pick_extra_points': int(request.POST.get("key_pick_extra_points", 1)),
+                            'spread_lock_weekday': int(request.POST.get("spread_lock_weekday", 2)),
+                            'pickable_games_per_week': int(request.POST.get("pickable_games_per_week", 10)),
+                            'picks_per_week': int(request.POST.get("picks_per_week", 0)),
+                            'key_picks_enabled': request.POST.get("key_picks_enabled") == "on",
+                            'number_of_key_picks': int(request.POST.get("number_of_key_picks", 1)),
+                        }
+                    )
+                    
+                    if not created:
+                        # Update existing rules
+                        league_rules.points_per_correct_pick = int(request.POST.get("points_per_correct_pick", 1))
+                        league_rules.key_pick_extra_points = int(request.POST.get("key_pick_extra_points", 1))
+                        league_rules.spread_lock_weekday = int(request.POST.get("spread_lock_weekday", 2))
+                        league_rules.pickable_games_per_week = int(request.POST.get("pickable_games_per_week", 10))
+                        league_rules.picks_per_week = int(request.POST.get("picks_per_week", 0))
+                        league_rules.key_picks_enabled = request.POST.get("key_picks_enabled") == "on"
+                        league_rules.number_of_key_picks = int(request.POST.get("number_of_key_picks", 1))
+                        league_rules.save()
+                    
+                    action_word = "created" if created else "updated"
+                    messages.success(request, f"League rules for '{target_league.name}' ({target_season.year}) have been {action_word} successfully!")
+                except (ValueError, TypeError) as e:
+                    messages.error(request, f"Invalid input: {e}")
+                
+                return redirect(f"/settings/?league_id={target_league.id}")
+        
         if action == "save_selections":
             # Get league from form
             form_league_id = request.POST.get("league_id")
@@ -498,10 +546,28 @@ def settings_view(request):
     # Combine games with their league_game status
     games_with_selection = [(g, league_games_dict.get(g.id)) for g in games]
     
+    # Get all seasons and current league rules
+    all_seasons = Season.objects.all().order_by('-year')
+    active_season = Season.objects.filter(is_active=True).first()
+    
+    # Get league rules for active season (or create default)
+    league_rules = None
+    if active_season:
+        league_rules = LeagueRules.objects.filter(league=league, season=active_season).first()
+        if not league_rules:
+            # Create default rules for this season
+            league_rules = LeagueRules.objects.create(
+                league=league,
+                season=active_season
+            )
+    
     context = {
         "games_with_selection": games_with_selection,
         "current_league": league,
         "manageable_leagues": manageable_leagues,
+        "league_rules": league_rules,
+        "all_seasons": all_seasons,
+        "active_season": active_season,
         "start": start,
         "end": end,
         "cfbd_enabled": bool(settings.CFBD_API_KEY),
