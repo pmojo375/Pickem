@@ -1,0 +1,301 @@
+{% extends 'cfb/base.html' %}
+{% load static %}
+{% load cfb_tags %}
+
+{% block title %}Settings - CFB Pick'em{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 class="text-4xl font-bold mb-2">
+                <i class="fas fa-cog text-primary mr-2"></i>
+                Admin Settings
+            </h1>
+            <p class="text-base-content/70">Manage games, spreads, and week settings</p>
+        </div>
+        
+        <!-- League Selector -->
+        {% if manageable_leagues.count > 1 %}
+        <div class="form-control w-full md:w-auto">
+            <select class="select select-bordered select-primary" onchange="window.location.href='?league_id=' + this.value">
+                {% for league in manageable_leagues %}
+                <option value="{{ league.id }}" {% if league.id == current_league.id %}selected{% endif %}>
+                    {{ league.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        {% else %}
+        <div class="badge badge-primary badge-lg">{{ current_league.name }}</div>
+        {% endif %}
+    </div>
+</div>
+
+{% if current_league %}
+<!-- Week Info & Actions -->
+<div class="card bg-base-100 shadow-xl mb-6">
+    <div class="card-body">
+        <h2 class="card-title">
+            <i class="fas fa-calendar-week text-primary mr-2"></i>
+            Week Window
+        </h2>
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            <div>
+                <div class="font-bold">Current Week Range</div>
+                <div class="text-sm">{{ start }} — {{ end }}</div>
+            </div>
+        </div>
+        
+        <!-- API Status -->
+        <div class="flex flex-wrap gap-2 mt-2">
+            {% if cfbd_enabled %}
+                <div class="badge badge-success gap-1">
+                    <i class="fas fa-check-circle"></i>
+                    CFBD API Enabled
+                </div>
+            {% else %}
+                <div class="badge badge-warning gap-1">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    CFBD API Not Configured
+                </div>
+            {% endif %}
+            
+            {% if odds_enabled %}
+                <div class="badge badge-success gap-1">
+                    <i class="fas fa-check-circle"></i>
+                    Odds API Enabled
+                </div>
+            {% else %}
+                <div class="badge badge-warning gap-1">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Odds API Not Configured
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- API Configuration Tips -->
+        {% if not cfbd_enabled or not odds_enabled %}
+        <div class="mt-4 space-y-2">
+            {% if not cfbd_enabled %}
+            <div class="alert alert-warning">
+                <i class="fas fa-lightbulb"></i>
+                <span class="text-sm">Set environment variable <code class="bg-base-300 px-2 py-1 rounded">CFBD_API_KEY</code> to import from CollegeFootballData. ESPN fallback is used otherwise.</span>
+            </div>
+            {% endif %}
+            {% if not odds_enabled %}
+            <div class="alert alert-warning">
+                <i class="fas fa-lightbulb"></i>
+                <span class="text-sm">Set environment variable <code class="bg-base-300 px-2 py-1 rounded">ODDS_API_KEY</code> to fetch spreads from The Odds API.</span>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        <!-- Action Buttons -->
+        <div class="card-actions justify-end mt-4">
+            <form method="post" action="" class="flex flex-wrap gap-2">
+                {% csrf_token %}
+                <button type="submit" name="do" value="import_week" class="btn btn-primary gap-2">
+                    <i class="fas fa-download"></i>
+                    Import Games
+                </button>
+                <button type="submit" name="do" value="update_odds" class="btn btn-secondary gap-2">
+                    <i class="fas fa-sync-alt"></i>
+                    Update Spreads
+                </button>
+                <button type="submit" name="do" value="update_live" class="btn btn-accent gap-2">
+                    <i class="fas fa-refresh"></i>
+                    Refresh Live
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Spread Locking Option -->
+<div class="card bg-base-100 shadow-xl mb-6">
+    <div class="card-body">
+        <h2 class="card-title">
+            <i class="fas fa-lock text-warning mr-2"></i>
+            Spread Locking
+        </h2>
+        <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-4">
+                <input type="checkbox" id="lock_spread_option" class="checkbox checkbox-warning" />
+                <div>
+                    <span class="label-text font-bold text-base">Lock spreads when selecting games</span>
+                    <p class="text-sm text-base-content/70">When checked, saving game selections will lock the current spreads for those games.</p>
+                </div>
+            </label>
+        </div>
+    </div>
+</div>
+
+<!-- Games Selection -->
+<div class="card bg-base-100 shadow-xl">
+    <div class="card-body">
+        <h2 class="card-title mb-4">
+            <i class="fas fa-football text-primary mr-2"></i>
+            Games This Week
+        </h2>
+        
+        {% if games_with_selection %}
+        <form method="post" action="" id="games-form">
+            {% csrf_token %}
+            <input type="hidden" name="do" value="save_selections" />
+            <input type="hidden" name="league_id" value="{{ current_league.id }}" />
+            <input type="hidden" name="lock_spread" value="" id="lock_spread_field" />
+            
+            <!-- Save All Button - Top -->
+            <div class="mb-4">
+                <button type="submit" class="btn btn-primary btn-lg w-full shadow-xl">
+                    <i class="fas fa-save mr-2"></i>
+                    Save Game Selections for {{ current_league.name }}
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 gap-3">
+                {% for g, lg in games_with_selection %}
+                <label class="game-card cursor-pointer">
+                    <input type="checkbox" 
+                           name="game_{{ g.id }}_select" 
+                           class="game-checkbox hidden"
+                           {% if lg %}checked{% endif %} />
+                    <input type="hidden" name="game_{{ g.id }}_id" value="{{ g.id }}" />
+                    
+                    <div class="game-card-content flex flex-col md:flex-row items-start md:items-center gap-4 p-4 rounded-lg border-2 border-base-300 bg-base-200/50 hover:bg-base-200 transition-all">
+                        <!-- Kickoff Time -->
+                        <div class="flex-shrink-0">
+                            <div class="badge badge-ghost">
+                                <i class="fas fa-clock mr-1"></i>
+                                {{ g.kickoff|eastern_time }}
+                            </div>
+                        </div>
+                        
+                        <!-- Away Team -->
+                        <div class="flex items-center gap-2 flex-1">
+                            {% if g.away_team|team_logo_url %}
+                            <img src="{% static g.away_team|team_logo_url %}" 
+                                 alt="{{ g.away_team.name }}" 
+                                 class="w-8 h-8 object-contain" />
+                            {% endif %}
+                            <span class="font-semibold text-sm md:text-base">{{ g.away_team.name }}</span>
+                        </div>
+                        
+                        <!-- @ Symbol -->
+                        <div class="hidden md:block flex-shrink-0">
+                            <span class="text-base-content/50">@</span>
+                        </div>
+                        
+                        <!-- Home Team -->
+                        <div class="flex items-center gap-2 flex-1">
+                            {% if g.home_team|team_logo_url %}
+                            <img src="{% static g.home_team|team_logo_url %}" 
+                                 alt="{{ g.home_team.name }}" 
+                                 class="w-8 h-8 object-contain" />
+                            {% endif %}
+                            <div class="flex flex-col md:flex-row md:items-center gap-1">
+                                <span class="font-semibold text-sm md:text-base">{{ g.home_team.name }}</span>
+                                {% if lg and lg.locked_home_spread is not None %}
+                                <span class="badge badge-warning badge-sm gap-1">
+                                    <i class="fas fa-lock text-xs"></i>
+                                    {% if lg.locked_home_spread > 0 %}
+                                        {{ g.home_team.abbreviation|default:g.home_team.name }} -{{ lg.locked_home_spread }}
+                                    {% else %}
+                                        {{ g.away_team.abbreviation|default:g.away_team.name }} -{{ lg.locked_away_spread|floatformat:1 }}
+                                    {% endif %}
+                                </span>
+                                {% elif g.current_home_spread is not None %}
+                                <span class="badge badge-secondary badge-sm">
+                                    {% game_spread g %}
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Selection Indicator -->
+                        <div class="flex-shrink-0 ml-auto">
+                            <div class="selection-indicator hidden">
+                                <i class="fas fa-check-circle text-2xl text-success"></i>
+                            </div>
+                        </div>
+                    </div>
+                </label>
+                {% endfor %}
+            </div>
+            
+            <!-- Save All Button - Bottom -->
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary btn-lg w-full shadow-xl">
+                    <i class="fas fa-save mr-2"></i>
+                    Save All Game Selections
+                </button>
+            </div>
+        </form>
+        {% else %}
+        <div class="text-center py-8">
+            <i class="fas fa-inbox text-4xl text-base-300 mb-2"></i>
+            <p class="text-base-content/70">No games found for this week.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<!-- No league -->
+<div class="card bg-base-100 shadow-xl">
+    <div class="card-body items-center text-center py-16">
+        <i class="fas fa-exclamation-triangle text-6xl text-warning mb-4"></i>
+        <h2 class="card-title text-2xl mb-2">No League Selected</h2>
+        <p class="text-base-content/70 mb-6 max-w-md">
+            Create or select a league to manage game settings!
+        </p>
+        <a href="/leagues/" class="btn btn-primary">View Leagues</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Selected game card styling */
+    .game-card input[type="checkbox"]:checked + input[type="hidden"] + .game-card-content {
+        border-color: hsl(var(--p));
+        background: linear-gradient(135deg, hsl(var(--p) / 0.2) 0%, hsl(var(--p) / 0.1) 100%);
+        box-shadow: 0 0 0 3px hsl(var(--p) / 0.3);
+    }
+    
+    /* Show check icon when selected */
+    .game-card input[type="checkbox"]:checked + input[type="hidden"] + .game-card-content .selection-indicator {
+        display: block !important;
+    }
+    
+    /* Hover effect */
+    .game-card:hover .game-card-content {
+        transform: translateY(-2px);
+    }
+    
+    /* Smooth transitions */
+    .game-card-content {
+        transition: all 0.3s ease;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Sync the global lock spread checkbox with form submission
+  document.addEventListener('DOMContentLoaded', function() {
+    const lockSpreadCheckbox = document.getElementById('lock_spread_option');
+    const gamesForm = document.getElementById('games-form');
+    const lockSpreadField = document.getElementById('lock_spread_field');
+    
+    if (gamesForm) {
+      gamesForm.addEventListener('submit', function(e) {
+        lockSpreadField.value = lockSpreadCheckbox.checked ? 'on' : '';
+      });
+    }
+  });
+</script>
+{% endblock %}

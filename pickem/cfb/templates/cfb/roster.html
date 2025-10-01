@@ -1,0 +1,166 @@
+{% extends 'cfb/base.html' %}
+
+{% block title %}Roster - CFB Pick'em{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 class="text-4xl font-bold mb-2">
+                <i class="fas fa-users text-primary mr-2"></i>
+                Roster
+            </h1>
+            <p class="text-base-content/70">View all players and their stats</p>
+        </div>
+        
+        <!-- League Selector -->
+        {% if current_league %}
+            {% if user_leagues.count > 1 %}
+            <div class="form-control w-full md:w-auto">
+                <select class="select select-bordered select-primary" onchange="window.location.href='/roster/?league_id=' + this.value">
+                    {% for league in user_leagues %}
+                    <option value="{{ league.id }}" {% if league.id == current_league.id %}selected{% endif %}>
+                        {{ league.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% else %}
+            <div class="badge badge-primary badge-lg">{{ current_league.name }}</div>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+{% if current_league and roster %}
+<!-- Player Roster -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for player in roster %}
+    <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow {% if player.user == request.user %}ring-2 ring-primary{% endif %}">
+        <div class="card-body">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="avatar placeholder">
+                    <div class="bg-primary text-primary-content rounded-full w-16">
+                        <span class="text-2xl">{{ player.user.username|slice:":1"|upper }}</span>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <h3 class="card-title text-lg">
+                        {{ player.user.username }}
+                        {% if player.user == request.user %}
+                        <span class="text-xs text-primary">(You)</span>
+                        {% endif %}
+                    </h3>
+                    <div class="flex gap-2 items-center mt-1">
+                        {% if player.role == "owner" %}
+                        <div class="badge badge-primary badge-sm gap-1">
+                            <i class="fas fa-crown text-xs"></i>Owner
+                        </div>
+                        {% elif player.role == "admin" %}
+                        <div class="badge badge-secondary badge-sm gap-1">
+                            <i class="fas fa-user-shield text-xs"></i>Admin
+                        </div>
+                        {% else %}
+                        <div class="badge badge-ghost badge-sm">Member</div>
+                        {% endif %}
+                    </div>
+                    <p class="text-xs text-base-content/70 mt-1">Joined {{ player.joined_at|date:"M d, Y" }}</p>
+                </div>
+            </div>
+            
+            <div class="stats stats-vertical bg-base-200 shadow">
+                <div class="stat py-2 px-4">
+                    <div class="stat-title text-xs">Record</div>
+                    <div class="stat-value text-lg">{{ player.wins }}-{{ player.losses }}</div>
+                </div>
+                <div class="stat py-2 px-4">
+                    <div class="stat-title text-xs">Win Rate</div>
+                    {% if player.total > 0 %}
+                    <div class="stat-value text-lg {% if player.win_pct >= 60 %}text-success{% elif player.win_pct >= 40 %}text-warning{% else %}text-error{% endif %}">
+                        {{ player.win_pct }}%
+                    </div>
+                    {% else %}
+                    <div class="stat-value text-lg text-base-content/50">-</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% elif current_league %}
+<!-- No members yet -->
+<div class="card bg-base-100 shadow-xl">
+    <div class="card-body items-center text-center py-16">
+        <i class="fas fa-user-friends text-6xl text-secondary mb-4"></i>
+        <h2 class="card-title text-2xl mb-2">No Players Yet</h2>
+        <p class="text-base-content/70 mb-6 max-w-md">
+            Invite friends to join {{ current_league.name }}!
+        </p>
+        
+        <!-- Preview Features -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-3xl mt-8">
+            <div class="card bg-base-200">
+                <div class="card-body items-center">
+                    <i class="fas fa-id-card text-3xl text-primary mb-2"></i>
+                    <h3 class="font-bold">Player Profiles</h3>
+                    <p class="text-sm text-base-content/70">Detailed stats for each player</p>
+                </div>
+            </div>
+            
+            <div class="card bg-base-200">
+                <div class="card-body items-center">
+                    <i class="fas fa-history text-3xl text-secondary mb-2"></i>
+                    <h3 class="font-bold">Pick History</h3>
+                    <p class="text-sm text-base-content/70">See past picks and results</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- No league -->
+<div class="card bg-base-100 shadow-xl">
+    <div class="card-body items-center text-center py-16">
+        <i class="fas fa-exclamation-triangle text-6xl text-warning mb-4"></i>
+        <h2 class="card-title text-2xl mb-2">No League Selected</h2>
+        <p class="text-base-content/70 mb-6 max-w-md">
+            Join or create a league to view the roster!
+        </p>
+        <a href="/leagues/" class="btn btn-primary">View Leagues</a>
+    </div>
+</div>
+{% endif %}
+
+<!-- Sample Roster Layout (Hidden, for future reference) -->
+<div class="hidden">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="avatar placeholder">
+                        <div class="bg-primary text-primary-content rounded-full w-16">
+                            <span class="text-2xl">U</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="card-title">Username</h3>
+                        <p class="text-sm text-base-content/70">Joined Week 1</p>
+                    </div>
+                </div>
+                
+                <div class="stats stats-vertical bg-base-200">
+                    <div class="stat py-2 px-4">
+                        <div class="stat-title text-xs">Record</div>
+                        <div class="stat-value text-lg">12-8</div>
+                    </div>
+                    <div class="stat py-2 px-4">
+                        <div class="stat-title text-xs">Win Rate</div>
+                        <div class="stat-value text-lg text-success">60%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

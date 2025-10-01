@@ -1,0 +1,127 @@
+{% extends 'cfb/base.html' %}
+
+{% block title %}Home - CFB Pick'em{% endblock %}
+
+{% block content %}
+<div class="hero min-h-[60vh]">
+    <div class="hero-content text-center">
+        <div class="max-w-2xl">
+            <div class="mb-8">
+                <i class="fas fa-football text-8xl text-primary animate-pulse"></i>
+            </div>
+            <h1 class="text-5xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-6">
+                Welcome to CFB Pick'em
+            </h1>
+            <p class="text-xl text-base-content/80 mb-8">
+                Make your picks, compete with friends, and prove you're the ultimate college football expert.
+            </p>
+            
+            {% if request.user.is_authenticated %}
+                <!-- League Selector -->
+                {% if current_league %}
+                    {% if user_leagues.count > 1 %}
+                    <div class="mb-6">
+                        <select class="select select-bordered select-primary" onchange="window.location.href='/?league_id=' + this.value">
+                            {% for league in user_leagues %}
+                            <option value="{{ league.id }}" {% if league.id == current_league.id %}selected{% endif %}>
+                                {{ league.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% else %}
+                    <div class="badge badge-primary badge-lg mb-6">{{ current_league.name }}</div>
+                    {% endif %}
+                {% endif %}
+                <div class="flex gap-4 justify-center flex-wrap">
+                    <a href="/picks/" class="btn btn-primary btn-lg">
+                        <i class="fas fa-hand-pointer mr-2"></i>
+                        Make Your Picks
+                    </a>
+                    <a href="/live/" class="btn btn-outline btn-lg">
+                        <i class="fas fa-play-circle mr-2"></i>
+                        View Live Games
+                    </a>
+                </div>
+                
+                <!-- Quick Stats Cards -->
+                {% if current_league %}
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-12">
+                    <div class="stat bg-base-100 rounded-box shadow-xl">
+                        <div class="stat-figure text-primary">
+                            <i class="fas fa-check-circle text-3xl"></i>
+                        </div>
+                        <div class="stat-title">Picks Made</div>
+                        <div class="stat-value text-primary">{{ week_picks_count|default:0 }}</div>
+                        <div class="stat-desc">This week</div>
+                    </div>
+                    
+                    <div class="stat bg-base-100 rounded-box shadow-xl">
+                        <div class="stat-figure text-secondary">
+                            <i class="fas fa-chart-line text-3xl"></i>
+                        </div>
+                        <div class="stat-title">Win Rate</div>
+                        <div class="stat-value text-secondary">{{ win_rate|default:0 }}%</div>
+                        <div class="stat-desc">In {{ current_league.name }}</div>
+                    </div>
+                    
+                    <div class="stat bg-base-100 rounded-box shadow-xl">
+                        <div class="stat-figure text-accent">
+                            <i class="fas fa-trophy text-3xl"></i>
+                        </div>
+                        <div class="stat-title">Ranking</div>
+                        <div class="stat-value text-accent">{% if user_rank %}#{{ user_rank }}{% else %}-{% endif %}</div>
+                        <div class="stat-desc">of {{ total_players|default:0 }} players</div>
+                    </div>
+                </div>
+                {% else %}
+                <!-- No league message -->
+                <div class="alert alert-warning mt-6">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <div>
+                        <h3 class="font-bold">No League Yet</h3>
+                        <div class="text-sm">Join or create a league to start making picks!</div>
+                    </div>
+                    <a href="/leagues/" class="btn btn-sm btn-primary">View Leagues</a>
+                </div>
+                {% endif %}
+            {% else %}
+                <div class="mt-8">
+                    <a href="/login/" class="btn btn-primary btn-lg">
+                        <i class="fas fa-sign-in-alt mr-2"></i>
+                        Login to Get Started
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Features Section -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body items-center text-center">
+            <i class="fas fa-mobile-alt text-4xl text-primary mb-4"></i>
+            <h2 class="card-title">Mobile Friendly</h2>
+            <p class="text-base-content/70">Make picks on the go with our responsive design</p>
+        </div>
+    </div>
+    
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body items-center text-center">
+            <i class="fas fa-bolt text-4xl text-secondary mb-4"></i>
+            <h2 class="card-title">Live Updates</h2>
+            <p class="text-base-content/70">Track your picks in real-time during game day</p>
+        </div>
+    </div>
+    
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body items-center text-center">
+            <i class="fas fa-star text-4xl text-accent mb-4"></i>
+            <h2 class="card-title">Key Picks</h2>
+            <p class="text-base-content/70">Double down with confidence picks for bonus points</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

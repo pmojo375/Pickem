@@ -1,0 +1,90 @@
+{% extends "cfb/base.html" %}
+
+{% block title %}Create League - CFB Pick'em{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h1 class="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            <i class="fas fa-plus-circle mr-2"></i>Create New League
+        </h1>
+        <p class="text-base-content/70 mt-2">Start your own pick'em league and invite your friends to compete!</p>
+    </div>
+
+    <!-- Create League Form -->
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <form method="POST" action="{% url 'league_create' %}">
+                {% csrf_token %}
+                
+                <!-- League Name -->
+                <div class="form-control mb-4">
+                    <label class="label">
+                        <span class="label-text font-semibold">League Name <span class="text-error">*</span></span>
+                    </label>
+                    <input 
+                        type="text" 
+                        name="name" 
+                        placeholder="Enter league name (e.g., 'Family Pick'em' or 'Office League')" 
+                        class="input input-bordered w-full" 
+                        required
+                        maxlength="100"
+                        value="{{ name|default:'' }}"
+                    >
+                    <label class="label">
+                        <span class="label-text-alt text-base-content/60">Must be unique - no other league can have this name</span>
+                    </label>
+                </div>
+
+                <!-- League Description -->
+                <div class="form-control mb-6">
+                    <label class="label">
+                        <span class="label-text font-semibold">Description (Optional)</span>
+                    </label>
+                    <textarea 
+                        name="description" 
+                        placeholder="Tell others about your league..." 
+                        class="textarea textarea-bordered h-24"
+                        maxlength="500"
+                    >{{ description|default:'' }}</textarea>
+                    <label class="label">
+                        <span class="label-text-alt text-base-content/60">A brief description helps others understand your league</span>
+                    </label>
+                </div>
+
+                <!-- Submit Buttons -->
+                <div class="card-actions justify-end gap-2">
+                    <a href="{% url 'leagues_list' %}" class="btn btn-ghost">
+                        <i class="fas fa-times mr-2"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-check mr-2"></i>Create League
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Info Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+        <div class="card bg-base-200">
+            <div class="card-body">
+                <h3 class="font-bold flex items-center">
+                    <i class="fas fa-crown text-primary mr-2"></i>You'll Be The Owner
+                </h3>
+                <p class="text-sm text-base-content/70">As the league creator, you'll automatically become the owner with full control.</p>
+            </div>
+        </div>
+        <div class="card bg-base-200">
+            <div class="card-body">
+                <h3 class="font-bold flex items-center">
+                    <i class="fas fa-user-plus text-secondary mr-2"></i>Anyone Can Join
+                </h3>
+                <p class="text-sm text-base-content/70">Your league will be visible to everyone, and anyone can join to compete.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

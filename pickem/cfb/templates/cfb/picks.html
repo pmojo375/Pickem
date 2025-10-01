@@ -1,0 +1,192 @@
+{% extends 'cfb/base.html' %}
+{% load static %}
+{% load cfb_tags %}
+
+{% block title %}Make Your Picks - CFB Pick'em{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 class="text-4xl font-bold mb-2">
+                <i class="fas fa-hand-pointer text-primary mr-2"></i>
+                Make Your Picks
+            </h1>
+            <p class="text-base-content/70">Select your winners and mark your confidence picks</p>
+        </div>
+        
+        <!-- League Selector -->
+        {% if user_leagues.count > 1 %}
+        <div class="form-control w-full md:w-auto">
+            <select class="select select-bordered select-primary" onchange="window.location.href='?league_id=' + this.value">
+                {% for league in user_leagues %}
+                <option value="{{ league.id }}" {% if league.id == current_league.id %}selected{% endif %}>
+                    {{ league.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        {% else %}
+        <div class="badge badge-primary badge-lg">{{ current_league.name }}</div>
+        {% endif %}
+    </div>
+</div>
+
+{% if games_with_picks %}
+    <form method="post" action="" id="picks-form">
+        {% csrf_token %}
+        <input type="hidden" name="league_id" value="{{ current_league.id }}" />
+        
+        <!-- Save All Button - Top -->
+        <div class="sticky top-16 md:top-20 z-40 mb-3">
+            <button type="submit" class="btn btn-primary btn-md md:btn-lg w-full shadow-xl">
+                <i class="fas fa-save mr-2"></i>
+                Save All Picks
+            </button>
+        </div>
+        
+        <div class="grid grid-cols-1 gap-3 mb-4">
+            {% for lg, p in games_with_picks %}
+            <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
+                <div class="card-body p-3 md:p-4">
+                    <!-- Game Time -->
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="badge badge-primary badge-sm md:badge-md">
+                            <i class="fas fa-clock mr-1"></i>
+                            {{ lg.game.kickoff|eastern_time }}
+                        </div>
+                        {% if lg.locked_home_spread is not None %}
+                        <div class="badge badge-secondary badge-sm md:badge-md">
+                            <i class="fas fa-lock mr-1"></i>
+                            {% if lg.locked_home_spread > 0 %}
+                                {{ lg.game.home_team.abbreviation|default:lg.game.home_team.name }} -{{ lg.locked_home_spread }}
+                            {% else %}
+                                {{ lg.game.away_team.abbreviation|default:lg.game.away_team.name }} -{{ lg.locked_away_spread|floatformat:1 }}
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Hidden input for game_id (for processing multiple games) -->
+                    <input type="hidden" name="game_{{ lg.game.id }}_id" value="{{ lg.game.id }}" />
+                    
+                    <!-- Clickable Team Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                        <!-- Away Team Card -->
+                        <label class="team-card cursor-pointer">
+                            <input type="radio" 
+                                   name="game_{{ lg.game.id }}_picked_team" 
+                                   value="{{ lg.game.away_team.id }}" 
+                                   class="team-radio hidden"
+                                   {% if p and p.picked_team_id == lg.game.away_team.id %}checked{% endif %} />
+                            <div class="team-card-content flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-lg border-2 border-base-300 bg-base-200/50 hover:bg-base-200 transition-all">
+                                {% if lg.game.away_team|team_logo_url %}
+                                <img src="{% static lg.game.away_team|team_logo_url %}" 
+                                     alt="{{ lg.game.away_team.name }}" 
+                                     class="w-10 h-10 md:w-12 md:h-12 object-contain transition-transform flex-shrink-0" />
+                                {% endif %}
+                                <div class="flex-1 min-w-0">
+                                    <span class="font-bold text-sm md:text-base leading-tight block">{{ lg.game.away_team.name }}</span>
+                                    <div class="badge badge-ghost badge-xs md:badge-sm mt-1">Away</div>
+                                </div>
+                            </div>
+                        </label>
+                        
+                        <!-- Home Team Card -->
+                        <label class="team-card cursor-pointer">
+                            <input type="radio" 
+                                   name="game_{{ lg.game.id }}_picked_team" 
+                                   value="{{ lg.game.home_team.id }}" 
+                                   class="team-radio hidden"
+                                   {% if p and p.picked_team_id == lg.game.home_team.id %}checked{% endif %} />
+                            <div class="team-card-content flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-lg border-2 border-base-300 bg-base-200/50 hover:bg-base-200 transition-all">
+                                {% if lg.game.home_team|team_logo_url %}
+                                <img src="{% static lg.game.home_team|team_logo_url %}" 
+                                     alt="{{ lg.game.home_team.name }}" 
+                                     class="w-10 h-10 md:w-12 md:h-12 object-contain transition-transform flex-shrink-0" />
+                                {% endif %}
+                                <div class="flex-1 min-w-0">
+                                    <span class="font-bold text-sm md:text-base leading-tight block">{{ lg.game.home_team.name }}</span>
+                                    <div class="badge badge-ghost badge-xs md:badge-sm mt-1">Home</div>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                    
+                    <!-- Key Pick Toggle -->
+                    <div class="divider my-1">Options</div>
+                    
+                    <div class="flex justify-center">
+                        <label class="label cursor-pointer gap-2 bg-base-200 px-3 py-2 md:px-4 md:py-2 rounded-lg hover:bg-base-300 transition-colors">
+                            <span class="label-text text-sm md:text-base font-semibold">
+                                <i class="fas fa-star text-warning mr-1"></i>
+                                Key Pick
+                            </span>
+                            <input type="checkbox" 
+                                   name="game_{{ lg.game.id }}_is_key_pick" 
+                                   class="checkbox checkbox-warning checkbox-sm md:checkbox-md" 
+                                   {% if p and p.is_key_pick %}checked{% endif %} />
+                        </label>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Save All Button - Bottom -->
+        <div class="mb-4">
+            <button type="submit" class="btn btn-primary btn-md md:btn-lg w-full shadow-xl">
+                <i class="fas fa-save mr-2"></i>
+                Save All Picks
+            </button>
+        </div>
+    </form>
+{% elif current_league %}
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body items-center text-center py-16">
+            <i class="fas fa-calendar-times text-6xl text-base-300 mb-4"></i>
+            <h2 class="card-title text-2xl mb-2">No Games Available</h2>
+            <p class="text-base-content/70">Check back later or contact your admin to add games.</p>
+        </div>
+    </div>
+{% else %}
+    <!-- No league -->
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body items-center text-center py-16">
+            <i class="fas fa-exclamation-triangle text-6xl text-warning mb-4"></i>
+            <h2 class="card-title text-2xl mb-2">No League Selected</h2>
+            <p class="text-base-content/70 mb-6 max-w-md">
+                Join or create a league to start making picks!
+            </p>
+            <a href="/leagues/" class="btn btn-primary">View Leagues</a>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Selected team card styling */
+    .team-card input[type="radio"]:checked + .team-card-content {
+        border-color: hsl(var(--p));
+        background: linear-gradient(135deg, hsl(var(--p) / 0.2) 0%, hsl(var(--p) / 0.1) 100%);
+        box-shadow: 0 0 0 3px hsl(var(--p) / 0.3);
+        transform: scale(1.02);
+    }
+    
+    /* Hover effect */
+    .team-card:hover .team-card-content {
+        transform: scale(1.02);
+    }
+    
+    /* Selected team logo pulse */
+    .team-card input[type="radio"]:checked + .team-card-content img {
+        transform: scale(1.1);
+    }
+    
+    /* Smooth transitions */
+    .team-card-content {
+        transition: all 0.3s ease;
+    }
+</style>
+{% endblock %}

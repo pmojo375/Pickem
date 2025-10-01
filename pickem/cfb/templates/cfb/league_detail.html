@@ -1,0 +1,162 @@
+{% extends "cfb/base.html" %}
+
+{% block title %}{{ league.name }} - CFB Pick'em{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <!-- Back Button -->
+    <div class="mb-4">
+        <a href="{% url 'leagues_list' %}" class="btn btn-sm btn-ghost">
+            <i class="fas fa-arrow-left mr-2"></i>Back to Leagues
+        </a>
+    </div>
+
+    <!-- League Header -->
+    <div class="card bg-base-100 shadow-xl mb-6">
+        <div class="card-body">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div class="flex-1">
+                    <h1 class="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-2">
+                        <i class="fas fa-users-cog mr-2"></i>{{ league.name }}
+                    </h1>
+                    {% if league.description %}
+                    <p class="text-base-content/70">{{ league.description }}</p>
+                    {% else %}
+                    <p class="text-base-content/50 italic">No description provided</p>
+                    {% endif %}
+                    <div class="flex gap-4 mt-3 text-sm text-base-content/60">
+                        <div>
+                            <i class="fas fa-user mr-1"></i>Created by <span class="font-semibold">{{ league.created_by.username }}</span>
+                        </div>
+                        <div>
+                            <i class="fas fa-calendar mr-1"></i>{{ league.created_at|date:"M d, Y" }}
+                        </div>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    {% if is_member %}
+                        {% if is_owner %}
+                        <div class="badge badge-primary badge-lg">
+                            <i class="fas fa-crown mr-1"></i>Owner
+                        </div>
+                        {% elif is_admin %}
+                        <div class="badge badge-secondary badge-lg">
+                            <i class="fas fa-user-shield mr-1"></i>Admin
+                        </div>
+                        {% else %}
+                        <a href="{% url 'league_leave' league.id %}" class="btn btn-error btn-sm" onclick="return confirm('Are you sure you want to leave this league?')">
+                            <i class="fas fa-sign-out-alt mr-2"></i>Leave League
+                        </a>
+                        {% endif %}
+                    {% else %}
+                        <a href="{% url 'league_join' league.id %}" class="btn btn-primary">
+                            <i class="fas fa-user-plus mr-2"></i>Join League
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- League Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="stat bg-base-100 rounded-lg shadow">
+            <div class="stat-figure text-primary">
+                <i class="fas fa-users text-3xl"></i>
+            </div>
+            <div class="stat-title">Total Members</div>
+            <div class="stat-value text-primary">{{ memberships|length }}</div>
+        </div>
+        
+        <div class="stat bg-base-100 rounded-lg shadow">
+            <div class="stat-figure text-secondary">
+                <i class="fas fa-trophy text-3xl"></i>
+            </div>
+            <div class="stat-title">Status</div>
+            <div class="stat-value text-2xl">
+                {% if league.is_active %}
+                <span class="text-success">Active</span>
+                {% else %}
+                <span class="text-base-content/50">Inactive</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="stat bg-base-100 rounded-lg shadow">
+            <div class="stat-figure text-accent">
+                <i class="fas fa-football text-3xl"></i>
+            </div>
+            <div class="stat-title">Season</div>
+            <div class="stat-value text-2xl">2024</div>
+        </div>
+    </div>
+
+    <!-- Members List -->
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <h2 class="card-title text-2xl mb-4">
+                <i class="fas fa-users mr-2 text-primary"></i>Members ({{ memberships|length }})
+            </h2>
+            
+            {% if memberships %}
+            <div class="overflow-x-auto">
+                <table class="table table-zebra">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Member</th>
+                            <th>Role</th>
+                            <th>Joined</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for membership in memberships %}
+                        <tr class="{% if membership.user == request.user %}bg-primary/10{% endif %}">
+                            <td>{{ forloop.counter }}</td>
+                            <td>
+                                <div class="flex items-center gap-3">
+                                    <div class="avatar placeholder">
+                                        <div class="bg-primary text-primary-content rounded-full w-10">
+                                            <span class="text-sm">{{ membership.user.username|slice:":1"|upper }}</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="font-bold">{{ membership.user.username }}</div>
+                                        {% if membership.user == request.user %}
+                                        <div class="text-xs text-primary">You</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if membership.role == "owner" %}
+                                <div class="badge badge-primary gap-2">
+                                    <i class="fas fa-crown"></i>Owner
+                                </div>
+                                {% elif membership.role == "admin" %}
+                                <div class="badge badge-secondary gap-2">
+                                    <i class="fas fa-user-shield"></i>Admin
+                                </div>
+                                {% else %}
+                                <div class="badge badge-ghost gap-2">
+                                    <i class="fas fa-user"></i>Member
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td class="text-sm text-base-content/70">{{ membership.joined_at|date:"M d, Y" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                <span>No members yet. Be the first to join!</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

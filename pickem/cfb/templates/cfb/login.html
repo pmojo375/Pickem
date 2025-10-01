@@ -1,0 +1,127 @@
+{% extends 'cfb/base.html' %}
+
+{% block title %}Login - CFB Pick'em{% endblock %}
+
+{% block content %}
+<div class="hero min-h-[70vh]">
+    <div class="hero-content flex-col lg:flex-row-reverse">
+        <div class="text-center lg:text-left lg:ml-12">
+            <div class="mb-6">
+                <i class="fas fa-football text-7xl text-primary animate-pulse"></i>
+            </div>
+            <h1 class="text-5xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                Welcome Back!
+            </h1>
+            <p class="py-6 text-base-content/80">
+                Login to make your picks, compete with friends, and prove you're the ultimate college football expert.
+            </p>
+            <div class="stats shadow">
+                <div class="stat place-items-center">
+                    <div class="stat-title">Ready to</div>
+                    <div class="stat-value text-primary">Pick'em!</div>
+                    <div class="stat-desc">🏈</div>
+                </div>
+            </div>
+        </div>
+        <div class="card shrink-0 w-full max-w-sm shadow-2xl bg-base-100">
+            <form method="post" class="card-body">
+                {% csrf_token %}
+                
+                {% if form.non_field_errors %}
+                <div role="alert" class="alert alert-error mb-4">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>{{ form.non_field_errors.0 }}</span>
+                </div>
+                {% endif %}
+                
+                <div class="form-control">
+                    <label class="label" for="id_username">
+                        <span class="label-text"><i class="fas fa-user mr-2"></i>Username</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        name="username" 
+                        id="id_username"
+                        placeholder="Enter your username" 
+                        class="input input-bordered {% if form.username.errors %}input-error{% endif %}" 
+                        required 
+                        autofocus
+                        value="{{ form.username.value|default:'' }}"
+                    />
+                    {% if form.username.errors %}
+                    <label class="label">
+                        <span class="label-text-alt text-error">{{ form.username.errors.0 }}</span>
+                    </label>
+                    {% endif %}
+                </div>
+                
+                <div class="form-control">
+                    <label class="label" for="id_password">
+                        <span class="label-text"><i class="fas fa-lock mr-2"></i>Password</span>
+                    </label>
+                    <input 
+                        type="password" 
+                        name="password" 
+                        id="id_password"
+                        placeholder="Enter your password" 
+                        class="input input-bordered {% if form.password.errors %}input-error{% endif %}" 
+                        required 
+                    />
+                    {% if form.password.errors %}
+                    <label class="label">
+                        <span class="label-text-alt text-error">{{ form.password.errors.0 }}</span>
+                    </label>
+                    {% endif %}
+                </div>
+                
+                {% if next %}
+                <input type="hidden" name="next" value="{{ next }}" />
+                {% endif %}
+                
+                <div class="form-control mt-6">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-sign-in-alt mr-2"></i>
+                        Login
+                    </button>
+                </div>
+                
+                <div class="divider">OR</div>
+                
+                <div class="text-center">
+                    <p class="text-sm text-base-content/70">
+                        Need an account? Contact your league admin.
+                    </p>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Features Section -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body items-center text-center">
+            <i class="fas fa-users text-4xl text-primary mb-4"></i>
+            <h2 class="card-title">Join Leagues</h2>
+            <p class="text-base-content/70">Compete with friends in custom leagues</p>
+        </div>
+    </div>
+    
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body items-center text-center">
+            <i class="fas fa-chart-line text-4xl text-secondary mb-4"></i>
+            <h2 class="card-title">Track Stats</h2>
+            <p class="text-base-content/70">Monitor your performance and rankings</p>
+        </div>
+    </div>
+    
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body items-center text-center">
+            <i class="fas fa-trophy text-4xl text-accent mb-4"></i>
+            <h2 class="card-title">Win Glory</h2>
+            <p class="text-base-content/70">Prove you're the pick'em champion</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

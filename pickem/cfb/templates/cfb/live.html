@@ -1,0 +1,154 @@
+{% extends 'cfb/base.html' %}
+{% load static %}
+{% load cfb_tags %}
+
+{% block title %}Live Games - CFB Pick'em{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 class="text-4xl font-bold mb-2">
+                <i class="fas fa-play-circle text-primary mr-2"></i>
+                Live Games
+            </h1>
+            <p class="text-base-content/70">Track your picks in real-time</p>
+        </div>
+        
+        <!-- League Selector -->
+        {% if user_leagues.count > 1 %}
+        <div class="form-control w-full md:w-auto">
+            <select class="select select-bordered select-primary" onchange="window.location.href='?league_id=' + this.value">
+                {% for league in user_leagues %}
+                <option value="{{ league.id }}" {% if league.id == current_league.id %}selected{% endif %}>
+                    {{ league.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        {% else %}
+        <div class="badge badge-primary badge-lg">{{ current_league.name }}</div>
+        {% endif %}
+    </div>
+</div>
+
+{% if picks_with_league_game %}
+    <div class="grid grid-cols-1 gap-3">
+        {% for p, lg in picks_with_league_game %}
+        <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
+            <div class="card-body p-3 md:p-4">
+                <!-- Game Status Badge -->
+                <div class="flex items-center justify-between mb-3">
+                    <div class="badge badge-primary badge-sm md:badge-md">
+                        <i class="fas fa-clock mr-1"></i>
+                        {{ p.game.kickoff|eastern_time }}
+                    </div>
+                    {% if p.game.is_final %}
+                        <div class="badge badge-success badge-sm md:badge-md">
+                            <i class="fas fa-check-circle mr-1"></i>
+                            Final
+                        </div>
+                    {% else %}
+                        {% if p.game.quarter %}
+                        <div class="badge badge-warning badge-sm md:badge-md animate-pulse">
+                            <i class="fas fa-circle mr-1"></i>
+                            Q{{ p.game.quarter }} {{ p.game.clock }}
+                        </div>
+                        {% else %}
+                        <div class="badge badge-ghost badge-sm md:badge-md">
+                            Scheduled
+                        </div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+                
+                <!-- Game Info with Spread -->
+                {% if lg and lg.locked_home_spread is not None %}
+                <div class="text-center mb-2">
+                    <span class="badge badge-secondary badge-sm">
+                        <i class="fas fa-lock mr-1"></i>
+                        {% if lg.locked_home_spread > 0 %}
+                            {{ p.game.home_team.abbreviation|default:p.game.home_team.name }} -{{ lg.locked_home_spread }}
+                        {% else %}
+                            {{ p.game.away_team.abbreviation|default:p.game.away_team.name }} -{{ lg.locked_away_spread|floatformat:1 }}
+                        {% endif %}
+                    </span>
+                </div>
+                {% endif %}
+                
+                <!-- Score Display -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+                    <!-- Away Team -->
+                    <div class="flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-lg {% if p.picked_team_id == p.game.away_team.id %}bg-primary/20 ring-2 ring-primary{% else %}bg-base-200{% endif %}">
+                        {% if p.game.away_team|team_logo_url %}
+                        <img src="{% static p.game.away_team|team_logo_url %}" 
+                             alt="{{ p.game.away_team.name }}" 
+                             class="w-10 h-10 md:w-12 md:h-12 object-contain flex-shrink-0" />
+                        {% endif %}
+                        <div class="flex-1 min-w-0">
+                            <span class="font-bold text-xs md:text-sm leading-tight block">{{ p.game.away_team.name }}</span>
+                            <div class="badge badge-ghost badge-xs mt-0.5">Away</div>
+                        </div>
+                        <span class="text-2xl md:text-3xl font-bold flex-shrink-0">{{ p.game.away_score|default:"-" }}</span>
+                    </div>
+                    
+                    <!-- Home Team -->
+                    <div class="flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-lg {% if p.picked_team_id == p.game.home_team.id %}bg-primary/20 ring-2 ring-primary{% else %}bg-base-200{% endif %}">
+                        {% if p.game.home_team|team_logo_url %}
+                        <img src="{% static p.game.home_team|team_logo_url %}" 
+                             alt="{{ p.game.home_team.name }}" 
+                             class="w-10 h-10 md:w-12 md:h-12 object-contain flex-shrink-0" />
+                        {% endif %}
+                        <div class="flex-1 min-w-0">
+                            <span class="font-bold text-xs md:text-sm leading-tight block">{{ p.game.home_team.name }}</span>
+                            <div class="badge badge-ghost badge-xs mt-0.5">Home</div>
+                        </div>
+                        <span class="text-2xl md:text-3xl font-bold flex-shrink-0">{{ p.game.home_score|default:"-" }}</span>
+                    </div>
+                </div>
+                
+                <!-- Key Pick Badge (if applicable) -->
+                {% if p.is_key_pick %}
+                <div class="flex justify-center mt-1">
+                    <div class="badge badge-warning badge-sm md:badge-md gap-1">
+                        <i class="fas fa-star"></i>
+                        Key Pick
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Auto-refresh notice -->
+    <div class="alert alert-info mt-6">
+        <i class="fas fa-info-circle"></i>
+        <span>Scores update automatically. Refresh the page for the latest results.</span>
+    </div>
+{% elif current_league %}
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body items-center text-center py-16">
+            <i class="fas fa-clipboard-list text-6xl text-base-300 mb-4"></i>
+            <h2 class="card-title text-2xl mb-2">No Picks Yet</h2>
+            <p class="text-base-content/70 mb-6">You haven't made any picks for this week.</p>
+            <a href="/picks/" class="btn btn-primary">
+                <i class="fas fa-hand-pointer mr-2"></i>
+                Make Your Picks
+            </a>
+        </div>
+    </div>
+{% else %}
+    <!-- No league -->
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body items-center text-center py-16">
+            <i class="fas fa-exclamation-triangle text-6xl text-warning mb-4"></i>
+            <h2 class="card-title text-2xl mb-2">No League Selected</h2>
+            <p class="text-base-content/70 mb-6 max-w-md">
+                Join or create a league to view live games!
+            </p>
+            <a href="/leagues/" class="btn btn-primary">View Leagues</a>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

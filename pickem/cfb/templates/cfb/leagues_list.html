@@ -1,0 +1,103 @@
+{% extends "cfb/base.html" %}
+
+{% block title %}Leagues - CFB Pick'em{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <!-- Page Header -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+            <h1 class="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                <i class="fas fa-users-cog mr-2"></i>Leagues
+            </h1>
+            <p class="text-base-content/70 mt-2">Join a league or create your own to compete with friends!</p>
+        </div>
+        <a href="{% url 'league_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus mr-2"></i>Create League
+        </a>
+    </div>
+
+    <!-- My Leagues Section -->
+    {% if user_leagues %}
+    <div class="mb-8">
+        <h2 class="text-2xl font-bold mb-4">
+            <i class="fas fa-user-check mr-2 text-primary"></i>My Leagues
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for league in user_leagues %}
+            <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
+                <div class="card-body">
+                    <h3 class="card-title text-lg">
+                        {{ league.name }}
+                        {% with membership=league.memberships.all|first %}
+                        {% if membership.role == "owner" %}
+                        <div class="badge badge-primary badge-sm">Owner</div>
+                        {% elif membership.role == "admin" %}
+                        <div class="badge badge-secondary badge-sm">Admin</div>
+                        {% endif %}
+                        {% endwith %}
+                    </h3>
+                    {% if league.description %}
+                    <p class="text-sm text-base-content/70 line-clamp-2">{{ league.description }}</p>
+                    {% else %}
+                    <p class="text-sm text-base-content/50 italic">No description</p>
+                    {% endif %}
+                    <div class="text-xs text-base-content/60 mt-2">
+                        <i class="fas fa-users mr-1"></i>{{ league.memberships.count }} member{{ league.memberships.count|pluralize }}
+                    </div>
+                    <div class="card-actions justify-end mt-4">
+                        <a href="{% url 'league_detail' league.id %}" class="btn btn-sm btn-primary">
+                            View League
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- All Leagues Section -->
+    <div>
+        <h2 class="text-2xl font-bold mb-4">
+            <i class="fas fa-globe mr-2 text-secondary"></i>All Leagues
+        </h2>
+        
+        {% if all_leagues %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for league in all_leagues %}
+            <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
+                <div class="card-body">
+                    <h3 class="card-title text-lg">{{ league.name }}</h3>
+                    {% if league.description %}
+                    <p class="text-sm text-base-content/70 line-clamp-2">{{ league.description }}</p>
+                    {% else %}
+                    <p class="text-sm text-base-content/50 italic">No description</p>
+                    {% endif %}
+                    <div class="flex gap-4 text-xs text-base-content/60 mt-2">
+                        <div>
+                            <i class="fas fa-users mr-1"></i>{{ league.memberships.count }} member{{ league.memberships.count|pluralize }}
+                        </div>
+                        <div>
+                            <i class="fas fa-user mr-1"></i>{{ league.created_by.username }}
+                        </div>
+                    </div>
+                    <div class="card-actions justify-end mt-4">
+                        <a href="{% url 'league_detail' league.id %}" class="btn btn-sm btn-primary">
+                            View
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            <span>No leagues yet. Be the first to create one!</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
