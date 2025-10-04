@@ -218,18 +218,30 @@ def picks_view(request):
 
 @login_required
 def live_view(request):
-    # Get league from query params or use user's first league
-    league_id = request.GET.get('league_id')
+    # Get league from either POST (refresh button) or GET (dropdown)
+    league_id = request.POST.get('league_id') if request.method == "POST" else request.GET.get('league_id')
     if league_id:
         league = League.objects.filter(pk=league_id, memberships__user=request.user).first()
     else:
         # Get user's first league
         membership = LeagueMembership.objects.filter(user=request.user).first()
         league = membership.league if membership else None
-    
+
     # Get all user's leagues for the selector
     user_leagues = League.objects.filter(memberships__user=request.user).distinct()
-    
+
+    if request.method == "POST" and request.POST.get("action") == "pull_live_scores":
+        updated = services.live.fetch_and_store_live_scores()
+        if updated:
+            messages.success(request, f"Fetched the latest scores for {updated} game{'s' if updated != 1 else ''}.")
+        else:
+            messages.info(request, "Fetched the latest scores, but nothing new was available.")
+
+        redirect_url = request.path
+        if league:
+            redirect_url = f"{redirect_url}?league_id={league.id}"
+        return redirect(redirect_url)
+
     if not league:
         # No league - show message instead of redirecting
         context = {
