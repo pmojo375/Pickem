@@ -120,6 +120,22 @@
                                 </div>
                             {% endif %}
                         {% endif %}
+                        
+                        <!-- Spread Information -->
+                        {% if lg and lg.locked_home_spread is not None %}
+                        <div class="text-center mt-2">
+                            <div class="badge badge-secondary badge-sm">
+                                <i class="fas fa-lock mr-1"></i>
+                                {% if lg.locked_home_spread < 0 %}
+                                    {{ p.game.home_team.abbreviation|default:p.game.home_team.name }} {{ lg.locked_home_spread }}
+                                {% elif lg.locked_home_spread > 0 %}
+                                    {{ p.game.away_team.abbreviation|default:p.game.away_team.name }} -{{ lg.locked_home_spread }}
+                                {% else %}
+                                    Pick 'Em
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
                     
                     <!-- Home Team -->
@@ -139,16 +155,6 @@
                             </div>
                             <div class="flex items-center gap-1">
                                 <div class="badge badge-ghost badge-xs">Home</div>
-                                {% if lg and lg.locked_home_spread is not None %}
-                                    <div class="badge badge-secondary badge-xs">
-                                        <i class="fas fa-lock mr-1"></i>
-                                        {% if lg.locked_home_spread > 0 %}
-                                            -{{ lg.locked_home_spread }}
-                                        {% else %}
-                                            +{{ lg.locked_away_spread|floatformat:1 }}
-                                        {% endif %}
-                                    </div>
-                                {% endif %}
                                 {% if home_covered %}
                                     <div class="badge badge-success badge-xs" title="Covered the spread">
                                         <i class="fas fa-check text-[8px]"></i>
