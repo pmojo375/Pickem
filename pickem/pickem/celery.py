@@ -55,12 +55,6 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour=9, minute=0),  # Daily at 9 AM
         'options': {'expires': 3600},
     },
-    # Check for completed games and get closing spreads (runs every hour)
-    'check-games-completion': {
-        'task': 'cfb.tasks.check_and_update_spreads_on_completion',
-        'schedule': crontab(minute=0),  # Every hour on the hour
-        'options': {'expires': 1800},
-    },
 }
 
 app.conf.task_routes = {
@@ -69,7 +63,6 @@ app.conf.task_routes = {
     'cfb.tasks.update_single_game': {'queue': 'scores'},
     'cfb.tasks.sync_upcoming_games': {'queue': 'scores'},
     'cfb.tasks.update_spreads': {'queue': 'scores'},
-    'cfb.tasks.check_and_update_spreads_on_completion': {'queue': 'scores'},
 }
 
 # Worker configuration

@@ -621,10 +621,16 @@ def settings_view(request):
     start, end = services.schedule.get_week_window()
     games = Game.objects.filter(kickoff__range=(start, end)).select_related("home_team", "away_team").order_by("kickoff")
     
-    # Get existing league games for this league
+    # Get existing league games for this league that were created within the current week window
+    # This ensures we don't show games from previous weeks that might have been selected before
     league_games_dict = {
         lg.game_id: lg 
-        for lg in LeagueGame.objects.filter(league=league, game__in=games, is_active=True)
+        for lg in LeagueGame.objects.filter(
+            league=league, 
+            game__in=games, 
+            is_active=True,
+            selected_at__range=(start, end)
+        )
     }
     
     # Combine games with their league_game status

@@ -74,23 +74,20 @@ ODDS_API_KEY=your_key_here  # Required for spreads
 
 ```
 Monday 6:00 AM → Sync games (CFBD/ESPN) - Weekly
-Daily 9:00 AM  → Update spreads (daily)
-Every Hour     → Check if games done
-                  └─ If all final: Update spreads (closing lines)
+Daily 9:00 AM  → Update spreads (final for game day)
 ```
 
 ## 🎯 Expected Behavior
 
 1. **Every Monday at 6 AM**: New games for the week are pulled from CFBD (weekly)
-2. **Every morning at 9 AM**: Spreads are updated for all upcoming games (daily)
-3. **After all games complete**: Closing spreads captured automatically
-4. **During games**: Live scores continue updating every minute (existing behavior)
+2. **Every morning at 9 AM**: Spreads are updated and considered final for games that day
+3. **During games**: Live scores continue updating every minute (existing behavior)
 
 ## ✨ Key Features
 
 - ✅ Automatic game synchronization
-- ✅ Daily spread updates
-- ✅ Post-completion spread capture
+- ✅ Daily spread updates (7 API calls max per week)
+- ✅ Game-day spreads treated as final
 - ✅ CFBD API with ESPN fallback
 - ✅ Rate limiting and error handling
 - ✅ Prevents duplicate updates
@@ -100,7 +97,8 @@ Every Hour     → Check if games done
 
 - Game sync uses existing `fetch_and_store_week()` which prefers CFBD over ESPN
 - Spread updates only happen if spreads change by >= 0.5 points
-- Post-completion update only runs once per week (cached)
+- Spreads captured at 9 AM on game day are considered final for that game
+- Maximum 7 API calls per week to The Odds API (daily spread updates)
 - All tasks route to the 'scores' queue
 - Tasks expire if not executed within their timeout window
 

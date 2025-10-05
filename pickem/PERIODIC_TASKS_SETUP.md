@@ -71,34 +71,9 @@ update_spreads.delay()
 
 **Note**: This task uses The Odds API which has rate limits. Be mindful of API usage.
 
-### 3. Check Games Completion (`check_and_update_spreads_on_completion`)
+### 3. ~~Check Games Completion~~ (REMOVED)
 
-**Task**: `cfb.tasks.check_and_update_spreads_on_completion`  
-**Schedule**: Every hour (on the hour)  
-**Purpose**: Detects when all games in the week are completed and triggers one final spread update
-
-**Behavior**:
-- Runs every hour to check if all games in current week are final
-- Once all games are completed:
-  - Triggers one final spread update
-  - Caches completion status to prevent duplicate updates
-  - Cache expires after 1 week
-- Only runs the post-completion update once per week
-
-**Configuration**:
-```python
-'check-games-completion': {
-    'task': 'cfb.tasks.check_and_update_spreads_on_completion',
-    'schedule': crontab(minute=0),  # Every hour on the hour
-    'options': {'expires': 1800},
-}
-```
-
-**Manual Trigger**:
-```python
-from cfb.tasks import check_and_update_spreads_on_completion
-check_and_update_spreads_on_completion.delay()
-```
+**Note**: The post-completion spread update task has been removed. Spreads captured at 9 AM daily are now considered final for games that day, ensuring a maximum of 7 API calls per week to The Odds API.
 
 ## Existing Tasks
 
@@ -192,11 +167,7 @@ Weekly Timeline:
 │
 Daily Timeline:
 ├── 9:00 AM  → update_spreads
-│               └── Fetch spreads (daily update)
-│
-├── Every Hour → check_and_update_spreads_on_completion
-│                └── Check if all games done
-│                    └── If yes: update_spreads (closing lines)
+│               └── Fetch spreads (FINAL for games that day)
 │
 └── Every Minute → poll_espn_scores
                    └── Update live scores

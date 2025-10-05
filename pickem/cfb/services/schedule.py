@@ -20,10 +20,10 @@ ESPN_SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/football/co
 
 def get_week_window(now: datetime | None = None) -> Tuple[datetime, datetime]:
     now = now or timezone.now()
-    # Week starts Monday 00:00 and ends Sunday 23:59:59 in local timezone
+    # Week starts Monday 00:00 and ends Sunday 12:00:00 (noon) in local timezone
     monday = now - timedelta(days=(now.weekday()))
     start = monday.replace(hour=0, minute=0, second=0, microsecond=0)
-    end = start + timedelta(days=7) - timedelta(seconds=1)
+    end = start + timedelta(days=6, hours=12)  # Sunday at noon
     return start, end
 
 
