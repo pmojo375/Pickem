@@ -445,26 +445,38 @@ class LiveScoreUpdater {
             return;
         }
         
+        // Get the kickoff time from the page (already formatted)
+        // Try to extract from any existing time display
+        let kickoffTimeText = '';
+        const existingTimeElement = statusElement.querySelector('.text-xs');
+        if (existingTimeElement) {
+            kickoffTimeText = existingTimeElement.textContent;
+        }
+        
         let statusHTML = '';
         
         if (game.is_final) {
             statusHTML = `
-                <div class="badge badge-success badge-sm md:badge-md">
-                    <i class="fas fa-check-circle mr-1"></i>
-                    Final
+                <div class="text-center">
+                    <div class="text-2xl md:text-3xl font-bold text-success mb-1">FINAL</div>
+                    ${kickoffTimeText ? `<div class="text-xs text-base-content/60">${kickoffTimeText}</div>` : ''}
                 </div>
             `;
         } else if (game.quarter) {
             statusHTML = `
-                <div class="badge badge-warning badge-sm md:badge-md animate-pulse">
-                    <i class="fas fa-circle mr-1"></i>
-                    Q${game.quarter} ${game.clock || ''}
+                <div class="text-center">
+                    <div class="text-xl md:text-2xl font-bold text-warning animate-pulse mb-1">
+                        Q${game.quarter}
+                    </div>
+                    <div class="text-sm md:text-base font-semibold text-warning">${game.clock || ''}</div>
+                    ${kickoffTimeText ? `<div class="text-xs text-base-content/60 mt-1">${kickoffTimeText}</div>` : ''}
                 </div>
             `;
         } else {
             statusHTML = `
-                <div class="badge badge-ghost badge-sm md:badge-md">
-                    Scheduled
+                <div class="text-center">
+                    ${kickoffTimeText ? `<div class="text-base md:text-lg font-semibold text-base-content/70 mb-1">${kickoffTimeText}</div>` : ''}
+                    <div class="text-xs text-base-content/50">Scheduled</div>
                 </div>
             `;
         }
