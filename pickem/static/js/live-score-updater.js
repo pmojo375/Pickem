@@ -382,6 +382,9 @@ class LiveScoreUpdater {
         // Save scroll position
         const scrollY = window.scrollY;
         
+        // Check if game just became final
+        const gameBecameFinal = changes.some(c => c.type === 'is_final' && c.new === true);
+        
         changes.forEach(change => {
             switch (change.type) {
                 case 'home_score':
@@ -399,9 +402,15 @@ class LiveScoreUpdater {
                     
                 case 'is_final':
                     this.updateGameStatus(gameElement, game);
+                    this.updateGameFinalIndicators(gameElement, game);
                     break;
             }
         });
+        
+        // If game just became final, show notification to refresh for pick results
+        if (gameBecameFinal) {
+            this.showGameFinalNotification(game);
+        }
         
         // Restore scroll position
         window.scrollTo(0, scrollY);
@@ -482,6 +491,56 @@ class LiveScoreUpdater {
         }
         
         statusElement.innerHTML = statusHTML;
+    }
+    
+    /**
+     * Update game final indicators (winner, spread coverage)
+     * Note: This is a simplified version. Full details require page refresh.
+     */
+    updateGameFinalIndicators(gameElement, game) {
+        // Add visual feedback that game is final
+        gameElement.classList.add('game-final');
+        
+        // You could add winner badges here, but since we need backend
+        // data for spread coverage and pick results, we'll just show
+        // a subtle indicator that the game is complete
+        
+        console.log(`[LiveScoreUpdater] Game ${game.id} is now final - refresh page to see pick results`);
+    }
+    
+    /**
+     * Show notification when a game becomes final
+     */
+    showGameFinalNotification(game) {
+        // Create a toast notification
+        const toast = document.createElement('div');
+        toast.className = 'toast toast-end toast-bottom z-50';
+        toast.innerHTML = `
+            <div class="alert alert-success shadow-lg">
+                <div>
+                    <i class="fas fa-flag-checkered text-xl"></i>
+                    <div>
+                        <h3 class="font-bold">Game Final!</h3>
+                        <div class="text-sm">Your pick has been graded. Refresh to see results!</div>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button class="btn btn-sm btn-ghost" onclick="this.closest('.toast').remove()">
+                        Dismiss
+                    </button>
+                    <button class="btn btn-sm btn-primary" onclick="window.location.reload()">
+                        Refresh Now
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        // Auto-remove after 30 seconds
+        setTimeout(() => {
+            toast.remove();
+        }, 30000);
     }
     
     /**

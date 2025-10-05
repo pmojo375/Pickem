@@ -1,5 +1,6 @@
 from django import template
 from django.utils import timezone
+from django.utils.safestring import mark_safe
 import pytz
 
 register = template.Library()
@@ -108,4 +109,70 @@ def game_spread(game, use_pick_spread=False):
             return f"{int(home_spread):+d}"
         else:
             return f"{home_spread:+.1f}"
+
+
+@register.filter
+def team_won_game(team, game):
+    """
+    Check if a team won the game.
+    Returns True if team won, False if lost, None if game not final or no scores.
+    """
+    if not game.is_final or game.home_score is None or game.away_score is None:
+        return None
+    
+    if game.home_score == game.away_score:
+        return None  # Tie (rare in CFB but possible)
+    
+    if team.id == game.home_team_id:
+        return game.home_score > game.away_score
+    elif team.id == game.away_team_id:
+        return game.away_score > game.home_score
+    
+    return None
+
+
+@register.simple_tag
+def team_covered_spread(team, game, locked_home_spread):
+    """
+    Check if a team covered the spread.
+    Returns True if team covered, False if didn't cover, None if not final or no spread.
+    
+    Args:
+        team: The team to check
+        game: The game object
+        locked_home_spread: The locked spread for this league's game
+    """
+    if not game.is_final or game.home_score is None or game.away_score is None:
+        return None
+    
+    if locked_home_spread is None:
+        return None
+    
+    # Calculate margin and coverage (same logic as grade_picks_for_game)
+    actual_margin = game.home_score - game.away_score
+    spread = float(locked_home_spread)
+    home_covered = actual_margin > -spread
+    
+    if team.id == game.home_team_id:
+        return home_covered
+    elif team.id == game.away_team_id:
+        return not home_covered
+    
+    return None
+
+
+@register.filter
+def pick_result_badge(pick):
+    """
+    Return badge HTML for pick result.
+    """
+    if pick.is_correct is None:
+        return ""
+    
+    if pick.is_correct:
+        icon = '<i class="fas fa-check-circle mr-1"></i>'
+        return mark_safe(f'<span class="badge badge-success badge-sm">{icon}Correct</span>')
+    else:
+        icon = '<i class="fas fa-times-circle mr-1"></i>'
+        return mark_safe(f'<span class="badge badge-error badge-sm">{icon}Wrong</span>')
 

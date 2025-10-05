@@ -78,23 +78,40 @@
                 {% endif %}
                 
                 <!-- Score Display -->
-                <div class="flex flex-col md:flex-row items-stretch justify-between gap-0">
+                <div class="flex flex-col md:flex-row items-stretch justify-between gap-0 relative">
                     <!-- Away Team -->
-                    <div class="flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-t-lg md:rounded-l-lg md:rounded-tr-none w-full md:w-auto md:flex-1 border-b md:border-b-0 md:border-r border-base-300 {% if p.picked_team_id == p.game.away_team.id %}bg-primary/20 ring-2 ring-primary{% else %}bg-base-200{% endif %}">
+                    {% team_covered_spread p.game.away_team p.game lg.locked_home_spread as away_covered %}
+                    <div class="flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-t-lg md:rounded-l-lg md:rounded-tr-none w-full md:w-auto md:flex-1 border-b md:border-b-0 md:border-r-2 border-base-300 {% if p.game.away_team|team_won_game:p.game %}bg-success/10 ring-4 ring-green-500 z-20{% elif p.picked_team_id == p.game.away_team.id %}bg-primary/20 ring-2 ring-primary z-10{% else %}bg-base-200{% endif %}">
                         {% if p.game.away_team|team_logo_url %}
                         <img src="{% static p.game.away_team|team_logo_url %}" 
                              alt="{{ p.game.away_team.name }}" 
                              class="w-10 h-10 md:w-12 md:h-12 object-contain flex-shrink-0" />
                         {% endif %}
                         <div class="flex-1 min-w-0">
-                            <span class="font-bold text-xs md:text-sm leading-tight block">{{ p.game.away_team.name }}</span>
-                            <div class="badge badge-ghost badge-xs mt-0.5">Away</div>
+                            <div class="flex items-center gap-1 mb-1">
+                                <span class="font-bold text-xs md:text-sm leading-tight">{{ p.game.away_team.name }}</span>
+                                {% if p.game.away_team|team_won_game:p.game %}
+                                    <i class="fas fa-trophy text-success text-xs" title="Winner"></i>
+                                {% endif %}
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <div class="badge badge-ghost badge-xs">Away</div>
+                                {% if away_covered %}
+                                    <div class="badge badge-success badge-xs" title="Covered the spread">
+                                        <i class="fas fa-check text-[8px]"></i>
+                                    </div>
+                                {% elif away_covered == False %}
+                                    <div class="badge badge-error badge-xs" title="Did not cover">
+                                        <i class="fas fa-times text-[8px]"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
                         </div>
                         <span class="text-2xl md:text-3xl font-bold flex-shrink-0" data-score="away">{{ p.game|display_score:"away" }}</span>
                     </div>
                     
                     <!-- Game Time/Status (CENTER) -->
-                    <div class="flex flex-col items-center justify-center px-4 py-3 min-w-[120px] border-b md:border-b-0 md:border-r border-base-300 bg-base-100" data-game-status>
+                    <div class="flex flex-col items-center justify-center px-4 py-3 min-w-[120px] border-b md:border-b-0 md:border-r-2 border-base-300 bg-base-100 z-0" data-game-status>
                         {% if p.game.is_final %}
                             <div class="text-center">
                                 <div class="text-2xl md:text-3xl font-bold text-success mb-1">FINAL</div>
@@ -119,27 +136,63 @@
                     </div>
                     
                     <!-- Home Team -->
-                    <div class="flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-b-lg md:rounded-r-lg md:rounded-bl-none w-full md:w-auto md:flex-1 {% if p.picked_team_id == p.game.home_team.id %}bg-primary/20 ring-2 ring-primary{% else %}bg-base-200{% endif %}">
+                    {% team_covered_spread p.game.home_team p.game lg.locked_home_spread as home_covered %}
+                    <div class="flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-b-lg md:rounded-r-lg md:rounded-bl-none w-full md:w-auto md:flex-1 {% if p.game.home_team|team_won_game:p.game %}bg-success/10 ring-4 ring-green-500 z-20{% elif p.picked_team_id == p.game.home_team.id %}bg-primary/20 ring-2 ring-primary z-10{% else %}bg-base-200{% endif %}">
                         {% if p.game.home_team|team_logo_url %}
                         <img src="{% static p.game.home_team|team_logo_url %}" 
                              alt="{{ p.game.home_team.name }}" 
                              class="w-10 h-10 md:w-12 md:h-12 object-contain flex-shrink-0" />
                         {% endif %}
                         <div class="flex-1 min-w-0">
-                            <span class="font-bold text-xs md:text-sm leading-tight block">{{ p.game.home_team.name }}</span>
-                            <div class="badge badge-ghost badge-xs mt-0.5">Home</div>
+                            <div class="flex items-center gap-1 mb-1">
+                                <span class="font-bold text-xs md:text-sm leading-tight">{{ p.game.home_team.name }}</span>
+                                {% if p.game.home_team|team_won_game:p.game %}
+                                    <i class="fas fa-trophy text-success text-xs" title="Winner"></i>
+                                {% endif %}
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <div class="badge badge-ghost badge-xs">Home</div>
+                                {% if home_covered %}
+                                    <div class="badge badge-success badge-xs" title="Covered the spread">
+                                        <i class="fas fa-check text-[8px]"></i>
+                                    </div>
+                                {% elif home_covered == False %}
+                                    <div class="badge badge-error badge-xs" title="Did not cover">
+                                        <i class="fas fa-times text-[8px]"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
                         </div>
                         <span class="text-2xl md:text-3xl font-bold flex-shrink-0" data-score="home">{{ p.game|display_score:"home" }}</span>
                     </div>
                 </div>
                 
-                <!-- Key Pick Badge (if applicable) -->
-                {% if p.is_key_pick %}
-                <div class="flex justify-center mt-1">
-                    <div class="badge badge-warning badge-sm md:badge-md gap-1">
-                        <i class="fas fa-star"></i>
-                        Key Pick
-                    </div>
+                <!-- Pick Result and Key Pick Indicators -->
+                <div class="flex justify-center items-center gap-3 mt-3">
+                    {% if p.is_key_pick %}
+                        <div class="badge badge-warning badge-sm md:badge-md gap-1">
+                            <i class="fas fa-star"></i>
+                            Key Pick
+                        </div>
+                    {% endif %}
+                    
+                    {% if p.is_correct is not None %}
+                        <div class="{% if p.is_correct %}badge badge-success{% else %}badge badge-error{% endif %} badge-md gap-2 font-semibold">
+                            {% if p.is_correct %}
+                                <i class="fas fa-check-circle"></i>
+                                <span>Correct Pick! 🎉</span>
+                            {% else %}
+                                <i class="fas fa-times-circle"></i>
+                                <span>Incorrect Pick</span>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Your Pick Indicator -->
+                {% if p.game.is_final %}
+                <div class="text-center mt-2 text-sm text-base-content/60">
+                    You picked: <span class="font-bold">{{ p.picked_team.name }}</span>
                 </div>
                 {% endif %}
             </div>
