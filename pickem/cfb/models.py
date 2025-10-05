@@ -180,6 +180,11 @@ class Game(models.Model):
 
     def __str__(self) -> str:
         return f"{self.away_team} at {self.home_team}"
+    
+    def has_started(self):
+        """Check if the game has started (kickoff time has passed)"""
+        from django.utils import timezone
+        return timezone.now() >= self.kickoff
 
 
 class GameSpread(models.Model):

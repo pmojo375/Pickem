@@ -165,6 +165,11 @@ def picks_view(request):
                     game = league_game.game
                     picked_team = Team.objects.get(pk=picked_team_id)
                     
+                    # Check if game has started - prevent editing picks for started games
+                    if game.has_started():
+                        errors.append(f"Cannot change picks for {game.away_team.name} @ {game.home_team.name} - game has already started")
+                        continue
+                    
                     # Validate team is in the game
                     if picked_team_id_not_in_game(picked_team_id=picked_team.id, game=game):
                         errors.append(f"Invalid team selection for {game.away_team.name} @ {game.home_team.name}")
