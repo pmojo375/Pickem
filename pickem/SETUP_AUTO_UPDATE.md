@@ -229,10 +229,7 @@ I recommend this terminal layout:
 The system works out of the box, but you can customize settings in `settings.py`:
 
 ```python
-# Polling intervals (seconds)
-GAME_POLL_INTERVAL_LIVE = 60      # When games are live
-GAME_POLL_INTERVAL_NORMAL = 300   # When no games are live
-GAME_POLL_INTERVAL_OFFSEASON = 3600  # In offseason
+# Polling: Optimized to only poll when active games exist
 
 # Error handling
 ESPN_API_MAX_RETRIES = 3
@@ -242,8 +239,7 @@ ESPN_API_CIRCUIT_BREAKER_THRESHOLD = 5
 Or use environment variables in `.env`:
 
 ```env
-GAME_POLL_INTERVAL_LIVE=60
-GAME_POLL_INTERVAL_NORMAL=300
+# Polling is now optimized automatically
 CELERY_BROKER_URL=redis://localhost:6379/0
 ```
 

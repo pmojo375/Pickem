@@ -79,10 +79,7 @@ class Command(BaseCommand):
         else:
             self.stdout.write('  No recent poll recorded')
 
-        self.stdout.write(f'  Polling intervals:')
-        self.stdout.write(f'    Live games: {settings.GAME_POLL_INTERVAL_LIVE}s')
-        self.stdout.write(f'    Normal: {settings.GAME_POLL_INTERVAL_NORMAL}s')
-        self.stdout.write(f'    Offseason: {settings.GAME_POLL_INTERVAL_OFFSEASON}s')
+        self.stdout.write(f'  Polling: Optimized (only when active games exist)')
 
         # Recent Games
         if active_season:

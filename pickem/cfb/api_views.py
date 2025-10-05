@@ -368,11 +368,7 @@ def system_status(request):
             'live_state': live_state,
             'last_poll': last_poll,
             'active_season': season_info,
-            'polling_intervals': {
-                'live': settings.GAME_POLL_INTERVAL_LIVE,
-                'normal': settings.GAME_POLL_INTERVAL_NORMAL,
-                'offseason': settings.GAME_POLL_INTERVAL_OFFSEASON,
-            }
+            'polling_optimized': True
         })
 
     except Exception as e:

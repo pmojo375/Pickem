@@ -177,10 +177,6 @@ ESPN_API_BASE_URL = "https://site.api.espn.com/apis/site/v2/sports/football/coll
 ESPN_SCOREBOARD_URL = f"{ESPN_API_BASE_URL}/scoreboard"
 ESPN_API_TIMEOUT = 20  # seconds
 
-# Polling intervals (in seconds)
-GAME_POLL_INTERVAL_LIVE = int(os.getenv('GAME_POLL_INTERVAL_LIVE', 60))  # 1 minute when games are live
-GAME_POLL_INTERVAL_NORMAL = int(os.getenv('GAME_POLL_INTERVAL_NORMAL', 300))  # 5 minutes otherwise
-GAME_POLL_INTERVAL_OFFSEASON = int(os.getenv('GAME_POLL_INTERVAL_OFFSEASON', 3600))  # 1 hour in offseason
 
 # Time window for checking games (in days)
 GAME_CHECK_WINDOW_PAST = 2  # Check games from the last 2 days
@@ -201,6 +197,3 @@ REDIS_KEY_LAST_POLL = "scores:last_poll"
 REDIS_KEY_GAME_CACHE_TTL = 120  # 2 minutes for individual game cache
 REDIS_KEY_LIVE_STATE_TTL = 180  # 3 minutes for live state
 
-# Performance tuning
-GAME_UPDATE_BATCH_SIZE = 50  # Process this many games per batch
-ESPN_API_RATE_LIMIT_PER_MINUTE = 30  # Conservative rate limiting

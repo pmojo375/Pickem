@@ -95,10 +95,7 @@ curl "http://localhost:8000/api/games/upcoming/"
 ### Configuration (settings.py)
 
 ```python
-# Polling intervals (seconds)
-GAME_POLL_INTERVAL_LIVE = 60      # When games are live
-GAME_POLL_INTERVAL_NORMAL = 300   # Normal times
-GAME_POLL_INTERVAL_OFFSEASON = 3600  # Offseason
+# Polling: Optimized to only poll when active games exist
 
 # Error handling
 ESPN_API_MAX_RETRIES = 3
@@ -112,8 +109,7 @@ ESPN_API_CIRCUIT_BREAKER_TIMEOUT = 300
 CELERY_BROKER_URL=redis://localhost:6379/0
 CELERY_RESULT_BACKEND=redis://localhost:6379/0
 REDIS_CACHE_URL=redis://localhost:6379/1
-GAME_POLL_INTERVAL_LIVE=60
-GAME_POLL_INTERVAL_NORMAL=300
+# Polling is now optimized automatically
 ```
 
 ### Redis Keys
