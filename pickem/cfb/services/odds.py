@@ -190,12 +190,22 @@ def _team_names_match(db_name: str, api_name: str) -> bool:
 def _should_store_spread(game: Game, new_spreads: Dict) -> bool:
     """
     Check if we should store the new spread data.
-    Returns True if the spread has changed or doesn't exist yet.
+    Returns True if:
+    1. No previous spread exists
+    2. The spread has changed by 0.5 points or more
+    3. It's been at least 23 hours since the last stored spread
     """
+    from datetime import timedelta
+    
     # Get the most recent spread for this game
     latest_spread = game.spreads.first()  # Already ordered by -timestamp
     
     if not latest_spread:
+        return True
+    
+    # Check if it's been at least 23 hours since the last stored spread
+    time_since_last = timezone.now() - latest_spread.timestamp
+    if time_since_last >= timedelta(hours=23):
         return True
     
     # Check if spread has changed (accounting for decimal precision)
