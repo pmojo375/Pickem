@@ -43,12 +43,33 @@ app.conf.beat_schedule = {
         'schedule': crontab(minute='*/15'),  # Every 15 minutes
         'options': {'expires': 600},
     },
+    # Sync upcoming games once weekly on Monday at 6 AM
+    'sync-upcoming-games': {
+        'task': 'cfb.tasks.sync_upcoming_games',
+        'schedule': crontab(day_of_week=1, hour=6, minute=0),  # Monday at 6 AM
+        'options': {'expires': 3600},
+    },
+    # Update spreads once daily at 9 AM
+    'daily-spread-update': {
+        'task': 'cfb.tasks.update_spreads',
+        'schedule': crontab(hour=9, minute=0),  # Daily at 9 AM
+        'options': {'expires': 3600},
+    },
+    # Check for completed games and get closing spreads (runs every hour)
+    'check-games-completion': {
+        'task': 'cfb.tasks.check_and_update_spreads_on_completion',
+        'schedule': crontab(minute=0),  # Every hour on the hour
+        'options': {'expires': 1800},
+    },
 }
 
 app.conf.task_routes = {
     'cfb.tasks.poll_espn_scores': {'queue': 'scores'},
     'cfb.tasks.adjust_polling_interval': {'queue': 'scores'},
     'cfb.tasks.update_single_game': {'queue': 'scores'},
+    'cfb.tasks.sync_upcoming_games': {'queue': 'scores'},
+    'cfb.tasks.update_spreads': {'queue': 'scores'},
+    'cfb.tasks.check_and_update_spreads_on_completion': {'queue': 'scores'},
 }
 
 # Worker configuration

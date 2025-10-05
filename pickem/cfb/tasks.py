@@ -478,3 +478,116 @@ def sync_games_from_espn(season_year: int, start_date_str: str, end_date_str: st
     except Exception as e:
         logger.error(f"Error syncing games: {e}", exc_info=True)
 
+
+@shared_task(name='cfb.tasks.sync_upcoming_games')
+def sync_upcoming_games():
+    """
+    Periodic task to sync upcoming games from CFBD (with ESPN fallback).
+    Runs daily to ensure new games are added to the database.
+    Uses CFBD API if configured, otherwise falls back to ESPN.
+    """
+    try:
+        from .services.schedule import fetch_and_store_week
+        
+        logger.info("Starting upcoming games sync")
+        
+        # Sync current week's games
+        # This uses CFBD if API key is configured, otherwise ESPN
+        count = fetch_and_store_week()
+        
+        logger.info(f"Upcoming games sync completed: {count} games synced")
+
+    except Exception as e:
+        logger.error(f"Error syncing upcoming games: {e}", exc_info=True)
+
+
+@shared_task(
+    bind=True,
+    name='cfb.tasks.update_spreads',
+    max_retries=3,
+    default_retry_delay=300,
+)
+def update_spreads(self):
+    """
+    Periodic task to update game spreads/odds from The Odds API.
+    Fetches spreads for all games in the current week.
+    """
+    try:
+        from .services.odds import update_odds_for_week_games
+
+        logger.info("Starting spread update task")
+        
+        # Check if we have an API key configured
+        if not settings.ODDS_API_KEY:
+            logger.warning("ODDS_API_KEY not configured, skipping spread update")
+            return
+
+        # Update spreads for the current week's games
+        updated_count = update_odds_for_week_games()
+        
+        logger.info(f"Spread update complete: {updated_count} games updated")
+
+        # Store last successful spread poll time
+        cache.set('spreads:last_poll', timezone.now().isoformat(), timeout=86400)  # 24 hours
+
+    except Exception as exc:
+        logger.error(f"Error in spread update task: {exc}", exc_info=True)
+        # Retry with delay
+        raise self.retry(exc=exc)
+
+
+@shared_task(name='cfb.tasks.check_and_update_spreads_on_completion')
+def check_and_update_spreads_on_completion():
+    """
+    Periodic task that checks if all games in the current week are completed.
+    If so, and if spreads haven't been updated since completion, update them once more.
+    """
+    try:
+        from .services.schedule import get_week_window
+        
+        # Get current week's games
+        start, end = get_week_window()
+        active_season = Season.objects.filter(is_active=True).first()
+        
+        if not active_season:
+            return
+
+        week_games = Game.objects.filter(
+            season=active_season,
+            kickoff__range=(start, end)
+        )
+
+        if not week_games.exists():
+            logger.debug("No games in current week")
+            return
+
+        # Check if all games are final
+        all_final = week_games.filter(is_final=False).count() == 0
+        
+        if not all_final:
+            logger.debug("Not all games are final yet")
+            return
+
+        # Check if we've already done the post-completion spread update
+        cache_key = f'spreads:post_completion:{start.date().isoformat()}'
+        already_updated = cache.get(cache_key)
+        
+        if already_updated:
+            logger.debug("Post-completion spread update already done for this week")
+            return
+
+        # All games are final and we haven't updated spreads yet - do it now
+        logger.info("All games completed - triggering post-completion spread update")
+        
+        if settings.ODDS_API_KEY:
+            from .services.odds import update_odds_for_week_games
+            updated_count = update_odds_for_week_games()
+            logger.info(f"Post-completion spread update: {updated_count} games updated")
+            
+            # Mark this week as having completed the post-completion update
+            cache.set(cache_key, True, timeout=604800)  # Cache for 1 week
+        else:
+            logger.warning("ODDS_API_KEY not configured for post-completion spread update")
+
+    except Exception as e:
+        logger.error(f"Error in check_and_update_spreads_on_completion: {e}", exc_info=True)
