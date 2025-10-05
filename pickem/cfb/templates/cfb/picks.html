@@ -51,20 +51,25 @@
             <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow {% if game_started %}opacity-75{% endif %}">
                 <div class="card-body p-3 md:p-4">
                     <!-- Game Time -->
-                    <div class="flex items-center justify-between mb-3">
-                        <div class="badge badge-primary badge-sm md:badge-md">
-                            <i class="fas fa-clock mr-1"></i>
-                            {{ lg.game.kickoff|eastern_time }}
+                    <div class="mb-3">
+                        <!-- Game time - always on top -->
+                        <div class="flex justify-center mb-2">
+                            <div class="badge badge-primary badge-sm md:badge-md">
+                                <i class="fas fa-clock mr-1"></i>
+                                {{ lg.game.kickoff|eastern_time }}
+                            </div>
                         </div>
-                        <div class="flex gap-2">
+                        
+                        <!-- Status indicators - stacked on mobile, side by side on desktop -->
+                        <div class="flex flex-col sm:flex-row gap-1 sm:gap-2 justify-center items-center">
                             {% if game_started %}
-                            <div class="badge badge-error badge-sm md:badge-md">
+                            <div class="badge badge-error badge-sm md:badge-md whitespace-nowrap">
                                 <i class="fas fa-lock mr-1"></i>
                                 Game Started
                             </div>
                             {% endif %}
                             {% if lg.locked_home_spread is not None %}
-                            <div class="badge badge-secondary badge-sm md:badge-md">
+                            <div class="badge badge-secondary badge-sm md:badge-md whitespace-nowrap">
                                 <i class="fas fa-lock mr-1"></i>
                                 {% if lg.locked_home_spread < 0 %}
                                     {{ lg.game.home_team.abbreviation|default:lg.game.home_team.name }} {{ lg.locked_home_spread }}
@@ -82,7 +87,7 @@
                     <input type="hidden" name="game_{{ lg.game.id }}_id" value="{{ lg.game.id }}" />
                     
                     <!-- Clickable Team Cards -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
                         <!-- Away Team Card -->
                         <label class="team-card {% if not game_started %}cursor-pointer{% else %}cursor-not-allowed{% endif %}">
                             <input type="radio" 
