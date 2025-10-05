@@ -486,6 +486,25 @@ def settings_view(request):
                     if game_id:
                         game_ids.append(game_id)
             
+            # Get league rules to check pick limit
+            active_season = Season.objects.filter(is_active=True).first()
+            league_rules = None
+            if active_season:
+                league_rules = LeagueRules.objects.filter(league=league, season=active_season).first()
+            
+            # Count how many games are being selected
+            selected_games = []
+            for game_id in game_ids:
+                is_selected = request.POST.get(f"game_{game_id}_select") == "on"
+                if is_selected:
+                    selected_games.append(game_id)
+            
+            # Check pick limit
+            if league_rules and league_rules.pickable_games_per_week > 0:
+                if len(selected_games) > league_rules.pickable_games_per_week:
+                    messages.error(request, f"You can only select up to {league_rules.pickable_games_per_week} games for this league. You selected {len(selected_games)} games.")
+                    return redirect(f"/settings/?league_id={league.id}")
+            
             selected_count = 0
             locked_count = 0
             deselected_count = 0

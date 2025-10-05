@@ -311,7 +311,23 @@
         <h2 class="card-title mb-4">
             <i class="fas fa-football text-primary mr-2"></i>
             Games This Week
+            {% if league_rules and league_rules.pickable_games_per_week > 0 %}
+            <div class="badge badge-info badge-lg ml-2">
+                <i class="fas fa-info-circle mr-1"></i>
+                Limit: {{ league_rules.pickable_games_per_week }} games
+            </div>
+            {% endif %}
         </h2>
+        
+        {% if league_rules and league_rules.pickable_games_per_week > 0 %}
+        <div class="alert alert-info mb-4">
+            <i class="fas fa-info-circle"></i>
+            <div>
+                <div class="font-bold">Pick Limit</div>
+                <div class="text-sm">You can select up to {{ league_rules.pickable_games_per_week }} games for this league's weekly lineup.</div>
+            </div>
+        </div>
+        {% endif %}
         
         {% if games_with_selection %}
         <form method="post" action="" id="games-form">
@@ -468,6 +484,76 @@
         lockSpreadField.value = lockSpreadCheckbox.checked ? 'on' : '';
       });
     }
+    
+    // Pick limit validation
+    const pickLimit = {{ league_rules.pickable_games_per_week|default:0 }};
+    const gameCheckboxes = document.querySelectorAll('.game-checkbox');
+    const selectedCount = document.querySelectorAll('.game-checkbox:checked').length;
+    
+    // Update counter display
+    function updateCounter() {
+      const selected = document.querySelectorAll('.game-checkbox:checked').length;
+      const counter = document.getElementById('selection-counter');
+      if (counter) {
+        counter.textContent = `${selected}/${pickLimit} games selected`;
+        counter.className = selected > pickLimit ? 'badge badge-error' : 'badge badge-success';
+      }
+    }
+    
+    // Add counter display
+    const saveButton = document.querySelector('#games-form .btn-primary');
+    if (saveButton && pickLimit > 0) {
+      const counter = document.createElement('div');
+      counter.id = 'selection-counter';
+      counter.className = 'badge badge-success';
+      counter.textContent = `${selectedCount}/${pickLimit} games selected`;
+      counter.style.marginTop = '10px';
+      saveButton.parentNode.insertBefore(counter, saveButton.nextSibling);
+    }
+    
+    // Add validation to each checkbox
+    gameCheckboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', function() {
+        const selected = document.querySelectorAll('.game-checkbox:checked').length;
+        
+        // If trying to select more than the limit, prevent it (only if limit > 0)
+        if (this.checked && pickLimit > 0 && selected > pickLimit) {
+          this.checked = false;
+          
+          // Show warning
+          const warning = document.createElement('div');
+          warning.className = 'alert alert-warning mt-2';
+          warning.innerHTML = `
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>You can only select up to ${pickLimit} games for this league. Please deselect a game first.</span>
+          `;
+          
+          // Remove any existing warnings
+          const existingWarning = document.querySelector('.alert-warning');
+          if (existingWarning) {
+            existingWarning.remove();
+          }
+          
+          // Add warning after the form
+          const form = document.getElementById('games-form');
+          if (form) {
+            form.appendChild(warning);
+            
+            // Remove warning after 5 seconds
+            setTimeout(() => {
+              if (warning.parentNode) {
+                warning.remove();
+              }
+            }, 5000);
+          }
+        }
+        
+        updateCounter();
+      });
+    });
+    
+    // Initial counter update
+    updateCounter();
   });
 </script>
 {% endblock %}
