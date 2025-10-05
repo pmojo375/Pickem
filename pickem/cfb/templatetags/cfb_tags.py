@@ -36,6 +36,48 @@ def eastern_time(value):
     return f"{value.strftime('%a, %b')} {day} at {hour}:{value.strftime('%M %p')} ET"
 
 
+@register.filter
+def has_started(game):
+    """
+    Check if a game has started.
+    A game has started if:
+    - It has a quarter value (in progress or finished)
+    - OR the current time is past the kickoff time
+    """
+    if game.quarter is not None:
+        return True
+    
+    if game.kickoff:
+        now = timezone.now()
+        return now >= game.kickoff
+    
+    return False
+
+
+@register.filter
+def display_score(game, team_position):
+    """
+    Display the score for a team, showing:
+    - Actual score if available
+    - "0" if game has started but no score recorded
+    - "-" if game hasn't started yet
+    
+    Args:
+        game: The game object
+        team_position: Either "home" or "away"
+    """
+    score = game.home_score if team_position == "home" else game.away_score
+    
+    if score is not None:
+        return score
+    
+    # Check if game has started
+    if has_started(game):
+        return "0"
+    else:
+        return "—"
+
+
 @register.simple_tag
 def game_spread(game, use_pick_spread=False):
     """

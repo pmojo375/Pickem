@@ -22,6 +22,8 @@ urlpatterns = [
     path('cfb-admin/import-schedule/', views.admin_import_schedule, name='admin_import_schedule'),
     path('cfb-admin/update-odds/', views.admin_update_odds, name='admin_update_odds'),
     path('cfb-admin/update-live/', views.admin_update_live, name='admin_update_live'),
+    # User-accessible utilities
+    path('update-live-scores/', views.update_live_scores, name='update_live_scores'),
 ]
 
 

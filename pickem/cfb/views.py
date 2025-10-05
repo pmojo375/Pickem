@@ -650,6 +650,26 @@ def admin_update_live(request):
     return JsonResponse({"ok": True, "updated": updated})
 
 
+@login_required
+def update_live_scores(request):
+    """Allow logged-in users to update live scores from ESPN API."""
+    if request.method == "POST":
+        league_id = request.POST.get('league_id')
+        updated = services.live.fetch_and_store_live_scores()
+        
+        if updated > 0:
+            messages.success(request, f"Updated scores for {updated} game{'s' if updated != 1 else ''}! 🏈")
+        else:
+            messages.info(request, "No games needed updating at this time.")
+        
+        # Redirect back to live page with league
+        if league_id:
+            return redirect(f"/live/?league_id={league_id}")
+        return redirect("live")
+    
+    return redirect("live")
+
+
 # ============ LEAGUE VIEWS ============
 
 @login_required
