@@ -4,15 +4,25 @@
 
 {% block title %}Live Games - CFB Pick'em{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/live-updates.css' %}">
+{% endblock %}
+
 {% block content %}
-<div class="mb-6">
+    <div class="mb-6">
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h1 class="text-4xl font-bold mb-2">
                 <i class="fas fa-play-circle text-primary mr-2"></i>
                 Live Games
             </h1>
-            <p class="text-base-content/70">Track your picks in real-time</p>
+            <div class="flex items-center gap-3">
+                <p class="text-base-content/70">Track your picks in real-time</p>
+                <!-- Live Status Indicator -->
+                <div id="live-status-indicator" class="text-xs">
+                    <div class="loading-spinner"></div>
+                </div>
+            </div>
         </div>
         
         <div class="flex flex-col md:flex-row gap-2 md:gap-3">
@@ -47,38 +57,15 @@
 </div>
 
 {% if picks_with_league_game %}
-    <div class="grid grid-cols-1 gap-3">
+    <div class="grid grid-cols-1 gap-3" id="games-container">
         {% for p, lg in picks_with_league_game %}
-        <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
+        <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow" 
+             data-game-id="{{ p.game.id }}"
+             data-external-id="{{ p.game.external_id }}">
             <div class="card-body p-3 md:p-4">
-                <!-- Game Status Badge -->
-                <div class="flex items-center justify-between mb-3">
-                    <div class="badge badge-primary badge-sm md:badge-md">
-                        <i class="fas fa-clock mr-1"></i>
-                        {{ p.game.kickoff|eastern_time }}
-                    </div>
-                    {% if p.game.is_final %}
-                        <div class="badge badge-success badge-sm md:badge-md">
-                            <i class="fas fa-check-circle mr-1"></i>
-                            Final
-                        </div>
-                    {% else %}
-                        {% if p.game.quarter %}
-                        <div class="badge badge-warning badge-sm md:badge-md animate-pulse">
-                            <i class="fas fa-circle mr-1"></i>
-                            Q{{ p.game.quarter }} {{ p.game.clock }}
-                        </div>
-                        {% else %}
-                        <div class="badge badge-ghost badge-sm md:badge-md">
-                            Scheduled
-                        </div>
-                        {% endif %}
-                    {% endif %}
-                </div>
-                
                 <!-- Game Info with Spread -->
                 {% if lg and lg.locked_home_spread is not None %}
-                <div class="text-center mb-2">
+                <div class="text-center mb-3">
                     <span class="badge badge-secondary badge-sm">
                         <i class="fas fa-lock mr-1"></i>
                         {% if lg.locked_home_spread > 0 %}
@@ -91,9 +78,9 @@
                 {% endif %}
                 
                 <!-- Score Display -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+                <div class="flex flex-col md:flex-row items-stretch justify-between gap-0">
                     <!-- Away Team -->
-                    <div class="flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-lg {% if p.picked_team_id == p.game.away_team.id %}bg-primary/20 ring-2 ring-primary{% else %}bg-base-200{% endif %}">
+                    <div class="flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-t-lg md:rounded-l-lg md:rounded-tr-none w-full md:w-auto md:flex-1 border-b md:border-b-0 md:border-r border-base-300 {% if p.picked_team_id == p.game.away_team.id %}bg-primary/20 ring-2 ring-primary{% else %}bg-base-200{% endif %}">
                         {% if p.game.away_team|team_logo_url %}
                         <img src="{% static p.game.away_team|team_logo_url %}" 
                              alt="{{ p.game.away_team.name }}" 
@@ -103,11 +90,36 @@
                             <span class="font-bold text-xs md:text-sm leading-tight block">{{ p.game.away_team.name }}</span>
                             <div class="badge badge-ghost badge-xs mt-0.5">Away</div>
                         </div>
-                        <span class="text-2xl md:text-3xl font-bold flex-shrink-0">{{ p.game|display_score:"away" }}</span>
+                        <span class="text-2xl md:text-3xl font-bold flex-shrink-0" data-score="away">{{ p.game|display_score:"away" }}</span>
+                    </div>
+                    
+                    <!-- Game Time/Status (CENTER) -->
+                    <div class="flex flex-col items-center justify-center px-4 py-3 min-w-[120px] border-b md:border-b-0 md:border-r border-base-300 bg-base-100" data-game-status>
+                        {% if p.game.is_final %}
+                            <div class="text-center">
+                                <div class="text-2xl md:text-3xl font-bold text-success mb-1">FINAL</div>
+                                <div class="text-xs text-base-content/60">{{ p.game.kickoff|eastern_time }}</div>
+                            </div>
+                        {% else %}
+                            {% if p.game.quarter %}
+                                <div class="text-center">
+                                    <div class="text-xl md:text-2xl font-bold text-warning animate-pulse mb-1">
+                                        Q{{ p.game.quarter }}
+                                    </div>
+                                    <div class="text-sm md:text-base font-semibold text-warning">{{ p.game.clock }}</div>
+                                    <div class="text-xs text-base-content/60 mt-1">{{ p.game.kickoff|eastern_time }}</div>
+                                </div>
+                            {% else %}
+                                <div class="text-center">
+                                    <div class="text-base md:text-lg font-semibold text-base-content/70 mb-1">{{ p.game.kickoff|eastern_time }}</div>
+                                    <div class="text-xs text-base-content/50">Scheduled</div>
+                                </div>
+                            {% endif %}
+                        {% endif %}
                     </div>
                     
                     <!-- Home Team -->
-                    <div class="flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-lg {% if p.picked_team_id == p.game.home_team.id %}bg-primary/20 ring-2 ring-primary{% else %}bg-base-200{% endif %}">
+                    <div class="flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-b-lg md:rounded-r-lg md:rounded-bl-none w-full md:w-auto md:flex-1 {% if p.picked_team_id == p.game.home_team.id %}bg-primary/20 ring-2 ring-primary{% else %}bg-base-200{% endif %}">
                         {% if p.game.home_team|team_logo_url %}
                         <img src="{% static p.game.home_team|team_logo_url %}" 
                              alt="{{ p.game.home_team.name }}" 
@@ -117,7 +129,7 @@
                             <span class="font-bold text-xs md:text-sm leading-tight block">{{ p.game.home_team.name }}</span>
                             <div class="badge badge-ghost badge-xs mt-0.5">Home</div>
                         </div>
-                        <span class="text-2xl md:text-3xl font-bold flex-shrink-0">{{ p.game|display_score:"home" }}</span>
+                        <span class="text-2xl md:text-3xl font-bold flex-shrink-0" data-score="home">{{ p.game|display_score:"home" }}</span>
                     </div>
                 </div>
                 
@@ -137,8 +149,11 @@
     
     <!-- Auto-refresh notice -->
     <div class="alert alert-info mt-6">
-        <i class="fas fa-info-circle"></i>
-        <span>Scores update automatically. Refresh the page for the latest results.</span>
+        <i class="fas fa-sync-alt mr-2 live-indicator"></i>
+        <div>
+            <p class="font-semibold">Live Score Updates Active</p>
+            <p class="text-sm opacity-80">Scores refresh automatically every 5-30 seconds. No manual refresh needed!</p>
+        </div>
     </div>
 {% elif current_league %}
     <div class="card bg-base-100 shadow-xl">
@@ -165,4 +180,135 @@
         </div>
     </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/live-score-updater.js' %}"></script>
+<script>
+/**
+ * Initialize Live Score Updates
+ * 
+ * This script automatically polls the /api/games endpoint and updates
+ * scores in real-time without requiring page refreshes.
+ */
+(function() {
+    'use strict';
+    
+    // Only initialize if we have games to track
+    const gamesContainer = document.getElementById('games-container');
+    if (!gamesContainer) {
+        console.log('[LiveScores] No games container found, skipping auto-update');
+        return;
+    }
+    
+    // Initialize the updater
+    const updater = new LiveScoreUpdater({
+        apiEndpoint: '/api/games/',
+        
+        // Polling intervals (milliseconds)
+        livePollInterval: 5000,     // 5 seconds when games are live
+        normalPollInterval: 30000,  // 30 seconds when all games final/pregame
+        hiddenPollInterval: 60000,  // 60 seconds when tab is hidden
+        
+        // Callbacks
+        onUpdate: function(updatedGames) {
+            console.log(`[LiveScores] Updated ${updatedGames.length} game(s)`);
+            
+            // Optional: Show a subtle notification
+            updatedGames.forEach(({ game, changes }) => {
+                // Check if score changed
+                const scoreChanged = changes.some(c => 
+                    c.type === 'home_score' || c.type === 'away_score'
+                );
+                
+                if (scoreChanged) {
+                    showScoreUpdateNotification(game);
+                }
+            });
+        },
+        
+        onError: function(error, retryCount) {
+            console.error(`[LiveScores] Error (attempt ${retryCount}):`, error);
+            
+            // Show error to user if too many failures
+            if (retryCount >= 3) {
+                showConnectionWarning();
+            }
+        },
+        
+        onStatusChange: function({ hasLiveGames, liveGameCount }) {
+            console.log(`[LiveScores] Status changed: ${liveGameCount} live game(s)`);
+            
+            // Update page title to show live game count
+            if (hasLiveGames) {
+                document.title = `(${liveGameCount} Live) Live Games - CFB Pick'em`;
+            } else {
+                document.title = 'Live Games - CFB Pick\'em';
+            }
+        }
+    });
+    
+    // Start the updater
+    updater.start();
+    
+    // Clean up on page unload
+    window.addEventListener('beforeunload', function() {
+        updater.destroy();
+    });
+    
+    // Pause updates when user is interacting with the page
+    // (Optional: uncomment if you want to pause during interactions)
+    /*
+    let interactionTimer;
+    document.addEventListener('scroll', function() {
+        updater.pause();
+        clearTimeout(interactionTimer);
+        interactionTimer = setTimeout(() => updater.resume(), 2000);
+    });
+    */
+    
+    /**
+     * Show a subtle notification when a score updates
+     */
+    function showScoreUpdateNotification(game) {
+        // Find the game card
+        const gameCard = document.querySelector(`[data-game-id="${game.id}"]`);
+        if (gameCard) {
+            // Add flash animation
+            gameCard.classList.add('game-card-updated');
+            setTimeout(() => {
+                gameCard.classList.remove('game-card-updated');
+            }, 1000);
+        }
+    }
+    
+    /**
+     * Show connection warning
+     */
+    function showConnectionWarning() {
+        const statusIndicator = document.getElementById('live-status-indicator');
+        if (statusIndicator) {
+            statusIndicator.innerHTML = `
+                <div class="flex items-center gap-2 text-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span class="text-xs">Connection issues</span>
+                </div>
+            `;
+        }
+    }
+    
+    // Expose updater globally for debugging
+    window.liveScoreUpdater = updater;
+    
+    // Log initialization
+    console.log('[LiveScores] Auto-update initialized and running');
+    console.log('[LiveScores] Debug: window.liveScoreUpdater.getState()');
+    
+})();
+
+// Temporary diagnostic logging
+console.log('[LiveScores] Checking page state...');
+console.log('[LiveScores] Games container exists:', document.getElementById('games-container') !== null);
+console.log('[LiveScores] Game elements found:', document.querySelectorAll('[data-game-id]').length);
+</script>
 {% endblock %}

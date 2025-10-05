@@ -2,4 +2,12 @@ Django>=5,<6
 requests>=2.31
 python-dotenv>=1.0
 cfbd>=5.12.1
+pytz
 
+# Celery and Redis for background task processing
+celery>=5.4.0
+redis>=4.5.0,<5.0.0  # Use Redis 4.x for better compatibility
+kombu>=5.3.0  # Celery dependency
+
+# Enhanced HTTP client with retry capabilities
+tenacity>=8.2.0

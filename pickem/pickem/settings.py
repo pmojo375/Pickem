@@ -142,5 +142,65 @@ LOGOUT_REDIRECT_URL = '/'
 CFBD_API_KEY = os.getenv('CFBD_API_KEY', '')
 ODDS_API_KEY = os.getenv('ODDS_API_KEY', '')
 
-CELERY_BROKER_URL = "redis://localhost:6379/0"
-CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+# ============================================================================
+# CELERY & REDIS CONFIGURATION
+# ============================================================================
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
+# Redis cache configuration
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': os.getenv('REDIS_CACHE_URL', 'redis://127.0.0.1:6379/1'),
+        'OPTIONS': {
+            'db': 1,
+            'parser_class': 'redis.connection.PythonParser',
+            'pool_class': 'redis.BlockingConnectionPool',
+        },
+        'KEY_PREFIX': 'pickem',
+        'TIMEOUT': 300,  # 5 minutes default
+    }
+}
+
+# ============================================================================
+# ESPN LIVE SCORE AUTO-UPDATE CONFIGURATION
+# ============================================================================
+
+# ESPN API Configuration
+ESPN_API_BASE_URL = "https://site.api.espn.com/apis/site/v2/sports/football/college-football"
+ESPN_SCOREBOARD_URL = f"{ESPN_API_BASE_URL}/scoreboard"
+ESPN_API_TIMEOUT = 20  # seconds
+
+# Polling intervals (in seconds)
+GAME_POLL_INTERVAL_LIVE = int(os.getenv('GAME_POLL_INTERVAL_LIVE', 60))  # 1 minute when games are live
+GAME_POLL_INTERVAL_NORMAL = int(os.getenv('GAME_POLL_INTERVAL_NORMAL', 300))  # 5 minutes otherwise
+GAME_POLL_INTERVAL_OFFSEASON = int(os.getenv('GAME_POLL_INTERVAL_OFFSEASON', 3600))  # 1 hour in offseason
+
+# Time window for checking games (in days)
+GAME_CHECK_WINDOW_PAST = 2  # Check games from the last 2 days
+GAME_CHECK_WINDOW_FUTURE = 1  # Check games up to 1 day in the future
+
+# Error handling and circuit breaker
+ESPN_API_MAX_RETRIES = 3
+ESPN_API_RETRY_BACKOFF_FACTOR = 2  # Exponential backoff: 2, 4, 8 seconds
+ESPN_API_RETRY_JITTER = 1  # Random jitter up to 1 second
+ESPN_API_CIRCUIT_BREAKER_THRESHOLD = 5  # Consecutive failures before opening circuit
+ESPN_API_CIRCUIT_BREAKER_TIMEOUT = 300  # 5 minutes before attempting to close circuit
+
+# Redis key namespaces
+REDIS_KEY_GAME_PREFIX = "scores:game:"
+REDIS_KEY_LIVE_STATE = "scores:live_state"
+REDIS_KEY_CIRCUIT_BREAKER = "scores:circuit_breaker"
+REDIS_KEY_LAST_POLL = "scores:last_poll"
+REDIS_KEY_GAME_CACHE_TTL = 120  # 2 minutes for individual game cache
+REDIS_KEY_LIVE_STATE_TTL = 180  # 3 minutes for live state
+
+# Performance tuning
+GAME_UPDATE_BATCH_SIZE = 50  # Process this many games per batch
+ESPN_API_RATE_LIMIT_PER_MINUTE = 30  # Conservative rate limiting

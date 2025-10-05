@@ -1,0 +1,190 @@
+/**
+ * Live Score Update Animations
+ * 
+ * CSS animations for live score updates
+ */
+
+/* Score change pulse animation */
+@keyframes score-pulse {
+    0% {
+        transform: scale(1);
+        color: inherit;
+    }
+    25% {
+        transform: scale(1.2);
+        color: #fbbf24; /* Warning/yellow color */
+    }
+    50% {
+        transform: scale(1.1);
+        color: #10b981; /* Success/green color */
+    }
+    75% {
+        transform: scale(1.15);
+        color: #10b981;
+    }
+    100% {
+        transform: scale(1);
+        color: inherit;
+    }
+}
+
+.score-pulse {
+    animation: score-pulse 0.6s ease-in-out;
+    font-weight: 900;
+}
+
+/* Smooth transitions for score updates */
+[data-score] {
+    transition: all 0.3s ease-in-out;
+}
+
+/* Live game indicator pulse */
+@keyframes live-pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.live-indicator {
+    animation: live-pulse 2s ease-in-out infinite;
+}
+
+/* Status badge transition */
+[data-game-status] {
+    transition: all 0.3s ease-in-out;
+}
+
+/* Game card subtle highlight on update */
+@keyframes card-flash {
+    0% {
+        box-shadow: 0 0 0 rgba(59, 130, 246, 0);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+    }
+    100% {
+        box-shadow: 0 0 0 rgba(59, 130, 246, 0);
+    }
+}
+
+.game-card-updated {
+    animation: card-flash 1s ease-in-out;
+}
+
+/* Loading spinner for initial load */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Connection status indicator */
+.connection-status {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    transition: all 0.3s ease-in-out;
+}
+
+@media (max-width: 768px) {
+    .connection-status {
+        bottom: 80px; /* Above mobile nav */
+        right: 10px;
+        font-size: 0.875rem;
+    }
+}
+
+/* Fade in animation for new content */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.4s ease-in-out;
+}
+
+/* Smooth height transitions */
+.smooth-height {
+    transition: height 0.3s ease-in-out;
+}
+
+/* Score highlight on change */
+.score-highlight {
+    position: relative;
+}
+
+.score-highlight::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border: 2px solid #fbbf24;
+    border-radius: 8px;
+    opacity: 0;
+    animation: highlight-fade 2s ease-in-out;
+}
+
+@keyframes highlight-fade {
+    0%, 100% {
+        opacity: 0;
+        transform: scale(1);
+    }
+    25% {
+        opacity: 1;
+        transform: scale(1.05);
+    }
+    75% {
+        opacity: 0.5;
+        transform: scale(1);
+    }
+}
+
+/* Offline indicator */
+.offline-indicator {
+    background: linear-gradient(90deg, #ef4444, #dc2626);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Online indicator */
+.online-indicator {
+    background: linear-gradient(90deg, #10b981, #059669);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+/* Updating indicator */
+.updating-indicator {
+    background: linear-gradient(90deg, #3b82f6, #2563eb);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
