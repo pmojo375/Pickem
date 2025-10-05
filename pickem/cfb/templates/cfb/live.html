@@ -167,34 +167,16 @@
                     </div>
                 </div>
                 
-                <!-- Pick Result and Key Pick Indicators -->
+                <!-- Key Pick Indicator -->
+                {% if p.is_key_pick %}
                 <div class="flex justify-center items-center gap-3 mt-3">
-                    {% if p.is_key_pick %}
-                        <div class="badge badge-warning badge-sm md:badge-md gap-1">
-                            <i class="fas fa-star"></i>
-                            Key Pick
-                        </div>
-                    {% endif %}
-                    
-                    {% if p.is_correct is not None %}
-                        <div class="{% if p.is_correct %}badge badge-success{% else %}badge badge-error{% endif %} badge-md gap-2 font-semibold">
-                            {% if p.is_correct %}
-                                <i class="fas fa-check-circle"></i>
-                                <span>Correct Pick! 🎉</span>
-                            {% else %}
-                                <i class="fas fa-times-circle"></i>
-                                <span>Incorrect Pick</span>
-                            {% endif %}
-                        </div>
-                    {% endif %}
-                </div>
-                
-                <!-- Your Pick Indicator -->
-                {% if p.game.is_final %}
-                <div class="text-center mt-2 text-sm text-base-content/60">
-                    You picked: <span class="font-bold">{{ p.picked_team.name }}</span>
+                    <div class="badge badge-warning badge-sm md:badge-md gap-1">
+                        <i class="fas fa-star"></i>
+                        Key Pick
+                    </div>
                 </div>
                 {% endif %}
+                
             </div>
         </div>
         {% endfor %}
