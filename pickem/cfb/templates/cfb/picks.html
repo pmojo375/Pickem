@@ -58,10 +58,12 @@
                         {% if lg.locked_home_spread is not None %}
                         <div class="badge badge-secondary badge-sm md:badge-md">
                             <i class="fas fa-lock mr-1"></i>
-                            {% if lg.locked_home_spread > 0 %}
-                                {{ lg.game.home_team.abbreviation|default:lg.game.home_team.name }} -{{ lg.locked_home_spread }}
+                            {% if lg.locked_home_spread < 0 %}
+                                {{ lg.game.home_team.abbreviation|default:lg.game.home_team.name }} {{ lg.locked_home_spread }}
+                            {% elif lg.locked_home_spread > 0 %}
+                                {{ lg.game.away_team.abbreviation|default:lg.game.away_team.name }} -{{ lg.locked_home_spread }}
                             {% else %}
-                                {{ lg.game.away_team.abbreviation|default:lg.game.away_team.name }} -{{ lg.locked_away_spread|floatformat:1 }}
+                                Pick 'Em
                             {% endif %}
                         </div>
                         {% endif %}
