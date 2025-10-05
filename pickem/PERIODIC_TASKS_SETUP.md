@@ -80,8 +80,10 @@ update_spreads.delay()
 These tasks were already configured and continue to run:
 
 ### Live Score Polling (`poll_espn_scores`)
-- **Schedule**: Every 60 seconds (self-regulating based on live games)
+- **Schedule**: Every 60 seconds (only when active games exist)
 - Updates live scores during games
+- **Optimized**: Only polls ESPN when games are active (started but not final)
+- **Efficient**: Skips polling when all games are final or haven't started
 - Grades picks when games complete
 
 ### Adjust Polling Interval (`adjust_polling_interval`)

@@ -208,7 +208,8 @@ class GameUpdateService:
 def poll_espn_scores(self):
     """
     Main task to poll ESPN for game scores and update database.
-    Runs at intervals determined by live game state.
+    Only polls ESPN when there are active games (started but not final).
+    Skips polling when all games are final or haven't started yet.
     """
     try:
         # Check last poll time to avoid duplicate work
@@ -245,6 +246,18 @@ def poll_espn_scores(self):
         if not games_to_check.exists():
             logger.info("No games in check window")
             return
+
+        # Only poll ESPN if there are active games (started but not final)
+        active_games = games_to_check.filter(
+            is_final=False,  # Not finished
+            kickoff__lte=now  # Has started (kickoff time has passed)
+        )
+
+        if not active_games.exists():
+            logger.debug("No active games need polling - all games are either final or haven't started")
+            return
+
+        logger.info(f"Found {active_games.count()} active games that need live updates")
 
         # Fetch data from ESPN
         espn_client = get_espn_client()
