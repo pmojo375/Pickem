@@ -6,13 +6,21 @@
 
 {% block content %}
 <div class="mb-6">
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h1 class="text-4xl font-bold mb-2">
                 <i class="fas fa-hand-pointer text-primary mr-2"></i>
                 Make Your Picks
             </h1>
             <p class="text-base-content/70">Select your winners and mark your confidence picks</p>
+            {% if league_rules and league_rules.key_picks_enabled %}
+            <div class="mt-2">
+                <div class="badge badge-info badge-sm">
+                    <i class="fas fa-star mr-1"></i>
+                    Key Picks: {{ current_key_picks_count }}/{{ league_rules.number_of_key_picks }}
+                </div>
+            </div>
+            {% endif %}
         </div>
         
         <!-- League Selector -->
@@ -132,9 +140,25 @@
                     </div>
                     
                     <!-- Key Pick Toggle -->
+                    {% if league_rules and league_rules.key_picks_enabled %}
                     <div class="divider my-1">Options</div>
                     
                     <div class="flex justify-center">
+                        {% if current_key_picks_count >= league_rules.number_of_key_picks and not p.is_key_pick %}
+                        <!-- Key pick limit reached and this is not an existing key pick -->
+                        <label class="label cursor-not-allowed gap-2 bg-base-200 px-3 py-2 md:px-4 md:py-2 rounded-lg transition-colors opacity-60">
+                            <span class="label-text text-sm md:text-base font-semibold">
+                                <i class="fas fa-star text-warning mr-1"></i>
+                                Key Pick
+                                <span class="text-xs text-error">(Limit Reached)</span>
+                            </span>
+                            <input type="checkbox" 
+                                   name="game_{{ lg.game.id }}_is_key_pick" 
+                                   class="checkbox checkbox-warning checkbox-sm md:checkbox-md" 
+                                   disabled />
+                        </label>
+                        {% else %}
+                        <!-- Key pick available or this is an existing key pick -->
                         <label class="label {% if not game_started %}cursor-pointer{% else %}cursor-not-allowed{% endif %} gap-2 bg-base-200 px-3 py-2 md:px-4 md:py-2 rounded-lg {% if not game_started %}hover:bg-base-300{% endif %} transition-colors {% if game_started %}opacity-60{% endif %}">
                             <span class="label-text text-sm md:text-base font-semibold">
                                 <i class="fas fa-star text-warning mr-1"></i>
@@ -146,7 +170,9 @@
                                    {% if game_started %}disabled{% endif %}
                                    {% if p and p.is_key_pick %}checked{% endif %} />
                         </label>
+                        {% endif %}
                     </div>
+                    {% endif %}
                 </div>
             </div>
             {% endwith %}

@@ -152,6 +152,42 @@ def picks_view(request):
                 if game_id:
                     game_ids.append(game_id)
         
+        # Get league rules for key pick validation
+        from django.utils import timezone
+        from datetime import timedelta
+        start, end = services.schedule.get_week_window()
+        
+        # Get active season and league rules
+        active_season = Season.objects.filter(is_active=True).first()
+        league_rules = None
+        if active_season:
+            league_rules = LeagueRules.objects.filter(league=league, season=active_season).first()
+            if not league_rules:
+                # Create default rules if none exist
+                league_rules = LeagueRules.objects.create(league=league, season=active_season)
+        
+        # Count current key picks for this week (excluding games being updated)
+        current_key_picks = Pick.objects.filter(
+            user=request.user,
+            league=league,
+            is_key_pick=True,
+            game__kickoff__range=(start, end)
+        ).exclude(game_id__in=game_ids)
+        current_key_picks_count = current_key_picks.count()
+        
+        # Count new key picks being submitted
+        new_key_picks_count = 0
+        for game_id in game_ids:
+            is_key_pick = request.POST.get(f"game_{game_id}_is_key_pick") == "on"
+            if is_key_pick:
+                new_key_picks_count += 1
+        
+        # Validate key pick limit
+        if league_rules and league_rules.key_picks_enabled:
+            total_key_picks = current_key_picks_count + new_key_picks_count
+            if total_key_picks > league_rules.number_of_key_picks:
+                errors.append(f"You can only select {league_rules.number_of_key_picks} key pick{'s' if league_rules.number_of_key_picks != 1 else ''} per week. You currently have {current_key_picks_count} and are trying to add {new_key_picks_count} more.")
+        
         # Process each game's pick
         for game_id in game_ids:
             picked_team_id = request.POST.get(f"game_{game_id}_picked_team")
@@ -210,6 +246,28 @@ def picks_view(request):
         for p in Pick.objects.filter(user=request.user, league=league, game__in=[lg.game for lg in league_games])
     }
     
+    # Get league rules for key pick limits
+    from django.utils import timezone
+    from datetime import timedelta
+    start, end = services.schedule.get_week_window()
+    
+    # Get active season and league rules
+    active_season = Season.objects.filter(is_active=True).first()
+    league_rules = None
+    if active_season:
+        league_rules = LeagueRules.objects.filter(league=league, season=active_season).first()
+        if not league_rules:
+            # Create default rules if none exist
+            league_rules = LeagueRules.objects.create(league=league, season=active_season)
+    
+    # Count current key picks for this week
+    current_key_picks_count = Pick.objects.filter(
+        user=request.user,
+        league=league,
+        is_key_pick=True,
+        game__kickoff__range=(start, end)
+    ).count()
+    
     # Combine league_games with picks
     games_with_picks = [(lg, existing_picks_by_game_id.get(lg.game.id)) for lg in league_games]
     
@@ -217,6 +275,8 @@ def picks_view(request):
         "games_with_picks": games_with_picks,
         "current_league": league,
         "user_leagues": user_leagues,
+        "league_rules": league_rules,
+        "current_key_picks_count": current_key_picks_count,
     }
     return render(request, "cfb/picks.html", context)
 
