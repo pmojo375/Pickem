@@ -141,3 +141,6 @@ LOGOUT_REDIRECT_URL = '/'
 # External API keys
 CFBD_API_KEY = os.getenv('CFBD_API_KEY', '')
 ODDS_API_KEY = os.getenv('ODDS_API_KEY', '')
+
+CELERY_BROKER_URL = "redis://localhost:6379/0"
+CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
