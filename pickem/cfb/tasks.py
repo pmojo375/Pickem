@@ -4,7 +4,7 @@ Implements intelligent polling with Redis caching and dynamic intervals.
 """
 import logging
 from typing import Dict, List, Any, Optional
-from datetime import timedelta
+from datetime import timedelta, datetime
 from decimal import Decimal
 
 from celery import shared_task
@@ -13,8 +13,9 @@ from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
 
-from .models import Game, Team, Season
+from .models import Game, Team, Season, Location
 from .services.espn_api import get_espn_client
+from .services.cfbd_api import get_cfbd_client
 from .services.live import grade_picks_for_game
 
 logger = logging.getLogger(__name__)
@@ -551,4 +552,363 @@ def update_spreads(self):
         logger.error(f"Error in spread update task: {exc}", exc_info=True)
         # Retry with delay
         raise self.retry(exc=exc)
+
+
+# ============================================================================
+# CFBD Season Initialization Tasks
+# ============================================================================
+
+
+@shared_task(name='cfb.tasks.pull_season_teams')
+def pull_season_teams(season_year: int, force: bool = False):
+    """
+    One-time task to pull all FBS teams for a season from CFBD API.
+    Sets the teams_pulled flag on completion.
+    
+    Args:
+        season_year: Year of the season
+        force: If True, pull even if already pulled
+    """
+    try:
+        season = Season.objects.get(year=season_year)
+        
+        # Check if already pulled
+        if season.teams_pulled and not force:
+            logger.info(f"Teams already pulled for {season_year}, skipping")
+            return
+        
+        logger.info(f"Pulling teams data for {season_year} season")
+        
+        # Get CFBD client
+        cfbd_client = get_cfbd_client()
+        
+        # Fetch teams
+        teams_data = cfbd_client.fetch_teams(season_year)
+        
+        if not teams_data:
+            logger.error(f"No teams data returned from CFBD for {season_year}")
+            return
+        
+        logger.info(f"Processing {len(teams_data)} teams")
+        
+        created_count = 0
+        updated_count = 0
+        
+        for team_data in teams_data:
+            try:
+                # Extract team fields (CFBD uses camelCase)
+                cfbd_id = team_data.get('id')
+                school = team_data.get('school', '')
+                
+                if not school:
+                    logger.warning(f"Team missing school name, skipping: {team_data}")
+                    continue
+                
+                mascot = team_data.get('mascot', '')
+                abbreviation = team_data.get('abbreviation', '')
+                conference = team_data.get('conference', '')
+                division = team_data.get('division') or ''  # Handle None from API
+                classification = team_data.get('classification', '')
+                
+                # Only store FBS and FCS teams (skip Division I, II, III, etc.)
+                if classification not in ('fbs', 'fcs'):
+                    logger.debug(f"Skipping non-FBS/FCS team: {school} ({classification})")
+                    continue
+                
+                color = team_data.get('color', '')
+                alt_color = team_data.get('alternateColor', '')  # camelCase!
+                twitter = team_data.get('twitter', '')
+                
+                # Normalize colors
+                if color and not color.startswith('#'):
+                    color = f'#{color}'
+                if alt_color and not alt_color.startswith('#'):
+                    alt_color = f'#{alt_color}'
+                
+                # Get logos
+                logos = team_data.get('logos', [])
+                logo_url = logos[0] if logos else ''
+                
+                # Handle location data (CFBD uses camelCase)
+                location_obj = None
+                location_data = team_data.get('location')
+                
+                # Only create Location if we have meaningful data
+                if location_data and isinstance(location_data, dict) and location_data.get('name'):
+                    try:
+                        location_obj = Location.objects.create(
+                            name=location_data.get('name') or None,
+                            city=location_data.get('city') or None,
+                            state=location_data.get('state') or None,
+                            zip=location_data.get('zip') or None,
+                            country_code=location_data.get('countryCode') or None,
+                            timezone=location_data.get('timezone') or None,
+                            latitude=location_data.get('latitude'),
+                            longitude=location_data.get('longitude'),
+                            elevation=location_data.get('elevation'),
+                            capacity=location_data.get('capacity'),
+                            year_constructed=location_data.get('constructionYear'),
+                            grass=location_data.get('grass'),
+                            dome=location_data.get('dome'),
+                        )
+                    except Exception as e:
+                        logger.warning(f"Could not create location for {school}: {e}")
+                        location_obj = None
+                
+                # Create or update team (use season+name as unique key, matching model constraint)
+                team, created = Team.objects.update_or_create(
+                    season=season,
+                    name=school,  # Use name as lookup key (matches unique_together constraint)
+                    defaults={
+                        'cfbd_id': cfbd_id,  # Update cfbd_id in defaults
+                        'nickname': mascot,
+                        'abbreviation': abbreviation,
+                        'conference': conference,
+                        'division': division,
+                        'classification': classification,
+                        'logo_url': logo_url,
+                        'primary_color': color,
+                        'alt_color': alt_color,
+                        'twitter': twitter,
+                        'location': location_obj,
+                    }
+                )
+                
+                if created:
+                    created_count += 1
+                else:
+                    updated_count += 1
+            
+            except Exception as e:
+                logger.error(f"❌ ERROR processing team '{school}': {type(e).__name__}: {e}")
+                logger.error(f"Team data: {team_data}")
+                # Don't continue - let it fail so we can see the error
+                raise
+        
+        # Mark as pulled
+        season.teams_pulled = True
+        season.save(update_fields=['teams_pulled'])
+        
+        logger.info(
+            f"Teams pull complete for {season_year}: "
+            f"{created_count} created, {updated_count} updated"
+        )
+    
+    except Season.DoesNotExist:
+        logger.error(f"Season {season_year} not found")
+    except Exception as e:
+        logger.error(f"Error pulling teams for {season_year}: {e}", exc_info=True)
+
+
+@shared_task(name='cfb.tasks.pull_season_games')
+def pull_season_games(season_year: int, season_type: str = 'regular', force: bool = False):
+    """
+    One-time task to pull all games for a season from CFBD API.
+    Sets the games_pulled flag on completion.
+    
+    Args:
+        season_year: Year of the season
+        season_type: 'regular' or 'postseason'
+        force: If True, pull even if already pulled
+    """
+    try:
+        season = Season.objects.get(year=season_year)
+        
+        # Check if already pulled
+        if season.games_pulled and not force:
+            logger.info(f"Games already pulled for {season_year}, skipping")
+            return
+        
+        # Check if teams have been pulled first
+        if not season.teams_pulled:
+            logger.warning(f"Teams not pulled for {season_year} yet, pulling teams first")
+            pull_season_teams(season_year)
+        
+        logger.info(f"Pulling {season_type} games data for {season_year} season")
+        
+        # Get CFBD client
+        cfbd_client = get_cfbd_client()
+        
+        # Fetch all games for the season
+        games_data = cfbd_client.fetch_all_season_games(season_year, season_type)
+        
+        if not games_data:
+            logger.error(f"No games data returned from CFBD for {season_year}")
+            return
+        
+        logger.info(f"Processing {len(games_data)} games")
+        
+        created_count = 0
+        updated_count = 0
+        skipped_count = 0
+        
+        # Create team lookup by name for faster matching
+        teams_by_name = {team.name: team for team in season.teams.all()}
+        
+        for game_data in games_data:
+            try:
+                # Extract game fields (CFBD uses camelCase)
+                game_id = game_data.get('id')
+                week = game_data.get('week')
+                season_type_value = game_data.get('seasonType', 'regular')  # camelCase!
+                home_team_name = game_data.get('homeTeam')  # camelCase!
+                away_team_name = game_data.get('awayTeam')  # camelCase!
+                neutral_site = game_data.get('neutralSite', False)  # camelCase!
+                conference_game = game_data.get('conferenceGame', False)  # camelCase!
+                attendance = game_data.get('attendance')
+                venue = game_data.get('venue')
+                venue_id = game_data.get('venueId')  # camelCase!
+                home_points = game_data.get('homePoints')  # camelCase!
+                away_points = game_data.get('awayPoints')  # camelCase!
+                completed = game_data.get('completed', False)
+                
+                # Parse kickoff time
+                start_date_str = game_data.get('startDate')  # camelCase!
+                if not start_date_str:
+                    logger.warning(f"Game {game_id} has no start_date, skipping")
+                    skipped_count += 1
+                    continue
+                
+                try:
+                    kickoff = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
+                    # Ensure timezone-aware
+                    if timezone.is_naive(kickoff):
+                        kickoff = timezone.make_aware(kickoff)
+                except (ValueError, AttributeError) as e:
+                    logger.warning(f"Invalid start_date for game {game_id}: {e}")
+                    skipped_count += 1
+                    continue
+                
+                # Find teams (create FCS teams on the fly if needed)
+                home_team = teams_by_name.get(home_team_name)
+                away_team = teams_by_name.get(away_team_name)
+                
+                # If a team is missing, create it (likely an FCS team)
+                # But only if it's FBS or FCS classification
+                if not home_team:
+                    home_classification = game_data.get('homeClassification', 'fcs')
+                    if home_classification not in ('fbs', 'fcs'):
+                        skipped_count += 1
+                        continue
+                    home_team = Team.objects.create(
+                        season=season,
+                        name=home_team_name,
+                        classification=home_classification,
+                        conference=game_data.get('homeConference', ''),
+                        abbreviation=home_team_name[:4].upper(),
+                    )
+                    teams_by_name[home_team_name] = home_team
+                    logger.info(f"Created FCS team: {home_team_name}")
+                
+                if not away_team:
+                    away_classification = game_data.get('awayClassification', 'fcs')
+                    if away_classification not in ('fbs', 'fcs'):
+                        skipped_count += 1
+                        continue
+                    away_team = Team.objects.create(
+                        season=season,
+                        name=away_team_name,
+                        classification=away_classification,
+                        conference=game_data.get('awayConference', ''),
+                        abbreviation=away_team_name[:4].upper(),
+                    )
+                    teams_by_name[away_team_name] = away_team
+                    logger.info(f"Created FCS team: {away_team_name}")
+                
+                # Only store games where at least one team is FBS
+                if home_team.classification != 'fbs' and away_team.classification != 'fbs':
+                    skipped_count += 1
+                    continue
+                
+                # Create or update game
+                game, created = Game.objects.update_or_create(
+                    season=season,
+                    external_id=str(game_id) if game_id else None,
+                    defaults={
+                        'week': week,
+                        'season_type': season_type_value,
+                        'home_team': home_team,
+                        'away_team': away_team,
+                        'kickoff': kickoff,
+                        'neutral_site': neutral_site,
+                        'conference_game': conference_game,
+                        'attendance': attendance,
+                        'venue_name': venue or '',
+                        'venue_id': venue_id,
+                        'home_score': home_points,
+                        'away_score': away_points,
+                        'is_final': completed,
+                    }
+                )
+                
+                if created:
+                    created_count += 1
+                else:
+                    updated_count += 1
+            
+            except Exception as e:
+                logger.error(f"Error processing game data: {e}", exc_info=True)
+                continue
+        
+        # Mark as pulled
+        season.games_pulled = True
+        season.save(update_fields=['games_pulled'])
+        
+        logger.info(
+            f"Games pull complete for {season_year}: "
+            f"{created_count} created, {updated_count} updated, {skipped_count} skipped"
+        )
+    
+    except Season.DoesNotExist:
+        logger.error(f"Season {season_year} not found")
+    except Exception as e:
+        logger.error(f"Error pulling games for {season_year}: {e}", exc_info=True)
+
+
+@shared_task(name='cfb.tasks.initialize_season')
+def initialize_season(season_year: int, force: bool = False):
+    """
+    Master task to initialize a complete season.
+    Pulls teams and games in sequence.
+    
+    Args:
+        season_year: Year of the season
+        force: If True, re-pull even if already pulled
+    """
+    try:
+        # Get or create season
+        season, created = Season.objects.get_or_create(
+            year=season_year,
+            defaults={'name': f'{season_year} Season', 'is_active': False}
+        )
+        
+        if created:
+            logger.info(f"Created new season: {season_year}")
+        
+        logger.info(f"Initializing season {season_year}")
+        
+        # Step 1: Pull teams
+        if not season.teams_pulled or force:
+            logger.info("Step 1: Pulling teams...")
+            pull_season_teams(season_year, force=force)
+        else:
+            logger.info("Step 1: Teams already pulled, skipping")
+        
+        # Step 2: Pull games
+        if not season.games_pulled or force:
+            logger.info("Step 2: Pulling games...")
+            pull_season_games(season_year, season_type='regular', force=force)
+        else:
+            logger.info("Step 2: Games already pulled, skipping")
+        
+        logger.info(f"Season {season_year} initialization complete!")
+        
+        # Print summary
+        season.refresh_from_db()
+        team_count = season.teams.count()
+        game_count = season.games.count()
+        logger.info(f"Summary: {team_count} teams, {game_count} games")
+    
+    except Exception as e:
+        logger.error(f"Error initializing season {season_year}: {e}", exc_info=True)
 

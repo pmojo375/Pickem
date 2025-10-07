@@ -1,39 +1,55 @@
 from django.contrib import admin
-from .models import Season, Team, Game, GameSpread, Rules, Pick, League, LeagueMembership, LeagueGame, LeagueRules
+from .models import Season, Team, Game, GameSpread, Rules, Pick, League, LeagueMembership, LeagueGame, LeagueRules, Location
 
 
 @admin.register(Season)
 class SeasonAdmin(admin.ModelAdmin):
-    list_display = ("year", "name", "is_active")
-    list_filter = ("is_active",)
+    list_display = ("year", "name", "is_active", "teams_pulled", "games_pulled")
+    list_filter = ("is_active", "teams_pulled", "games_pulled")
     search_fields = ("year", "name")
 
 
 @admin.register(Team)
 class TeamAdmin(admin.ModelAdmin):
-    list_display = ("name", "abbreviation", "nickname", "conference", "season", "cfbd_id", "espn_id", "primary_color", "alt_color", "twitter")
-    list_filter = ("season", "conference")
-    search_fields = ("name", "nickname", "abbreviation", "cfbd_id", "espn_id", "twitter")
+    list_display = ("name", "abbreviation", "classification", "conference", "division", "season", "record_display")
+    list_filter = ("season", "classification", "conference", "division")
+    search_fields = ("name", "nickname", "abbreviation", "cfbd_id", "espn_id", "twitter", "conference")
+    
+    def record_display(self, obj):
+        """Display team record"""
+        if obj.record_wins or obj.record_losses:
+            return f"{obj.record_wins}-{obj.record_losses}"
+        return "-"
+    record_display.short_description = "Record"
 
 
 @admin.register(Game)
 class GameAdmin(admin.ModelAdmin):
     list_display = (
-        "season",
+        "game_display",
+        "week",
+        "season_type",
         "kickoff",
-        "away_team",
-        "home_team",
         "current_spread_display",
-        "away_score",
-        "home_score",
-        "quarter",
-        "clock",
+        "score_display",
         "is_final",
     )
-    list_filter = ("season", "is_final")
-    search_fields = ("home_team__name", "away_team__name")
+    list_filter = ("season", "week", "season_type", "is_final", "neutral_site", "conference_game")
+    search_fields = ("home_team__name", "away_team__name", "venue_name")
     autocomplete_fields = ("home_team", "away_team")
     readonly_fields = ("opening_spread_display", "current_spread_display")
+    
+    def game_display(self, obj):
+        """Display game matchup"""
+        return f"{obj.away_team.abbreviation or obj.away_team.name} @ {obj.home_team.abbreviation or obj.home_team.name}"
+    game_display.short_description = "Game"
+    
+    def score_display(self, obj):
+        """Display score"""
+        if obj.away_score is not None and obj.home_score is not None:
+            return f"{obj.away_score}-{obj.home_score}"
+        return "-"
+    score_display.short_description = "Score"
     
     def current_spread_display(self, obj):
         """Display current spread in a readable format"""
@@ -135,6 +151,13 @@ class LeagueRulesAdmin(admin.ModelAdmin):
             "classes": ("collapse",)
         }),
     )
+
+
+@admin.register(Location)
+class LocationAdmin(admin.ModelAdmin):
+    list_display = ("name", "city", "state", "zip", "country_code", "timezone", "latitude", "longitude", "elevation", "capacity", "year_constructed", "grass", "dome")
+    list_filter = ("city", "state", "country_code", "timezone", "grass", "dome")
+    search_fields = ("name", "city", "state", "zip", "country_code", "timezone")
 
 
 @admin.register(LeagueGame)

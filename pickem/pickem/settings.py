@@ -19,9 +19,12 @@ except Exception:
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-# Load .env if present
+# Load .env if present (check parent directory first, then BASE_DIR)
 if load_dotenv:
-    load_dotenv(BASE_DIR / '.env')
+    env_file = BASE_DIR.parent / '.env'
+    if not env_file.exists():
+        env_file = BASE_DIR / '.env'
+    load_dotenv(env_file)
 
 
 # Quick-start development settings - unsuitable for production

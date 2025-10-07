@@ -105,6 +105,10 @@ class Season(models.Model):
     year = models.PositiveIntegerField(unique=True)
     name = models.CharField(max_length=64, blank=True)
     is_active = models.BooleanField(default=False)
+    
+    # One-time data pull flags for CFBD API
+    teams_pulled = models.BooleanField(default=False, help_text="Teams data pulled from CFBD for this season")
+    games_pulled = models.BooleanField(default=False, help_text="Games data pulled from CFBD for this season")
 
     class Meta:
         ordering = ["-year"]
@@ -113,25 +117,55 @@ class Season(models.Model):
         return self.name or str(self.year)
 
 
+class Location(models.Model):
+    """Geographic location data for venues and teams"""
+    name = models.CharField(max_length=128, blank=True, null=True, help_text="Venue or location name")
+    city = models.CharField(max_length=64, blank=True, null=True)
+    state = models.CharField(max_length=64, blank=True, null=True)
+    zip = models.CharField(max_length=16, blank=True, null=True)
+    country_code = models.CharField(max_length=8, blank=True, null=True)
+    timezone = models.CharField(max_length=64, blank=True, null=True)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    elevation = models.FloatField(null=True, blank=True, help_text="Elevation in feet")
+    capacity = models.IntegerField(null=True, blank=True, help_text="Venue capacity")
+    year_constructed = models.IntegerField(null=True, blank=True)
+    grass = models.BooleanField(null=True, blank=True, help_text="True if grass, False if turf")
+    dome = models.BooleanField(null=True, blank=True, help_text="True if dome/indoor")
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self) -> str:
+        return self.name or f"{self.city}, {self.state}"
+
+
 class Team(models.Model):
     season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="teams")
     # Store school name in `name` (e.g., "Michigan State")
     name = models.CharField(max_length=128)
     nickname = models.CharField(max_length=128, blank=True)  # mascot, e.g., "Spartans"
     abbreviation = models.CharField(max_length=16, blank=True)
-    conference = models.CharField(max_length=64, blank=True)
-    logo_url = models.URLField(blank=True)
+    conference = models.CharField(max_length=64, blank=True, null=True)
+    division = models.CharField(max_length=64, blank=True, null=True)  # Conference division (can be null)
+    classification = models.CharField(max_length=16, blank=True)  # fbs, fcs, etc.
+    logo_url = models.URLField(blank=True, null=True)
+    
+    # API IDs
     cfbd_id = models.IntegerField(null=True, blank=True, db_index=True)
     espn_id = models.CharField(max_length=32, null=True, blank=True, db_index=True)
-    primary_color = models.CharField(max_length=7, blank=True)
-    alt_color = models.CharField(max_length=7, blank=True)
-    twitter = models.CharField(max_length=32, blank=True)
-    city = models.CharField(max_length=64, blank=True)
-    state = models.CharField(max_length=64, blank=True)
-    venue_name = models.CharField(max_length=128, blank=True)
-    venue_id = models.IntegerField(null=True, blank=True)
-    latitude = models.FloatField(null=True, blank=True)
-    longitude = models.FloatField(null=True, blank=True)
+    
+    # Colors
+    primary_color = models.CharField(max_length=7, blank=True, null=True)
+    alt_color = models.CharField(max_length=7, blank=True, null=True)
+    
+    # Social & Web
+    twitter = models.CharField(max_length=32, blank=True, null=True)
+    
+    # Location & Venue - use Location model
+    location = models.ForeignKey(Location, on_delete=models.SET_NULL, null=True, blank=True, related_name="teams")
+    
+    # Record tracking
     record_wins = models.PositiveIntegerField(default=0)
     record_losses = models.PositiveIntegerField(default=0)
 
@@ -156,9 +190,18 @@ class Rules(models.Model):
 class Game(models.Model):
     season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="games")
     external_id = models.CharField(max_length=64, null=True, blank=True, db_index=True)
+    week = models.PositiveIntegerField(null=True, blank=True, db_index=True, help_text="Week number of the season")
+    season_type = models.CharField(max_length=32, blank=True, default="regular", help_text="regular, postseason, etc.")
     home_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="home_games")
     away_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="away_games")
     kickoff = models.DateTimeField()
+    
+    # Game metadata
+    neutral_site = models.BooleanField(default=False)
+    conference_game = models.BooleanField(default=False)
+    attendance = models.IntegerField(null=True, blank=True)
+    venue_name = models.CharField(max_length=128, blank=True)
+    venue_id = models.IntegerField(null=True, blank=True)
 
     # Odds snapshots
     opening_home_spread = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
@@ -177,9 +220,13 @@ class Game(models.Model):
 
     class Meta:
         ordering = ["kickoff"]
+        indexes = [
+            models.Index(fields=["season", "week"]),
+        ]
 
     def __str__(self) -> str:
-        return f"{self.away_team} at {self.home_team}"
+        week_str = f"Week {self.week} - " if self.week else ""
+        return f"{week_str}{self.away_team} at {self.home_team}"
     
     def has_started(self):
         """Check if the game has started (kickoff time has passed)"""
