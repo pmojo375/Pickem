@@ -369,7 +369,12 @@
                                  alt="{{ g.away_team.name }}" 
                                  class="w-8 h-8 object-contain" />
                             {% endif %}
-                            <span class="font-semibold text-sm md:text-base">{{ g.away_team.name }}</span>
+                            <div class="flex items-center gap-2">
+                                {% if g.away_team.id in team_rankings %}
+                                <span class="badge badge-primary badge-sm font-bold">#{{ team_rankings|get_item:g.away_team.id }}</span>
+                                {% endif %}
+                                <span class="font-semibold text-sm md:text-base">{{ g.away_team.name }}</span>
+                            </div>
                         </div>
                         
                         <!-- @ Symbol -->
@@ -385,7 +390,12 @@
                                  class="w-8 h-8 object-contain" />
                             {% endif %}
                             <div class="flex flex-col md:flex-row md:items-center gap-1">
-                                <span class="font-semibold text-sm md:text-base">{{ g.home_team.name }}</span>
+                                <div class="flex items-center gap-2">
+                                    {% if g.home_team.id in team_rankings %}
+                                    <span class="badge badge-primary badge-sm font-bold">#{{ team_rankings|get_item:g.home_team.id }}</span>
+                                    {% endif %}
+                                    <span class="font-semibold text-sm md:text-base">{{ g.home_team.name }}</span>
+                                </div>
                                 {% if lg and lg.locked_home_spread is not None %}
                                 <span class="badge badge-warning badge-sm gap-1">
                                     <i class="fas fa-lock text-xs"></i>

@@ -176,3 +176,13 @@ def pick_result_badge(pick):
         icon = '<i class="fas fa-times-circle mr-1"></i>'
         return mark_safe(f'<span class="badge badge-error badge-sm">{icon}Wrong</span>')
 
+
+@register.filter
+def get_item(dictionary, key):
+    """
+    Get an item from a dictionary by key.
+    Usage: {{ mydict|get_item:mykey }}
+    """
+    if dictionary is None:
+        return None
+    return dictionary.get(key)

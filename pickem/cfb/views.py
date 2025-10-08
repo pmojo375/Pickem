@@ -5,7 +5,7 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.core.exceptions import ValidationError
-from .models import Game, Pick, Team, League, LeagueMembership, LeagueGame, LeagueRules, Season
+from .models import Game, Pick, Team, League, LeagueMembership, LeagueGame, LeagueRules, Season, Ranking
 from . import services
 from django.conf import settings
 
@@ -651,6 +651,23 @@ def settings_view(request):
                 season=active_season
             )
     
+    # Get AP poll rankings for teams (previous week)
+    team_rankings = {}
+    if active_season and games:
+        # Get the current week from the first game
+        current_week = games.first().week
+        if current_week and current_week > 1:
+            # Fetch AP poll rankings from previous week
+            previous_week = current_week - 1
+            rankings = Ranking.objects.filter(
+                season=active_season,
+                week=previous_week,
+                poll='AP Top 25'
+            ).select_related('team')
+            
+            # Create a dict mapping team_id to rank
+            team_rankings = {r.team_id: r.rank for r in rankings}
+    
     context = {
         "games_with_selection": games_with_selection,
         "current_league": league,
@@ -660,6 +677,7 @@ def settings_view(request):
         "active_season": active_season,
         "start": start,
         "end": end,
+        "team_rankings": team_rankings,
         "cfbd_enabled": bool(settings.CFBD_API_KEY),
         "odds_enabled": bool(settings.ODDS_API_KEY)
     }
