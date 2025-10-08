@@ -245,6 +245,54 @@ class CFBDAPIClient:
             logger.info(f"Fetched {len(data)} venues from CFBD")
         
         return data
+    
+    def fetch_lines(
+        self,
+        year: int,
+        week: Optional[int] = None,
+        season_type: str = 'regular',
+        team: Optional[str] = None
+    ) -> Optional[List[Dict[str, Any]]]:
+        """
+        Fetch betting lines/spreads for games.
+        
+        Args:
+            year: Season year
+            week: Optional week number
+            season_type: 'regular' or 'postseason'
+            team: Optional team name to filter
+            
+        Returns:
+            List of game line dictionaries or None on failure
+        """
+        params = {
+            'year': year,
+            'seasonType': season_type,
+        }
+        
+        if week is not None:
+            params['week'] = week
+        
+        if team:
+            params['team'] = team
+        
+        cache_key = f"cfbd:lines:{year}:{season_type}:{week or 'all'}:{team or 'all'}"
+        
+        # Check cache first
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            logger.info(f"Using cached CFBD lines data")
+            return cached_data
+        
+        # Fetch from API
+        data = self._make_request('/lines', params)
+        
+        if data:
+            # Cache for 1 hour
+            cache.set(cache_key, data, timeout=3600)
+            logger.info(f"Fetched {len(data)} game lines from CFBD")
+        
+        return data
 
 
 # Singleton instance
