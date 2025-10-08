@@ -293,6 +293,49 @@ class CFBDAPIClient:
             logger.info(f"Fetched {len(data)} game lines from CFBD")
         
         return data
+    
+    def fetch_rankings(
+        self,
+        year: int,
+        week: Optional[int] = None,
+        season_type: str = 'regular'
+    ) -> Optional[List[Dict[str, Any]]]:
+        """
+        Fetch poll rankings for a season.
+        
+        Args:
+            year: Season year
+            week: Optional week number (if None, fetches all weeks)
+            season_type: 'regular' or 'postseason'
+            
+        Returns:
+            List of ranking dictionaries or None on failure
+        """
+        params = {
+            'year': year,
+            'seasonType': season_type,
+        }
+        
+        if week is not None:
+            params['week'] = week
+        
+        cache_key = f"cfbd:rankings:{year}:{season_type}:{week or 'all'}"
+        
+        # Check cache first
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            logger.info(f"Using cached CFBD rankings data")
+            return cached_data
+        
+        # Fetch from API
+        data = self._make_request('/rankings', params)
+        
+        if data:
+            # Cache for 1 hour
+            cache.set(cache_key, data, timeout=3600)
+            logger.info(f"Fetched {len(data)} weeks of rankings from CFBD")
+        
+        return data
 
 
 # Singleton instance

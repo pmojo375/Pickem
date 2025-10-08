@@ -252,6 +252,29 @@ class GameSpread(models.Model):
         return f"{self.game} - {self.home_spread}/{self.away_spread} at {self.timestamp}"
 
 
+class Ranking(models.Model):
+    """Poll rankings for teams by week"""
+    season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="rankings")
+    week = models.PositiveIntegerField()
+    season_type = models.CharField(max_length=32, default="regular", help_text="regular, postseason, etc.")
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="rankings")
+    poll = models.CharField(max_length=64, help_text="Poll name (e.g., AP Top 25, Coaches Poll)")
+    rank = models.PositiveIntegerField()
+    first_place_votes = models.PositiveIntegerField(default=0)
+    points = models.PositiveIntegerField(default=0)
+    
+    class Meta:
+        ordering = ["season", "week", "poll", "rank"]
+        unique_together = ("season", "week", "season_type", "team", "poll")
+        indexes = [
+            models.Index(fields=["season", "week", "poll"]),
+            models.Index(fields=["team", "season"]),
+        ]
+    
+    def __str__(self) -> str:
+        return f"{self.team.name} - #{self.rank} {self.poll} (Week {self.week}, {self.season.year})"
+
+
 class LeagueGame(models.Model):
     """
     Represents a game selected for a specific league's pick'em.
