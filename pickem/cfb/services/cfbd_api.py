@@ -232,20 +232,6 @@ class CFBDAPIClient:
         
         return data
     
-    def fetch_venues(self) -> Optional[List[Dict[str, Any]]]:
-        """
-        Fetch all venues.
-        
-        Returns:
-            List of venue dictionaries
-        """
-        data = self._make_request('/venues')
-        
-        if data:
-            logger.info(f"Fetched {len(data)} venues from CFBD")
-        
-        return data
-    
     def fetch_lines(
         self,
         year: int,
