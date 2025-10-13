@@ -336,3 +336,8 @@ class Pick(models.Model):
     def __str__(self) -> str:
         return f"{self.user} -> {self.picked_team} in {self.league.name} ({self.game})"
 
+class Week(models.Model):
+    season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="weeks")
+    number = models.PositiveIntegerField(unique=True)
+    start_date = models.DateField()
+    end_date = models.DateField()
