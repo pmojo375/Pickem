@@ -1,0 +1,155 @@
+[
+  {
+    "season": 2025,
+    "week": 1,
+    "seasonType": "regular",
+    "startDate": "2025-08-23T07:00:00.000Z",
+    "endDate": "2025-09-02T06:59:00.000Z",
+    "firstGameStart": "2025-08-23T07:00:00.000Z",
+    "lastGameStart": "2025-09-02T06:59:00.000Z"
+  },
+  {
+    "season": 2025,
+    "week": 2,
+    "seasonType": "regular",
+    "startDate": "2025-09-02T07:00:00.000Z",
+    "endDate": "2025-09-08T06:59:00.000Z",
+    "firstGameStart": "2025-09-02T07:00:00.000Z",
+    "lastGameStart": "2025-09-08T06:59:00.000Z"
+  },
+  {
+    "season": 2025,
+    "week": 3,
+    "seasonType": "regular",
+    "startDate": "2025-09-08T07:00:00.000Z",
+    "endDate": "2025-09-15T06:59:00.000Z",
+    "firstGameStart": "2025-09-08T07:00:00.000Z",
+    "lastGameStart": "2025-09-15T06:59:00.000Z"
+  },
+  {
+    "season": 2025,
+    "week": 4,
+    "seasonType": "regular",
+    "startDate": "2025-09-15T07:00:00.000Z",
+    "endDate": "2025-09-22T06:59:00.000Z",
+    "firstGameStart": "2025-09-15T07:00:00.000Z",
+    "lastGameStart": "2025-09-22T06:59:00.000Z"
+  },
+  {
+    "season": 2025,
+    "week": 5,
+    "seasonType": "regular",
+    "startDate": "2025-09-22T07:00:00.000Z",
+    "endDate": "2025-09-29T06:59:00.000Z",
+    "firstGameStart": "2025-09-22T07:00:00.000Z",
+    "lastGameStart": "2025-09-29T06:59:00.000Z"
+  },
+  {
+    "season": 2025,
+    "week": 6,
+    "seasonType": "regular",
+    "startDate": "2025-09-29T07:00:00.000Z",
+    "endDate": "2025-10-06T06:59:00.000Z",
+    "firstGameStart": "2025-09-29T07:00:00.000Z",
+    "lastGameStart": "2025-10-06T06:59:00.000Z"
+  },
+  {
+    "season": 2025,
+    "week": 7,
+    "seasonType": "regular",
+    "startDate": "2025-10-06T07:00:00.000Z",
+    "endDate": "2025-10-13T06:59:00.000Z",
+    "firstGameStart": "2025-10-06T07:00:00.000Z",
+    "lastGameStart": "2025-10-13T06:59:00.000Z"
+  },
+  {
+    "season": 2025,
+    "week": 8,
+    "seasonType": "regular",
+    "startDate": "2025-10-13T07:00:00.000Z",
+    "endDate": "2025-10-20T06:59:00.000Z",
+    "firstGameStart": "2025-10-13T07:00:00.000Z",
+    "lastGameStart": "2025-10-20T06:59:00.000Z"
+  },
+  {
+    "season": 2025,
+    "week": 9,
+    "seasonType": "regular",
+    "startDate": "2025-10-20T07:00:00.000Z",
+    "endDate": "2025-10-27T06:59:00.000Z",
+    "firstGameStart": "2025-10-20T07:00:00.000Z",
+    "lastGameStart": "2025-10-27T06:59:00.000Z"
+  },
+  {
+    "season": 2025,
+    "week": 10,
+    "seasonType": "regular",
+    "startDate": "2025-10-27T07:00:00.000Z",
+    "endDate": "2025-11-03T07:59:00.000Z",
+    "firstGameStart": "2025-10-27T07:00:00.000Z",
+    "lastGameStart": "2025-11-03T07:59:00.000Z"
+  },
+  {
+    "season": 2025,
+    "week": 11,
+    "seasonType": "regular",
+    "startDate": "2025-11-03T08:00:00.000Z",
+    "endDate": "2025-11-10T07:59:00.000Z",
+    "firstGameStart": "2025-11-03T08:00:00.000Z",
+    "lastGameStart": "2025-11-10T07:59:00.000Z"
+  },
+  {
+    "season": 2025,
+    "week": 12,
+    "seasonType": "regular",
+    "startDate": "2025-11-10T08:00:00.000Z",
+    "endDate": "2025-11-17T07:59:00.000Z",
+    "firstGameStart": "2025-11-10T08:00:00.000Z",
+    "lastGameStart": "2025-11-17T07:59:00.000Z"
+  },
+  {
+    "season": 2025,
+    "week": 13,
+    "seasonType": "regular",
+    "startDate": "2025-11-17T08:00:00.000Z",
+    "endDate": "2025-11-24T07:59:00.000Z",
+    "firstGameStart": "2025-11-17T08:00:00.000Z",
+    "lastGameStart": "2025-11-24T07:59:00.000Z"
+  },
+  {
+    "season": 2025,
+    "week": 14,
+    "seasonType": "regular",
+    "startDate": "2025-11-24T08:00:00.000Z",
+    "endDate": "2025-12-01T07:59:00.000Z",
+    "firstGameStart": "2025-11-24T08:00:00.000Z",
+    "lastGameStart": "2025-12-01T07:59:00.000Z"
+  },
+  {
+    "season": 2025,
+    "week": 15,
+    "seasonType": "regular",
+    "startDate": "2025-12-01T08:00:00.000Z",
+    "endDate": "2025-12-08T07:59:00.000Z",
+    "firstGameStart": "2025-12-01T08:00:00.000Z",
+    "lastGameStart": "2025-12-08T07:59:00.000Z"
+  },
+  {
+    "season": 2025,
+    "week": 16,
+    "seasonType": "regular",
+    "startDate": "2025-12-08T08:00:00.000Z",
+    "endDate": "2026-12-14T07:59:00.000Z",
+    "firstGameStart": "2025-12-08T08:00:00.000Z",
+    "lastGameStart": "2026-12-14T07:59:00.000Z"
+  },
+  {
+    "season": 2025,
+    "week": 1,
+    "seasonType": "postseason",
+    "startDate": "2025-12-13T08:00:00.000Z",
+    "endDate": "2026-01-21T07:59:00.000Z",
+    "firstGameStart": "2025-12-13T08:00:00.000Z",
+    "lastGameStart": "2026-01-21T07:59:00.000Z"
+  }
+]
