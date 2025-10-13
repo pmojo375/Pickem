@@ -13,7 +13,7 @@ from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
 
-from .models import Game, Team, Season, Location
+from .models import Game, Team, Season, Location, Week
 from .services.espn_api import get_espn_client
 from .services.cfbd_api import get_cfbd_client
 from .services.live import grade_picks_for_game
@@ -493,6 +493,53 @@ def sync_games_from_espn(season_year: int, start_date_str: str, end_date_str: st
         logger.error(f"Error syncing games: {e}", exc_info=True)
 
 
+@shared_task(name='cfb.tasks.pull_calender')
+def pull_calender(season_year: int, force: bool = False):
+    """
+    Pull the calender for a given season.
+    """
+    try:
+        cfbd_client = get_cfbd_client()
+        calender_data = cfbd_client.fetch_calender(season_year)
+        if not calender_data:
+            logger.error(f"No calender data returned from CFBD for {season_year}")
+            return
+        logger.info(f"Processing {len(calender_data)} calender data")
+        
+        season = Season.objects.get(year=season_year)
+        
+        for calender_item in calender_data:
+            logger.info(f"Processing calender item: {calender_item}")
+            
+            start_date = calender_item['start_date']
+            end_date = calender_item['end_date']
+        
+            try:
+                start_date = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+                end_date = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+                
+                # Ensure timezone-aware
+                if timezone.is_naive(start_date):
+                    start_date = timezone.make_aware(start_date)
+                if timezone.is_naive(end_date):
+                    end_date = timezone.make_aware(end_date)
+            except (ValueError, AttributeError) as e:
+                logger.warning(f"Invalid start_date for game {calender_item['week']}: {e}")
+                continue
+            
+            # Update or create week
+            Week.objects.update_or_create(
+                season=season,
+                season_type=calender_item['seasonType'],
+                number=calender_item['week'],
+                start_date=start_date,
+                end_date=end_date
+            )
+            
+    except Exception as e:
+        logger.error(f"Error pulling calender: {e}", exc_info=True)
+
+
 @shared_task(name='cfb.tasks.sync_upcoming_games')
 def sync_upcoming_games():
     """
@@ -746,6 +793,12 @@ def pull_season_games(season_year: int, season_type: str = 'regular', force: boo
         teams_by_name = {team.name: team for team in season.teams.all()}
         
         for game_data in games_data:
+            week = Week.objects.get(season=season, season_type=season_type, number=game_data.get('week'))
+            
+            if not week:
+                logger.warning(f"Week {game_data.get('week')} not found for {season_year} {season_type}")
+                continue
+            
             try:
                 # Extract game fields (CFBD uses camelCase)
                 game_id = game_data.get('id')
@@ -869,7 +922,7 @@ def pull_season_games(season_year: int, season_type: str = 'regular', force: boo
 def initialize_season(season_year: int, force: bool = False):
     """
     Master task to initialize a complete season.
-    Pulls teams and games in sequence.
+    Pulls calender, teams and games in sequence.
     
     Args:
         season_year: Year of the season
@@ -887,19 +940,23 @@ def initialize_season(season_year: int, force: bool = False):
         
         logger.info(f"Initializing season {season_year}")
         
-        # Step 1: Pull teams
+        # Step 1: Pull calender
+        logger.info("Step 1: Pulling calender...")
+        pull_calender(season_year, force=force)
+        
+        # Step 2: Pull teams
         if not season.teams_pulled or force:
-            logger.info("Step 1: Pulling teams...")
+            logger.info("Step 2: Pulling teams...")
             pull_season_teams(season_year, force=force)
         else:
-            logger.info("Step 1: Teams already pulled, skipping")
+            logger.info("Step 2: Teams already pulled, skipping")
         
-        # Step 2: Pull games
+        # Step 3: Pull games
         if not season.games_pulled or force:
-            logger.info("Step 2: Pulling games...")
+            logger.info("Step 3: Pulling games...")
             pull_season_games(season_year, season_type='regular', force=force)
         else:
-            logger.info("Step 2: Games already pulled, skipping")
+            logger.info("Step 3: Games already pulled, skipping")
         
         logger.info(f"Season {season_year} initialization complete!")
         

@@ -187,10 +187,25 @@ class Rules(models.Model):
         return f"Rules {self.season.year}"
 
 
+class Week(models.Model):
+    season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="weeks")
+    number = models.PositiveIntegerField(unique=True)
+    season_type = models.CharField(max_length=32, default="regular", help_text="regular, postseason, etc.")
+    start_date = models.DateField()
+    end_date = models.DateField()
+    
+    class Meta:
+        ordering = ["season", "number"]
+        unique_together = ("season", "number", "season_type")
+        indexes = [
+            models.Index(fields=["season", "number", "season_type"]),
+        ]
+
+
 class Game(models.Model):
     season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="games")
     external_id = models.CharField(max_length=64, null=True, blank=True, db_index=True)
-    week = models.PositiveIntegerField(null=True, blank=True, db_index=True, help_text="Week number of the season")
+    week = models.ForeignKey(Week, on_delete=models.CASCADE, related_name="games")
     season_type = models.CharField(max_length=32, blank=True, default="regular", help_text="regular, postseason, etc.")
     home_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="home_games")
     away_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="away_games")
@@ -255,7 +270,7 @@ class GameSpread(models.Model):
 class Ranking(models.Model):
     """Poll rankings for teams by week"""
     season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="rankings")
-    week = models.PositiveIntegerField()
+    week = models.ForeignKey(Week, on_delete=models.CASCADE, related_name="rankings")
     season_type = models.CharField(max_length=32, default="regular", help_text="regular, postseason, etc.")
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="rankings")
     poll = models.CharField(max_length=64, help_text="Poll name (e.g., AP Top 25, Coaches Poll)")
@@ -335,9 +350,3 @@ class Pick(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user} -> {self.picked_team} in {self.league.name} ({self.game})"
-
-class Week(models.Model):
-    season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="weeks")
-    number = models.PositiveIntegerField(unique=True)
-    start_date = models.DateField()
-    end_date = models.DateField()
