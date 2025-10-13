@@ -322,6 +322,27 @@ class CFBDAPIClient:
             logger.info(f"Fetched {len(data)} weeks of rankings from CFBD")
         
         return data
+    
+    def fetch_weeks(self, year: int) -> Optional[List[Dict[str, Any]]]:
+        """
+        Fetch all weeks for a given year.
+        """
+        params = {'year': year}
+        
+        cache_key = f"cfbd:calender:{year}"
+        
+        # Check cache first
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            logger.info(f"Using cached CFBD calender data")
+            return cached_data
+        
+        data = self._make_request('/calendar', params)
+        
+        if data:
+            # Cache for 1 week
+            cache.set(cache_key, data, timeout=604800)
+            logger.info(f"Fetched {len(data)} calender data from CFBD")
 
 
 # Singleton instance
