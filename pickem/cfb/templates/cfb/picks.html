@@ -17,7 +17,7 @@
             <div class="mt-2">
                 <div class="badge badge-info badge-sm">
                     <i class="fas fa-star mr-1"></i>
-                    Key Picks: {{ current_key_picks_count }}/{{ league_rules.number_of_key_picks }}
+                    Key Picks: <span id="key-pick-counter">0</span>/{{ league_rules.number_of_key_picks }}
                 </div>
             </div>
             {% endif %}
@@ -144,33 +144,18 @@
                     <div class="divider my-1">Options</div>
                     
                     <div class="flex justify-center">
-                        {% if current_key_picks_count >= league_rules.number_of_key_picks and not p.is_key_pick %}
-                        <!-- Key pick limit reached and this is not an existing key pick -->
-                        <label class="label cursor-not-allowed gap-2 bg-base-200 px-3 py-2 md:px-4 md:py-2 rounded-lg transition-colors opacity-60">
+                        <label class="key-pick-label label {% if not game_started %}cursor-pointer{% else %}cursor-not-allowed{% endif %} gap-2 bg-base-200 px-3 py-2 md:px-4 md:py-2 rounded-lg {% if not game_started %}hover:bg-base-300{% endif %} transition-colors {% if game_started %}opacity-60{% endif %}">
                             <span class="label-text text-sm md:text-base font-semibold">
                                 <i class="fas fa-star text-warning mr-1"></i>
                                 Key Pick
-                                <span class="text-xs text-error">(Limit Reached)</span>
+                                <span class="key-pick-warning text-xs text-error ml-1" style="display: none;">(Limit Reached)</span>
                             </span>
                             <input type="checkbox" 
                                    name="game_{{ lg.game.id }}_is_key_pick" 
-                                   class="checkbox checkbox-warning checkbox-sm md:checkbox-md" 
-                                   disabled />
-                        </label>
-                        {% else %}
-                        <!-- Key pick available or this is an existing key pick -->
-                        <label class="label {% if not game_started %}cursor-pointer{% else %}cursor-not-allowed{% endif %} gap-2 bg-base-200 px-3 py-2 md:px-4 md:py-2 rounded-lg {% if not game_started %}hover:bg-base-300{% endif %} transition-colors {% if game_started %}opacity-60{% endif %}">
-                            <span class="label-text text-sm md:text-base font-semibold">
-                                <i class="fas fa-star text-warning mr-1"></i>
-                                Key Pick
-                            </span>
-                            <input type="checkbox" 
-                                   name="game_{{ lg.game.id }}_is_key_pick" 
-                                   class="checkbox checkbox-warning checkbox-sm md:checkbox-md" 
-                                   {% if game_started %}disabled{% endif %}
+                                   class="key-pick-checkbox checkbox checkbox-warning checkbox-sm md:checkbox-md" 
+                                   {% if game_started %}disabled data-game-started="true"{% endif %}
                                    {% if p and p.is_key_pick %}checked{% endif %} />
                         </label>
-                        {% endif %}
                     </div>
                     {% endif %}
                 </div>
@@ -234,6 +219,67 @@
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('picks-form');
         if (!form) return;
+        
+        // Dynamic Key Pick Management
+        {% if league_rules and league_rules.key_picks_enabled %}
+        const maxKeyPicks = {{ league_rules.number_of_key_picks }};
+        const keyPickCounter = document.getElementById('key-pick-counter');
+        const keyPickCheckboxes = document.querySelectorAll('.key-pick-checkbox');
+        
+        function updateKeyPickUI() {
+            // Count currently checked key picks (excluding game-started ones)
+            let checkedCount = 0;
+            keyPickCheckboxes.forEach(checkbox => {
+                if (checkbox.checked && !checkbox.dataset.gameStarted) {
+                    checkedCount++;
+                }
+            });
+            
+            // Update counter
+            if (keyPickCounter) {
+                keyPickCounter.textContent = checkedCount;
+            }
+            
+            // Enable/disable checkboxes based on limit
+            keyPickCheckboxes.forEach(checkbox => {
+                // Skip game-started checkboxes
+                if (checkbox.dataset.gameStarted) return;
+                
+                const label = checkbox.closest('.key-pick-label');
+                const warning = label ? label.querySelector('.key-pick-warning') : null;
+                
+                if (checkedCount >= maxKeyPicks && !checkbox.checked) {
+                    // Limit reached, disable unchecked boxes
+                    checkbox.disabled = true;
+                    if (label) {
+                        label.classList.add('cursor-not-allowed', 'opacity-60');
+                        label.classList.remove('cursor-pointer', 'hover:bg-base-300');
+                    }
+                    if (warning) {
+                        warning.style.display = 'inline';
+                    }
+                } else {
+                    // Enable checkbox
+                    checkbox.disabled = false;
+                    if (label) {
+                        label.classList.remove('cursor-not-allowed', 'opacity-60');
+                        label.classList.add('cursor-pointer', 'hover:bg-base-300');
+                    }
+                    if (warning) {
+                        warning.style.display = 'none';
+                    }
+                }
+            });
+        }
+        
+        // Initial update
+        updateKeyPickUI();
+        
+        // Listen for changes
+        keyPickCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateKeyPickUI);
+        });
+        {% endif %}
         
         let bypassValidation = false;
         
