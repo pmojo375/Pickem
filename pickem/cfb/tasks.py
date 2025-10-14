@@ -170,8 +170,10 @@ def pull_calendar(season_year: int, force: bool = False):
                 season=season,
                 season_type=calendar_item['seasonType'],
                 number=calendar_item['week'],
-                start_date=start_date,
-                end_date=end_date
+                defaults={
+                    'start_date': start_date,
+                    'end_date': end_date,
+                }
             )
             
     except Exception as e:
@@ -309,13 +311,20 @@ def update_spreads(self, season_year: int, season_type: str = 'regular', week: i
                 away_spread_open = spread_data['away_spread_open']
                 provider = spread_data['provider']
                 
-                # Create GameSpread record to track this spread update
-                GameSpread.objects.create(
+                # Create GameSpread record only if none exists today
+                today = timezone.now().date()
+                existing_today = GameSpread.objects.filter(
                     game=game,
-                    home_spread=home_spread,
-                    away_spread=away_spread,
-                    source=provider
-                )
+                    timestamp__date=today
+                ).exists()
+                
+                if not existing_today:
+                    GameSpread.objects.create(
+                        game=game,
+                        home_spread=home_spread,
+                        away_spread=away_spread,
+                        source=provider
+                    )
                 
                 # Always update current spread
                 game.current_home_spread = home_spread
@@ -572,20 +581,22 @@ def pull_season_teams(season_year: int, force: bool = False):
                 # Only create Location if we have meaningful data
                 if location_data and isinstance(location_data, dict) and location_data.get('name'):
                     try:
-                        location_obj = Location.objects.create(
-                            name=location_data.get('name') or None,
+                        location_obj, _ = Location.objects.get_or_create(
+                            name=location_data.get('name'),
                             city=location_data.get('city') or None,
                             state=location_data.get('state') or None,
-                            zip=location_data.get('zip') or None,
-                            country_code=location_data.get('countryCode') or None,
-                            timezone=location_data.get('timezone') or None,
-                            latitude=location_data.get('latitude'),
-                            longitude=location_data.get('longitude'),
-                            elevation=location_data.get('elevation'),
-                            capacity=location_data.get('capacity'),
-                            year_constructed=location_data.get('constructionYear'),
-                            grass=location_data.get('grass'),
-                            dome=location_data.get('dome'),
+                            defaults={
+                                'zip': location_data.get('zip') or None,
+                                'country_code': location_data.get('countryCode') or None,
+                                'timezone': location_data.get('timezone') or None,
+                                'latitude': location_data.get('latitude'),
+                                'longitude': location_data.get('longitude'),
+                                'elevation': location_data.get('elevation'),
+                                'capacity': location_data.get('capacity'),
+                                'year_constructed': location_data.get('constructionYear'),
+                                'grass': location_data.get('grass'),
+                                'dome': location_data.get('dome'),
+                            }
                         )
                     except Exception as e:
                         logger.warning(f"Could not create location for {school}: {e}")
@@ -731,30 +742,36 @@ def pull_season_games(season_year: int, season_type: str = 'regular', force: boo
                     if home_classification not in ('fbs', 'fcs'):
                         skipped_count += 1
                         continue
-                    home_team = Team.objects.create(
+                    home_team, created = Team.objects.get_or_create(
                         season=season,
                         name=home_team_name,
-                        classification=home_classification,
-                        conference=game_data.get('homeConference', ''),
-                        abbreviation=home_team_name[:4].upper(),
+                        defaults={
+                            'classification': home_classification,
+                            'conference': game_data.get('homeConference', ''),
+                            'abbreviation': home_team_name[:4].upper(),
+                        }
                     )
                     teams_by_name[home_team_name] = home_team
-                    logger.info(f"Created FCS team: {home_team_name}")
+                    if created:
+                        logger.info(f"Created FCS team: {home_team_name}")
                 
                 if not away_team:
                     away_classification = game_data.get('awayClassification', 'fcs')
                     if away_classification not in ('fbs', 'fcs'):
                         skipped_count += 1
                         continue
-                    away_team = Team.objects.create(
+                    away_team, created = Team.objects.get_or_create(
                         season=season,
                         name=away_team_name,
-                        classification=away_classification,
-                        conference=game_data.get('awayConference', ''),
-                        abbreviation=away_team_name[:4].upper(),
+                        defaults={
+                            'classification': away_classification,
+                            'conference': game_data.get('awayConference', ''),
+                            'abbreviation': away_team_name[:4].upper(),
+                        }
                     )
                     teams_by_name[away_team_name] = away_team
-                    logger.info(f"Created FCS team: {away_team_name}")
+                    if created:
+                        logger.info(f"Created FCS team: {away_team_name}")
                 
                 # Only store games where at least one team is FBS
                 if home_team.classification != 'fbs' and away_team.classification != 'fbs':
