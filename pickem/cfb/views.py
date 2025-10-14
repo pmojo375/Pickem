@@ -6,6 +6,7 @@ from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.core.exceptions import ValidationError
 from .models import Game, Pick, Team, League, LeagueMembership, LeagueGame, LeagueRules, Season, Ranking
+from django.utils import timezone
 from . import services
 from django.conf import settings
 
@@ -656,9 +657,9 @@ def settings_view(request):
     if active_season and games:
         # Get the current week from the first game
         current_week = games.first().week
-        if current_week and current_week > 1:
+        if current_week and current_week.number > 1:
             # Fetch AP poll rankings from previous week
-            previous_week = current_week - 1
+            previous_week = current_week.number - 1
             rankings = Ranking.objects.filter(
                 season=active_season,
                 week=previous_week,
@@ -810,7 +811,6 @@ def league_create_view(request):
             return render(request, "cfb/league_create.html", {"name": name, "description": description})
         
         try:
-            # Create the league
             league = League.objects.create(
                 name=name,
                 description=description,

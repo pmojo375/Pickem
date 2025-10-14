@@ -7,7 +7,7 @@ from typing import Dict, Optional
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from cfb.models import Season, Team, Ranking
+from cfb.models import Season, Team, Ranking, Week
 from cfb.services.cfbd_api import get_cfbd_client
 
 
@@ -177,6 +177,8 @@ class Command(BaseCommand):
 
         # Check if ranking already exists
         try:
+            week = Week.objects.get(season=season, number=week, season_type=season_type)
+            
             existing_ranking = Ranking.objects.get(
                 season=season,
                 week=week,
