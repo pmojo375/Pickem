@@ -228,3 +228,121 @@
     }
 </style>
 {% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('picks-form');
+        if (!form) return;
+        
+        let bypassValidation = false;
+        
+        form.addEventListener('submit', function(e) {
+            // Skip validation if user has confirmed
+            if (bypassValidation) {
+                return;
+            }
+            
+            const warnings = [];
+            
+            // Count total games and picks made
+            const gameInputs = document.querySelectorAll('input[name^="game_"][name$="_id"]');
+            const totalGames = gameInputs.length;
+            let picksMade = 0;
+            let keyPicksMade = 0;
+            
+            gameInputs.forEach(input => {
+                const gameId = input.value;
+                const pickedTeam = document.querySelector(`input[name="game_${gameId}_picked_team"]:checked`);
+                
+                if (pickedTeam && !pickedTeam.disabled) {
+                    picksMade++;
+                    
+                    // Check if this is a key pick
+                    const keyPickCheckbox = document.querySelector(`input[name="game_${gameId}_is_key_pick"]`);
+                    if (keyPickCheckbox && keyPickCheckbox.checked && !keyPickCheckbox.disabled) {
+                        keyPicksMade++;
+                    }
+                }
+            });
+            
+            // Warning 1: Not all games picked
+            {% if league_rules %}
+                {% if league_rules.picks_per_week == 0 %}
+                    // Must pick all games
+                    if (picksMade < totalGames && totalGames > 0) {
+                        warnings.push(`You've only made ${picksMade} out of ${totalGames} possible picks.`);
+                    }
+                {% elif league_rules.picks_per_week > 0 %}
+                    // Must pick a specific number
+                    if (picksMade < {{ league_rules.picks_per_week }}) {
+                        warnings.push(`You've only made ${picksMade} out of {{ league_rules.picks_per_week }} required picks.`);
+                    }
+                {% endif %}
+            {% else %}
+                // No specific rules, just warn if not all games picked
+                if (picksMade < totalGames && totalGames > 0) {
+                    warnings.push(`You've only made ${picksMade} out of ${totalGames} possible picks.`);
+                }
+            {% endif %}
+            
+            // Warning 2: Not enough key picks
+            {% if league_rules and league_rules.key_picks_enabled %}
+                const requiredKeyPicks = {{ league_rules.number_of_key_picks }};
+                if (keyPicksMade < requiredKeyPicks) {
+                    warnings.push(`You've only made ${keyPicksMade} key pick${keyPicksMade !== 1 ? 's' : ''} out of ${requiredKeyPicks} allowed.`);
+                }
+            {% endif %}
+            
+            // If there are warnings, show confirmation dialog
+            if (warnings.length > 0) {
+                e.preventDefault();
+                showWarningModal(warnings);
+            }
+        });
+        
+        function showWarningModal(warnings) {
+            // Create modal HTML
+            const modal = document.createElement('div');
+            modal.className = 'modal modal-open';
+            modal.innerHTML = `
+                <div class="modal-box">
+                    <h3 class="font-bold text-lg mb-4">
+                        <i class="fas fa-exclamation-triangle text-warning mr-2"></i>
+                        Incomplete Picks
+                    </h3>
+                    <div class="py-4">
+                        <ul class="list-disc list-inside space-y-2">
+                            ${warnings.map(w => `<li class="text-base-content/80">${w}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <p class="text-sm text-base-content/70 mt-4">
+                        Do you want to continue submitting your picks anyway?
+                    </p>
+                    <div class="modal-action">
+                        <button class="btn btn-ghost" onclick="this.closest('.modal').remove()">
+                            <i class="fas fa-arrow-left mr-2"></i>
+                            Go Back
+                        </button>
+                        <button class="btn btn-primary" id="confirm-submit">
+                            <i class="fas fa-check mr-2"></i>
+                            Submit Anyway
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-backdrop bg-black/50" onclick="this.closest('.modal').remove()"></div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Handle confirmation
+            document.getElementById('confirm-submit').addEventListener('click', function() {
+                modal.remove();
+                // Set flag to bypass validation and submit
+                bypassValidation = true;
+                form.submit();
+            });
+        }
+    });
+</script>
+{% endblock %}
