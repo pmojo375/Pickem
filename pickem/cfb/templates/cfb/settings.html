@@ -308,26 +308,20 @@
 <!-- Games Selection -->
 <div class="card bg-base-100 shadow-xl">
     <div class="card-body">
-        <h2 class="card-title mb-4">
-            <i class="fas fa-football text-primary mr-2"></i>
-            Games This Week
-            {% if league_rules and league_rules.pickable_games_per_week > 0 %}
-            <div class="badge badge-info badge-lg ml-2">
-                <i class="fas fa-info-circle mr-1"></i>
-                Limit: {{ league_rules.pickable_games_per_week }} games
-            </div>
-            {% endif %}
-        </h2>
-        
-        {% if league_rules and league_rules.pickable_games_per_week > 0 %}
-        <div class="alert alert-info mb-4">
-            <i class="fas fa-info-circle"></i>
-            <div>
-                <div class="font-bold">Pick Limit</div>
-                <div class="text-sm">You can select up to {{ league_rules.pickable_games_per_week }} games for this league's weekly lineup.</div>
-            </div>
+        <div class="mb-4">
+            <h2 class="card-title flex-wrap gap-2">
+                <span class="flex items-center">
+                    <i class="fas fa-football text-primary mr-2"></i>
+                    Games This Week
+                </span>
+                {% if league_rules and league_rules.pickable_games_per_week > 0 %}
+                <div class="badge badge-info badge-lg whitespace-nowrap">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Limit: {{ league_rules.pickable_games_per_week }} games
+                </div>
+                {% endif %}
+            </h2>
         </div>
-        {% endif %}
         
         {% if games_with_selection %}
         <form method="post" action="" id="games-form">
@@ -344,9 +338,20 @@
                 </button>
             </div>
             
+            <!-- Select Top 25 Button -->
+            <div class="mb-4">
+                <button type="button" id="select-top25-btn" class="btn btn-secondary btn-lg w-full shadow-xl">
+                    <i class="fas fa-star mr-2"></i>
+                    Select All AP Top 25 Games
+                </button>
+            </div>
+            
             <div class="grid grid-cols-1 gap-3">
                 {% for g, lg in games_with_selection %}
-                <label class="game-card cursor-pointer">
+                <label class="game-card cursor-pointer" 
+                       data-has-ranked="{% if g.home_team.id in team_rankings or g.away_team.id in team_rankings %}true{% else %}false{% endif %}"
+                       data-home-rank="{% if g.home_team.id in team_rankings %}{{ team_rankings|get_item:g.home_team.id }}{% else %}999{% endif %}"
+                       data-away-rank="{% if g.away_team.id in team_rankings %}{{ team_rankings|get_item:g.away_team.id }}{% else %}999{% endif %}">
                     <input type="checkbox" 
                            name="game_{{ g.id }}_select" 
                            class="game-checkbox hidden"
@@ -506,19 +511,18 @@
       const counter = document.getElementById('selection-counter');
       if (counter) {
         counter.textContent = `${selected}/${pickLimit} games selected`;
-        counter.className = selected > pickLimit ? 'badge badge-error' : 'badge badge-success';
+        counter.className = selected > pickLimit ? 'badge badge-error mt-2 mb-4' : 'badge badge-success mt-2 mb-4';
       }
     }
     
-    // Add counter display
-    const saveButton = document.querySelector('#games-form .btn-primary');
-    if (saveButton && pickLimit > 0) {
+    // Add counter display after the Top 25 button
+    const selectTop25Btn = document.getElementById('select-top25-btn');
+    if (selectTop25Btn && pickLimit > 0) {
       const counter = document.createElement('div');
       counter.id = 'selection-counter';
-      counter.className = 'badge badge-success';
+      counter.className = 'badge badge-success mt-2 mb-4';
       counter.textContent = `${selectedCount}/${pickLimit} games selected`;
-      counter.style.marginTop = '10px';
-      saveButton.parentNode.insertBefore(counter, saveButton.nextSibling);
+      selectTop25Btn.parentNode.insertAdjacentElement('afterend', counter);
     }
     
     // Add validation to each checkbox
@@ -564,6 +568,108 @@
     
     // Initial counter update
     updateCounter();
+    
+    // Handle "Select All AP Top 25 Games" button
+    if (selectTop25Btn) {
+      selectTop25Btn.addEventListener('click', function() {
+        const rankedGameCards = Array.from(document.querySelectorAll('.game-card[data-has-ranked="true"]'));
+        
+        // Sort games by best rank (lowest number = highest rank)
+        // Get the minimum rank from home and away teams
+        rankedGameCards.sort((a, b) => {
+          const aHomeRank = parseInt(a.dataset.homeRank) || 999;
+          const aAwayRank = parseInt(a.dataset.awayRank) || 999;
+          const aBestRank = Math.min(aHomeRank, aAwayRank);
+          
+          const bHomeRank = parseInt(b.dataset.homeRank) || 999;
+          const bAwayRank = parseInt(b.dataset.awayRank) || 999;
+          const bBestRank = Math.min(bHomeRank, bAwayRank);
+          
+          return aBestRank - bBestRank;
+        });
+        
+        let selectedCount = 0;
+        let skippedCount = 0;
+        let totalRankedGames = rankedGameCards.length;
+        
+        // First, count how many are already selected
+        let alreadySelected = 0;
+        rankedGameCards.forEach(card => {
+          const checkbox = card.querySelector('.game-checkbox');
+          if (checkbox && checkbox.checked) {
+            alreadySelected++;
+          }
+        });
+        
+        // Now select games in rank order
+        rankedGameCards.forEach(card => {
+          const checkbox = card.querySelector('.game-checkbox');
+          if (checkbox && !checkbox.checked) {
+            // Check if adding this would exceed the limit
+            const currentlySelected = document.querySelectorAll('.game-checkbox:checked').length;
+            if (pickLimit > 0 && currentlySelected >= pickLimit) {
+              skippedCount++;
+              return;
+            }
+            checkbox.checked = true;
+            selectedCount++;
+          }
+        });
+        
+        updateCounter();
+        
+        // Show feedback message
+        const feedback = document.createElement('div');
+        
+        if (selectedCount === 0 && alreadySelected === totalRankedGames) {
+          feedback.className = 'alert alert-info mt-2';
+          feedback.innerHTML = `
+            <i class="fas fa-info-circle"></i>
+            <span>All ${totalRankedGames} AP Top 25 game${totalRankedGames !== 1 ? 's are' : ' is'} already selected!</span>
+          `;
+        } else if (selectedCount === 0 && pickLimit > 0) {
+          feedback.className = 'alert alert-warning mt-2';
+          feedback.innerHTML = `
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>Pick limit reached. Cannot select more games.</span>
+          `;
+        } else if (selectedCount > 0 && skippedCount === 0) {
+          feedback.className = 'alert alert-success mt-2';
+          feedback.innerHTML = `
+            <i class="fas fa-check-circle"></i>
+            <span>Selected ${selectedCount} AP Top 25 game${selectedCount !== 1 ? 's' : ''} (prioritized by ranking)!</span>
+          `;
+        } else if (selectedCount > 0 && skippedCount > 0) {
+          feedback.className = 'alert alert-success mt-2';
+          feedback.innerHTML = `
+            <i class="fas fa-check-circle"></i>
+            <span>Selected top ${selectedCount} AP Top 25 game${selectedCount !== 1 ? 's' : ''} by ranking. ${skippedCount} lower-ranked game${skippedCount !== 1 ? 's' : ''} skipped due to pick limit.</span>
+          `;
+        } else {
+          feedback.className = 'alert alert-info mt-2';
+          feedback.innerHTML = `
+            <i class="fas fa-info-circle"></i>
+            <span>No additional games selected.</span>
+          `;
+        }
+        
+        // Remove existing feedback
+        const existingFeedback = document.querySelector('.top25-feedback');
+        if (existingFeedback) {
+          existingFeedback.remove();
+        }
+        
+        feedback.classList.add('top25-feedback');
+        selectTop25Btn.parentNode.insertAdjacentElement('afterend', feedback);
+        
+        // Remove feedback after 5 seconds
+        setTimeout(() => {
+          if (feedback.parentNode) {
+            feedback.remove();
+          }
+        }, 5000);
+      });
+    }
   });
 </script>
 {% endblock %}
