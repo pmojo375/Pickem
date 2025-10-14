@@ -657,12 +657,12 @@ def settings_view(request):
     if active_season and games:
         # Get the current week from the first game
         current_week = games.first().week
-        if current_week and current_week.number > 1:
+        if current_week:
             # Fetch AP poll rankings from previous week
-            previous_week = current_week.number - 1
+            week = current_week.number
             rankings = Ranking.objects.filter(
                 season=active_season,
-                week=previous_week,
+                week=week,
                 poll='AP Top 25'
             ).select_related('team')
             
