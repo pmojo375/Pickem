@@ -13,7 +13,7 @@ from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
 
-from .models import Game, Team, Season, Location, Week
+from .models import Game, Team, Season, Location, Week, Ranking
 from .services.espn_api import get_espn_client
 from .services.cfbd_api import get_cfbd_client
 from .services.live import grade_picks_for_game
@@ -967,4 +967,216 @@ def initialize_season(season_year: int, force: bool = False):
     
     except Exception as e:
         logger.error(f"Error initializing season {season_year}: {e}", exc_info=True)
+
+@shared_task(name='cfb.tasks.update_rankings')
+def update_rankings(season_year: int, season_type: str = 'regular', week: int = None):
+    """
+    Update rankings for a given season and week.
+    """
+
+    # Fetch rankings from CFBD
+    cfbd_client = get_cfbd_client()
+    rankings_data = cfbd_client.fetch_rankings(
+        year=season_year,
+        week=week,
+        season_type=season_type
+    )
+    
+    if not rankings_data:
+        logger.error(f"No rankings data returned from CFBD for {season_year} {season_type} {week}")
+    
+    logger.info(f'Fetched {len(rankings_data)} weeks of rankings from CFBD')
+
+    # Process each week's rankings
+    total_created = 0
+    total_updated = 0
+    total_skipped = 0
+    
+    season = Season.objects.get(year=season_year)
+
+    for week_data in rankings_data:
+        created, updated, skipped = _process_week_rankings(
+            week_data,
+            season,
+            season_type
+        )
+        total_created += created
+        total_updated += updated
+        total_skipped += skipped
+
+    logger.info(f'Summary: {total_created} created, {total_updated} updated, {total_skipped} skipped')
+
+def _process_week_rankings(
+    week_data: Dict,
+    season: Season,
+    season_type: str
+) -> tuple:
+    """
+    Process rankings for a single week.
+    
+    Returns:
+        Tuple of (created_count, updated_count, skipped_count)
+    """
+    week = week_data.get('week')
+    polls = week_data.get('polls', [])
+
+    if not polls:
+        logger.warning(f'  No polls for Week {week}')
+        return 0, 0, 0
+
+    created_count = 0
+    updated_count = 0
+    skipped_count = 0
+
+    for poll_data in polls:
+        poll_name = poll_data.get('poll')
+        ranks = poll_data.get('ranks', [])
+
+        logger.info(f'  Week {week} - {poll_name}: {len(ranks)} teams')
+
+        for rank_data in ranks:
+            result = _process_team_ranking(
+                season=season,
+                week=week,
+                season_type=season_type,
+                poll_name=poll_name,
+                rank_data=rank_data
+            )
+            
+            if result == 'created':
+                created_count += 1
+            elif result == 'updated':
+                updated_count += 1
+            elif result == 'skipped':
+                skipped_count += 1
+
+    return created_count, updated_count, skipped_count
+
+def _process_team_ranking(
+    season: Season,
+    week: int,
+    season_type: str,
+    poll_name: str,
+    rank_data: Dict
+) -> str:
+    """
+    Process a single team's ranking.
+    
+    Returns:
+        'created', 'updated', 'skipped', or 'error'
+    """
+    school_name = rank_data.get('school')
+    team_id = rank_data.get('teamId')
+    rank = rank_data.get('rank')
+    first_place_votes = rank_data.get('firstPlaceVotes', 0)
+    points = rank_data.get('points', 0)
+
+    # Find the team in our database
+    team = _find_team(season, school_name, team_id)
+    
+    if not team:
+        logger.warning(f'Team not found in DB: {school_name} (ID: {team_id})')
+        return 'error'
+
+    # Check if ranking already exists
+    try:
+        week = Week.objects.get(season=season, number=week, season_type=season_type)
+        
+        existing_ranking = Ranking.objects.get(
+            season=season,
+            week=week,
+            season_type=season_type,
+            team=team,
+            poll=poll_name
+        )
+        
+        # Check if anything changed
+        if (existing_ranking.rank == rank and
+            existing_ranking.first_place_votes == first_place_votes and
+            existing_ranking.points == points):
+            return 'skipped'
+        
+        # Update the ranking
+        existing_ranking.rank = rank
+        existing_ranking.first_place_votes = first_place_votes
+        existing_ranking.points = points
+        existing_ranking.save()
+        
+        return 'updated'
+        
+    except Ranking.DoesNotExist:
+        # Create new ranking
+        Ranking.objects.create(
+            season=season,
+            week=week,
+            season_type=season_type,
+            team=team,
+            poll=poll_name,
+            rank=rank,
+            first_place_votes=first_place_votes,
+            points=points
+        )
+        
+        return 'created'
+
+def _find_team(
+    season: Season,
+    school_name: str,
+    team_id: Optional[int]
+) -> Optional[Team]:
+    """
+    Find a team in the database by name or CFBD ID.
+    """
+    # First try by CFBD ID if available
+    if team_id:
+        team = Team.objects.filter(
+            season=season,
+            cfbd_id=team_id
+        ).first()
+        
+        if team:
+            return team
+    
+    # Try exact name match
+    team = Team.objects.filter(
+        season=season,
+        name__iexact=school_name
+    ).first()
+    
+    if team:
+        return team
+    
+    # Try fuzzy matching
+    teams = Team.objects.filter(season=season)
+    
+    for t in teams:
+        if _teams_match(t.name, school_name):
+            return t
+    
+    return None
+
+def _teams_match(db_name: str, api_name: str) -> bool:
+    """
+    Check if team names match with fuzzy logic.
+    """
+    db_normalized = db_name.lower().strip()
+    api_normalized = api_name.lower().strip()
+    
+    # Exact match
+    if db_normalized == api_normalized:
+        return True
+    
+    # One contains the other
+    if db_normalized in api_normalized or api_normalized in db_normalized:
+        return True
+    
+    # Check word overlap
+    db_words = set(db_normalized.split())
+    api_words = set(api_normalized.split())
+    common_words = db_words & api_words
+    
+    # At least 1 word in common for short names, 2 for longer names
+    if len(db_words) <= 2 or len(api_words) <= 2:
+        return len(common_words) >= 1
+    return len(common_words) >= 2
 
