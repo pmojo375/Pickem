@@ -493,26 +493,26 @@ def sync_games_from_espn(season_year: int, start_date_str: str, end_date_str: st
         logger.error(f"Error syncing games: {e}", exc_info=True)
 
 
-@shared_task(name='cfb.tasks.pull_calender')
-def pull_calender(season_year: int, force: bool = False):
+@shared_task(name='cfb.tasks.pull_calendar')
+def pull_calendar(season_year: int, force: bool = False):
     """
-    Pull the calender for a given season.
+    Pull the calendar for a given season.
     """
     try:
         cfbd_client = get_cfbd_client()
-        calender_data = cfbd_client.fetch_calender(season_year)
-        if not calender_data:
-            logger.error(f"No calender data returned from CFBD for {season_year}")
+        calendar_data = cfbd_client.fetch_calendar(season_year)
+        if not calendar_data:
+            logger.error(f"No calendar data returned from CFBD for {season_year}")
             return
-        logger.info(f"Processing {len(calender_data)} calender data")
+        logger.info(f"Processing {len(calendar_data)} calendar data")
         
         season = Season.objects.get(year=season_year)
         
-        for calender_item in calender_data:
-            logger.info(f"Processing calender item: {calender_item}")
+        for calendar_item in calendar_data:
+            logger.info(f"Processing calendar item: {calendar_item}")
             
-            start_date = calender_item['start_date']
-            end_date = calender_item['end_date']
+            start_date = calendar_item['startDate']
+            end_date = calendar_item['endDate']
         
             try:
                 start_date = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
@@ -524,20 +524,20 @@ def pull_calender(season_year: int, force: bool = False):
                 if timezone.is_naive(end_date):
                     end_date = timezone.make_aware(end_date)
             except (ValueError, AttributeError) as e:
-                logger.warning(f"Invalid start_date for game {calender_item['week']}: {e}")
+                logger.warning(f"Invalid start_date for game {calendar_item['week']}: {e}")
                 continue
             
             # Update or create week
             Week.objects.update_or_create(
                 season=season,
-                season_type=calender_item['seasonType'],
-                number=calender_item['week'],
+                season_type=calendar_item['seasonType'],
+                number=calendar_item['week'],
                 start_date=start_date,
                 end_date=end_date
             )
             
     except Exception as e:
-        logger.error(f"Error pulling calender: {e}", exc_info=True)
+        logger.error(f"Error pulling calendar: {e}", exc_info=True)
 
 
 @shared_task(name='cfb.tasks.sync_upcoming_games')
@@ -802,7 +802,6 @@ def pull_season_games(season_year: int, season_type: str = 'regular', force: boo
             try:
                 # Extract game fields (CFBD uses camelCase)
                 game_id = game_data.get('id')
-                week = game_data.get('week')
                 season_type_value = game_data.get('seasonType', 'regular')  # camelCase!
                 home_team_name = game_data.get('homeTeam')  # camelCase!
                 away_team_name = game_data.get('awayTeam')  # camelCase!
@@ -922,7 +921,7 @@ def pull_season_games(season_year: int, season_type: str = 'regular', force: boo
 def initialize_season(season_year: int, force: bool = False):
     """
     Master task to initialize a complete season.
-    Pulls calender, teams and games in sequence.
+    Pulls calendar, teams and games in sequence.
     
     Args:
         season_year: Year of the season
@@ -940,9 +939,9 @@ def initialize_season(season_year: int, force: bool = False):
         
         logger.info(f"Initializing season {season_year}")
         
-        # Step 1: Pull calender
-        logger.info("Step 1: Pulling calender...")
-        pull_calender(season_year, force=force)
+        # Step 1: Pull calendar
+        logger.info("Step 1: Pulling calendar...")
+        pull_calendar(season_year, force=force)
         
         # Step 2: Pull teams
         if not season.teams_pulled or force:

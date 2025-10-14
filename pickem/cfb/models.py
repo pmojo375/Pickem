@@ -189,7 +189,7 @@ class Rules(models.Model):
 
 class Week(models.Model):
     season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="weeks")
-    number = models.PositiveIntegerField(unique=True)
+    number = models.PositiveIntegerField()
     season_type = models.CharField(max_length=32, default="regular", help_text="regular, postseason, etc.")
     start_date = models.DateField()
     end_date = models.DateField()
@@ -205,7 +205,7 @@ class Week(models.Model):
 class Game(models.Model):
     season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="games")
     external_id = models.CharField(max_length=64, null=True, blank=True, db_index=True)
-    week = models.ForeignKey(Week, on_delete=models.CASCADE, related_name="games")
+    week = models.ForeignKey(Week, on_delete=models.CASCADE, related_name="games", null=True, blank=True)
     season_type = models.CharField(max_length=32, blank=True, default="regular", help_text="regular, postseason, etc.")
     home_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="home_games")
     away_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="away_games")
@@ -252,6 +252,7 @@ class Game(models.Model):
 class GameSpread(models.Model):
     """Historical spread data for a game, allows tracking spread changes over time"""
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="spreads")
+    week = models.ForeignKey(Week, on_delete=models.CASCADE, related_name="spreads", null=True, blank=True)
     home_spread = models.DecimalField(max_digits=5, decimal_places=2)
     away_spread = models.DecimalField(max_digits=5, decimal_places=2)
     timestamp = models.DateTimeField(auto_now_add=True)
@@ -270,7 +271,7 @@ class GameSpread(models.Model):
 class Ranking(models.Model):
     """Poll rankings for teams by week"""
     season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="rankings")
-    week = models.ForeignKey(Week, on_delete=models.CASCADE, related_name="rankings")
+    week = models.ForeignKey(Week, on_delete=models.CASCADE, related_name="rankings", null=True, blank=True)
     season_type = models.CharField(max_length=32, default="regular", help_text="regular, postseason, etc.")
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="rankings")
     poll = models.CharField(max_length=64, help_text="Poll name (e.g., AP Top 25, Coaches Poll)")

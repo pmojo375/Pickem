@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Season, Team, Game, GameSpread, Rules, Pick, League, LeagueMembership, LeagueGame, LeagueRules, Location
+from .models import Season, Team, Game, GameSpread, Rules, Pick, League, LeagueMembership, LeagueGame, LeagueRules, Location, Week
 
 
 @admin.register(Season)
@@ -185,3 +185,10 @@ class LeagueGameAdmin(admin.ModelAdmin):
         self.message_user(request, f"Successfully locked spreads for {locked_count} game(s).")
     lock_spreads.short_description = "Lock current spreads for selected games"
 
+@admin.register(Week)
+class WeekAdmin(admin.ModelAdmin):
+    list_display = ("season", "number", "season_type", "start_date", "end_date")
+    list_filter = ("season", "season_type")
+    search_fields = ("season__year", "number")
+    autocomplete_fields = ("season",)
+    readonly_fields = ("start_date", "end_date")

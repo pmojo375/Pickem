@@ -88,6 +88,7 @@ class CFBDAPIClient:
         
         try:
             logger.info(f"Making CFBD API request to {endpoint} with params {params}")
+            print(f"Making CFBD API request to {endpoint} with params {params}")
             response = self.session.get(url, params=params, timeout=self.timeout)
             response.raise_for_status()
             
@@ -95,7 +96,7 @@ class CFBDAPIClient:
             
             # Save response to file
             self._save_json_response(endpoint.strip('/'), params, data)
-            
+            print(f'Data length: {len(data)}')
             return data
         
         except requests.exceptions.HTTPError as e:
@@ -323,18 +324,18 @@ class CFBDAPIClient:
         
         return data
     
-    def fetch_weeks(self, year: int) -> Optional[List[Dict[str, Any]]]:
+    def fetch_calendar(self, year: int) -> Optional[List[Dict[str, Any]]]:
         """
         Fetch all weeks for a given year.
         """
         params = {'year': year}
         
-        cache_key = f"cfbd:calender:{year}"
+        cache_key = f"cfbd:calendar:{year}"
         
         # Check cache first
         cached_data = cache.get(cache_key)
         if cached_data:
-            logger.info(f"Using cached CFBD calender data")
+            logger.info(f"Using cached CFBD calendar data")
             return cached_data
         
         data = self._make_request('/calendar', params)
@@ -342,7 +343,7 @@ class CFBDAPIClient:
         if data:
             # Cache for 1 week
             cache.set(cache_key, data, timeout=604800)
-            logger.info(f"Fetched {len(data)} calender data from CFBD")
+            logger.info(f"Fetched {len(data)} calendar data from CFBD")
 
 
 # Singleton instance
