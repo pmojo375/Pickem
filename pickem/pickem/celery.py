@@ -43,14 +43,15 @@ app.conf.beat_schedule = {
         'schedule': crontab(minute='*/15'),  # Every 15 minutes
         'options': {'expires': 600},
     },
-    # Sync upcoming games once weekly on Monday at 6 AM
-    'sync-upcoming-games': {
-        'task': 'cfb.tasks.sync_upcoming_games',
+    # Sync all season games once weekly on Monday at 6 AM
+    'sync-season-games': {
+        'task': 'cfb.tasks.pull_season_games',
         'schedule': crontab(day_of_week=1, hour=6, minute=0),  # Monday at 6 AM
         'options': {'expires': 3600},
+        'kwargs': {'force': True},  # Force update to refresh all games
     },
     'sync-rankings': {
-        'task': 'cfb.tasks.sync_upcoming_rankings',
+        'task': 'cfb.tasks.update_rankings',
         'schedule': crontab(day_of_week=1, hour=0, minute=0), # Monday at 12 AM
         'options': {'expires': 3600},
     },
@@ -66,7 +67,7 @@ app.conf.task_routes = {
     'cfb.tasks.poll_espn_scores': {'queue': 'scores'},
     'cfb.tasks.adjust_polling_interval': {'queue': 'scores'},
     'cfb.tasks.update_single_game': {'queue': 'scores'},
-    'cfb.tasks.sync_upcoming_games': {'queue': 'scores'},
+    'cfb.tasks.pull_season_games': {'queue': 'scores'},
     'cfb.tasks.update_spreads': {'queue': 'scores'},
 }
 

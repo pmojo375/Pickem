@@ -180,30 +180,8 @@ def pull_calendar(season_year: int, force: bool = False):
         logger.error(f"Error pulling calendar: {e}", exc_info=True)
 
 
-@shared_task(name='cfb.tasks.sync_upcoming_games')
-def sync_upcoming_games():
-    """
-    Periodic task to sync upcoming games from CFBD (with ESPN fallback).
-    Runs daily to ensure new games are added to the database.
-    Uses CFBD API if configured, otherwise falls back to ESPN.
-    """
-    try:
-        from .services.schedule import fetch_and_store_week
-        
-        logger.info("Starting upcoming games sync")
-        
-        # Sync current week's games
-        # This uses CFBD if API key is configured, otherwise ESPN
-        count = fetch_and_store_week()
-        
-        logger.info(f"Upcoming games sync completed: {count} games synced")
-
-    except Exception as e:
-        logger.error(f"Error syncing upcoming games: {e}", exc_info=True)
-
-
 @shared_task(bind=True, name='cfb.tasks.update_spreads', max_retries=3, default_retry_delay=300,)
-def update_spreads(self, season_year: int, season_type: str = 'regular', week: int = None):
+def update_spreads(self, season_year: int = None, season_type: str = 'regular', week: int = None):
     """
     Periodic task to update game spreads/odds from CFBD.
     Fetches spreads for all games in the current week.
@@ -213,11 +191,27 @@ def update_spreads(self, season_year: int, season_type: str = 'regular', week: i
     This ensures consistent 7 API calls per week maximum.
     
     Args:
-        season_year: Year of the season
-        season_type: 'regular' or 'postseason'
-        week: Week number to update spreads for
+        season_year: Year of the season (if None, uses active season)
+        season_type: 'regular' or 'postseason' (if None, uses current week's type)
+        week: Week number to update spreads for (if None, uses current week)
     """
     try:
+        from .services.schedule import get_current_week
+        
+        # Auto-determine parameters if not provided
+        if season_year is None or week is None:
+            current_week = get_current_week()
+            if not current_week:
+                logger.error("No current week found and parameters not provided")
+                return
+            
+            if season_year is None:
+                season_year = current_week.season.year
+            if week is None:
+                week = current_week.number
+            if season_type == 'regular':  # Only override if still default
+                season_type = current_week.season_type
+        
         # Verify season exists
         try:
             season = Season.objects.get(year=season_year)
@@ -364,16 +358,32 @@ def update_spreads(self, season_year: int, season_type: str = 'regular', week: i
 
 
 @shared_task(bind=True, name='cfb.tasks.update_rankings', max_retries=3, default_retry_delay=300,)
-def update_rankings(self, season_year: int, season_type: str = 'regular', week: int = None):
+def update_rankings(self, season_year: int = None, season_type: str = 'regular', week: int = None):
     """
     Update rankings for a given season and week.
     
     Args:
-        season_year: Year of the season
-        season_type: 'regular' or 'postseason'
-        week: Specific week number (optional, fetches all weeks if not provided)
+        season_year: Year of the season (if None, uses active season)
+        season_type: 'regular' or 'postseason' (if None, uses current week's type)
+        week: Specific week number (if None, uses current week; fetches all weeks if explicitly 0)
     """
     try:
+        from .services.schedule import get_current_week
+        
+        # Auto-determine parameters if not provided
+        if season_year is None or week is None:
+            current_week = get_current_week()
+            if not current_week:
+                logger.error("No current week found and parameters not provided")
+                return
+            
+            if season_year is None:
+                season_year = current_week.season.year
+            if week is None:
+                week = current_week.number
+            if season_type == 'regular':  # Only override if still default
+                season_type = current_week.season_type
+        
         # Verify season exists
         try:
             season = Season.objects.get(year=season_year)
@@ -648,17 +658,31 @@ def pull_season_teams(season_year: int, force: bool = False):
 
 
 @shared_task(name='cfb.tasks.pull_season_games')
-def pull_season_games(season_year: int, season_type: str = 'regular', force: bool = False):
+def pull_season_games(season_year: int = None, season_type: str = 'regular', force: bool = False):
     """
-    One-time task to pull all games for a season from CFBD API.
+    Pull ALL games for a season from CFBD API.
+    Always fetches all games since it's a single API call regardless.
     Sets the games_pulled flag on completion.
     
     Args:
-        season_year: Year of the season
+        season_year: Year of the season (if None, uses active season)
         season_type: 'regular' or 'postseason'
         force: If True, pull even if already pulled
     """
     try:
+        from .services.schedule import get_current_week
+        
+        # Auto-determine season_year if not provided
+        if season_year is None:
+            current_week = get_current_week()
+            if not current_week:
+                logger.error("No current week found and season_year not provided")
+                return
+            
+            season_year = current_week.season.year
+            if season_type == 'regular':  # Only override if still default
+                season_type = current_week.season_type
+        
         season = Season.objects.get(year=season_year)
         
         # Check if already pulled
@@ -671,12 +695,12 @@ def pull_season_games(season_year: int, season_type: str = 'regular', force: boo
             logger.warning(f"Teams not pulled for {season_year} yet, pulling teams first")
             pull_season_teams(season_year)
         
-        logger.info(f"Pulling {season_type} games data for {season_year} season")
+        logger.info(f"Pulling ALL {season_type} games data for {season_year} season")
         
         # Get CFBD client
         cfbd_client = get_cfbd_client()
         
-        # Fetch all games for the season
+        # Fetch ALL games for the season (single API call)
         games_data = cfbd_client.fetch_all_season_games(season_year, season_type)
         
         if not games_data:
@@ -813,7 +837,7 @@ def pull_season_games(season_year: int, season_type: str = 'regular', force: boo
         season.save(update_fields=['games_pulled'])
         
         logger.info(
-            f"Games pull complete for {season_year}: "
+            f"Games pull complete for {season_year} (all weeks): "
             f"{created_count} created, {updated_count} updated, {skipped_count} skipped"
         )
     
@@ -859,7 +883,7 @@ def initialize_season(season_year: int, force: bool = False):
         # Step 3: Pull games
         if not season.games_pulled or force:
             logger.info("Step 3: Pulling games...")
-            pull_season_games(season_year, season_type='regular', force=force)
+            pull_season_games(season_year, force=force)
         else:
             logger.info("Step 3: Games already pulled, skipping")
         

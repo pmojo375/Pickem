@@ -737,8 +737,21 @@ def picked_team_id_not_in_game(picked_team_id: int, game: Game) -> bool:
 
 @user_passes_test(lambda u: u.is_staff)
 def admin_import_schedule(request):
-    count = services.schedule.fetch_and_store_week()
-    return JsonResponse({"ok": True, "imported": count})
+    """Import schedule for the current season using CFBD API."""
+    from .tasks import pull_season_games
+    
+    # Get active season
+    active_season = Season.objects.filter(is_active=True).first()
+    if not active_season:
+        return JsonResponse({"ok": False, "error": "No active season found"})
+    
+    # Trigger task to pull ALL games for the season
+    pull_season_games(force=True)
+    
+    # Count total games in the season
+    count = Game.objects.filter(season=active_season).count()
+    
+    return JsonResponse({"ok": True, "imported": count, "season": active_season.year})
 
 
 @user_passes_test(lambda u: u.is_staff)
