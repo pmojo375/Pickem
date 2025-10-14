@@ -591,6 +591,7 @@ def settings_view(request):
                             locked_count += 1
                         elif ats_enabled and league_game.locked_home_spread is None:
                             # If against_the_spread is enabled and no locked spread yet, apply the spread lock rule
+                            # BUT only if we're on or after the lock day - otherwise let the automated task handle it
                             from .models import GameSpread, Week
                             from datetime import timedelta
                             
@@ -603,10 +604,14 @@ def settings_view(request):
                                 days_until_lock_day = (spread_lock_weekday - week_start.weekday()) % 7
                                 lock_target_date = week_start + timedelta(days=days_until_lock_day)
                                 
+                                # Only lock if we're AFTER the lock day, or if we're ON the lock day and already have a spread from that day
+                                today = timezone.now().date()
+                                
                                 # Get all spreads for this game ordered by timestamp
                                 game_spreads = GameSpread.objects.filter(game=game).order_by('timestamp')
                                 
-                                if game_spreads.exists():
+                                if today > lock_target_date and game_spreads.exists():
+                                    # We're AFTER the lock day, so lock using tiered logic
                                     spread_to_use = None
                                     
                                     # Try to find spread from the lock target date
@@ -633,6 +638,18 @@ def settings_view(request):
                                         league_game.spread_locked_at = timezone.now()
                                         league_game.save(update_fields=['locked_home_spread', 'locked_away_spread', 'spread_locked_at'])
                                         locked_count += 1
+                                        
+                                elif today == lock_target_date and game_spreads.exists():
+                                    # We're ON the lock day, only lock if we already have a spread from today
+                                    spread_from_today = game_spreads.filter(timestamp__date=lock_target_date).first()
+                                    if spread_from_today:
+                                        league_game.locked_home_spread = spread_from_today.home_spread
+                                        league_game.locked_away_spread = spread_from_today.away_spread
+                                        league_game.spread_locked_at = timezone.now()
+                                        league_game.save(update_fields=['locked_home_spread', 'locked_away_spread', 'spread_locked_at'])
+                                        locked_count += 1
+                                    # else: It's lock day but no spread from today yet, let automated task handle it
+                                # else: Before lock day, leave spread unlocked for now
                         elif not created:
                             # Just ensure it's active
                             league_game.is_active = True
