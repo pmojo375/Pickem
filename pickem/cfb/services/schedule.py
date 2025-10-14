@@ -1,9 +1,9 @@
 from datetime import datetime, timedelta
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 import requests
 from django.utils import timezone
 from django.conf import settings
-from ..models import Season, Team, Game
+from ..models import Season, Team, Game, Week
 
 # Optional CFBD client (installed via `pip install cfbd`)
 try:
@@ -16,6 +16,63 @@ LAST_CFBD_ERROR: str | None = None
 
 
 ESPN_SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard"
+
+
+def get_current_week(season: Optional[Season] = None, now: Optional[datetime] = None) -> Optional[Week]:
+    """
+    Get the current Week object based on the current datetime.
+    
+    Args:
+        season: Season to filter by. If None, uses the active season.
+        now: Current datetime. If None, uses timezone.now().
+    
+    Returns:
+        Week object if found, None otherwise.
+    """
+    now = now or timezone.now()
+    
+    if season is None:
+        season = Season.objects.filter(is_active=True).first()
+    
+    if not season:
+        return None
+    
+    # Convert now to date for comparison
+    current_date = now.date()
+    
+    # Find the week where current_date falls between start_date and end_date
+    week = Week.objects.filter(
+        season=season,
+        start_date__lte=current_date,
+        end_date__gte=current_date
+    ).first()
+    
+    return week
+
+
+def get_week_datetime_range(week: Week) -> Tuple[datetime, datetime]:
+    """
+    Convert a Week model's start_date and end_date to timezone-aware datetimes.
+    
+    Args:
+        week: Week object with start_date and end_date
+    
+    Returns:
+        Tuple of (start_datetime, end_datetime) as timezone-aware datetimes
+    """
+    # Convert dates to datetimes
+    # Start at midnight on the start date
+    start = datetime.combine(week.start_date, datetime.min.time())
+    # End at 23:59:59 on the end date
+    end = datetime.combine(week.end_date, datetime.max.time())
+    
+    # Make timezone-aware
+    if timezone.is_naive(start):
+        start = timezone.make_aware(start)
+    if timezone.is_naive(end):
+        end = timezone.make_aware(end)
+    
+    return start, end
 
 
 def get_week_window(now: datetime | None = None) -> Tuple[datetime, datetime]:
@@ -128,10 +185,18 @@ def fetch_and_store_week(now: datetime | None = None) -> int:
 
         external_id = str(ev.get("id") or comp.get("id") or "")
 
+        # Find the Week object for this game based on kickoff date
+        game_week = Week.objects.filter(
+            season=season,
+            start_date__lte=kickoff.date(),
+            end_date__gte=kickoff.date()
+        ).first()
+
         game, created = Game.objects.update_or_create(
             season=season,
             external_id=external_id or None,
             defaults={
+                "week": game_week,
                 "home_team": home_team,
                 "away_team": away_team,
                 "kickoff": kickoff,
@@ -144,6 +209,9 @@ def fetch_and_store_week(now: datetime | None = None) -> int:
                 home_team=home_team,
                 away_team=away_team,
                 kickoff=kickoff,
+                defaults={
+                    "week": game_week,
+                }
             )
         count += 1
 
@@ -348,11 +416,19 @@ def _fetch_and_store_week_cfbd(season: Season, start: datetime, end: datetime) -
                     home_team = cfbd_by_school[home_name]
                     away_team = cfbd_by_school[away_name]
 
+                    # Find the Week object for this game based on kickoff date
+                    game_week = Week.objects.filter(
+                        season=season,
+                        start_date__lte=kickoff.date(),
+                        end_date__gte=kickoff.date()
+                    ).first()
+
                     external_id = str(g.id) if getattr(g, 'id', None) is not None else ""
                     Game.objects.update_or_create(
                         season=season,
                         external_id=external_id or None,
                         defaults={
+                            "week": game_week,
                             "home_team": home_team,
                             "away_team": away_team,
                             "kickoff": kickoff,

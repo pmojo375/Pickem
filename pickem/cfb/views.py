@@ -5,7 +5,7 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.core.exceptions import ValidationError
-from .models import Game, Pick, Team, League, LeagueMembership, LeagueGame, LeagueRules, Season, Ranking
+from .models import Game, Pick, Team, League, LeagueMembership, LeagueGame, LeagueRules, Season, Ranking, Week
 from django.utils import timezone
 from . import services
 from django.conf import settings
@@ -69,15 +69,18 @@ def home_view(request):
             from django.utils import timezone
             from datetime import timedelta
             
-            # Week window for current picks
-            start, end = services.schedule.get_week_window()
+            # Get current week and its date range
+            current_week = services.schedule.get_current_week()
             
             # Picks made this week
-            week_picks_count = Pick.objects.filter(
-                user=request.user,
-                league=league,
-                game__kickoff__range=(start, end)
-            ).count()
+            week_picks_count = 0
+            if current_week:
+                start, end = services.schedule.get_week_datetime_range(current_week)
+                week_picks_count = Pick.objects.filter(
+                    user=request.user,
+                    league=league,
+                    game__kickoff__range=(start, end)
+                ).count()
             
             # Total correct picks
             total_picks = Pick.objects.filter(user=request.user, league=league, is_correct__isnull=False)
@@ -156,7 +159,9 @@ def picks_view(request):
         # Get league rules for key pick validation
         from django.utils import timezone
         from datetime import timedelta
-        start, end = services.schedule.get_week_window()
+        
+        # Get current week and its date range
+        current_week = services.schedule.get_current_week()
         
         # Get active season and league rules
         active_season = Season.objects.filter(is_active=True).first()
@@ -168,12 +173,15 @@ def picks_view(request):
                 league_rules = LeagueRules.objects.create(league=league, season=active_season)
         
         # Count current key picks for this week (excluding games being updated)
-        current_key_picks = Pick.objects.filter(
-            user=request.user,
-            league=league,
-            is_key_pick=True,
-            game__kickoff__range=(start, end)
-        ).exclude(game_id__in=game_ids)
+        current_key_picks = Pick.objects.none()
+        if current_week:
+            start, end = services.schedule.get_week_datetime_range(current_week)
+            current_key_picks = Pick.objects.filter(
+                user=request.user,
+                league=league,
+                is_key_pick=True,
+                game__kickoff__range=(start, end)
+            ).exclude(game_id__in=game_ids)
         current_key_picks_count = current_key_picks.count()
         
         # Count new key picks being submitted
@@ -250,7 +258,9 @@ def picks_view(request):
     # Get league rules for key pick limits
     from django.utils import timezone
     from datetime import timedelta
-    start, end = services.schedule.get_week_window()
+    
+    # Get current week and its date range
+    current_week = services.schedule.get_current_week()
     
     # Get active season and league rules
     active_season = Season.objects.filter(is_active=True).first()
@@ -262,12 +272,15 @@ def picks_view(request):
             league_rules = LeagueRules.objects.create(league=league, season=active_season)
     
     # Count current key picks for this week
-    current_key_picks_count = Pick.objects.filter(
-        user=request.user,
-        league=league,
-        is_key_pick=True,
-        game__kickoff__range=(start, end)
-    ).count()
+    current_key_picks_count = 0
+    if current_week:
+        start, end = services.schedule.get_week_datetime_range(current_week)
+        current_key_picks_count = Pick.objects.filter(
+            user=request.user,
+            league=league,
+            is_key_pick=True,
+            game__kickoff__range=(start, end)
+        ).count()
     
     # Combine league_games with picks
     games_with_picks = [(lg, existing_picks_by_game_id.get(lg.game.id)) for lg in league_games]
@@ -306,22 +319,27 @@ def live_view(request):
         return render(request, "cfb/live.html", context)
     
     # Show picks for selected games in the current week window
-    start, end = services.schedule.get_week_window()
+    current_week = services.schedule.get_current_week()
     
     # Get league games that are active
-    league_games = LeagueGame.objects.filter(
-        league=league,
-        is_active=True,
-        game__kickoff__range=(start, end)
-    ).values_list('game_id', flat=True)
+    league_games = []
+    picks = []
     
-    # Get picks for these games
-    picks = Pick.objects.filter(
-        user=request.user,
-        league=league,
-        game_id__in=league_games,
-        game__kickoff__range=(start, end)
-    ).select_related("game__home_team", "game__away_team", "picked_team")
+    if current_week:
+        start, end = services.schedule.get_week_datetime_range(current_week)
+        league_games = LeagueGame.objects.filter(
+            league=league,
+            is_active=True,
+            game__kickoff__range=(start, end)
+        ).values_list('game_id', flat=True)
+        
+        # Get picks for these games
+        picks = Pick.objects.filter(
+            user=request.user,
+            league=league,
+            game_id__in=league_games,
+            game__kickoff__range=(start, end)
+        ).select_related("game__home_team", "game__away_team", "picked_team")
     
     # Get league_game data for spreads
     league_games_dict = {
@@ -619,20 +637,28 @@ def settings_view(request):
             
             return redirect(f"/settings/?league_id={league.id}")
 
-    start, end = services.schedule.get_week_window()
-    games = Game.objects.filter(kickoff__range=(start, end)).select_related("home_team", "away_team").order_by("kickoff")
+    # Get current week and its date range
+    current_week = services.schedule.get_current_week()
+    start, end = None, None
+    games = Game.objects.none()
+    
+    if current_week:
+        start, end = services.schedule.get_week_datetime_range(current_week)
+        games = Game.objects.filter(kickoff__range=(start, end)).select_related("home_team", "away_team").order_by("kickoff")
     
     # Get existing league games for this league that were created within the current week window
     # This ensures we don't show games from previous weeks that might have been selected before
-    league_games_dict = {
-        lg.game_id: lg 
-        for lg in LeagueGame.objects.filter(
-            league=league, 
-            game__in=games, 
-            is_active=True,
-            selected_at__range=(start, end)
-        )
-    }
+    league_games_dict = {}
+    if current_week and games.exists():
+        league_games_dict = {
+            lg.game_id: lg 
+            for lg in LeagueGame.objects.filter(
+                league=league, 
+                game__in=games, 
+                is_active=True,
+                selected_at__range=(start, end)
+            )
+        }
     
     # Combine games with their league_game status
     games_with_selection = [(g, league_games_dict.get(g.id)) for g in games]
@@ -652,22 +678,18 @@ def settings_view(request):
                 season=active_season
             )
     
-    # Get AP poll rankings for teams (previous week)
+    # Get AP poll rankings for teams (current week)
     team_rankings = {}
-    if active_season and games:
-        # Get the current week from the first game
-        current_week = games.first().week
-        if current_week:
-            # Fetch AP poll rankings from previous week
-            week = current_week.number
-            rankings = Ranking.objects.filter(
-                season=active_season,
-                week=week,
-                poll='AP Top 25'
-            ).select_related('team')
-            
-            # Create a dict mapping team_id to rank
-            team_rankings = {r.team_id: r.rank for r in rankings}
+    if active_season and current_week:
+        # Fetch AP poll rankings for current week
+        rankings = Ranking.objects.filter(
+            season=active_season,
+            week=current_week,
+            poll='AP Top 25'
+        ).select_related('team')
+        
+        # Create a dict mapping team_id to rank
+        team_rankings = {r.team_id: r.rank for r in rankings}
     
     context = {
         "games_with_selection": games_with_selection,

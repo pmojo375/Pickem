@@ -17,8 +17,13 @@ def update_odds_for_week_games() -> int:
         return 0
     
     # Get all games for the current week
-    from .schedule import get_week_window
-    start, end = get_week_window()
+    from .schedule import get_current_week, get_week_datetime_range
+    current_week = get_current_week()
+    
+    if not current_week:
+        return 0
+    
+    start, end = get_week_datetime_range(current_week)
     games = Game.objects.filter(kickoff__range=(start, end)).select_related('home_team', 'away_team')
     
     if not games.exists():
