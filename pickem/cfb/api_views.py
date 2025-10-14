@@ -14,7 +14,6 @@ from django.views.decorators.cache import cache_page
 from django.views.decorators.http import require_GET
 
 from .models import Game, Season
-from .services.espn_api import get_espn_client
 
 logger = logging.getLogger(__name__)
 
@@ -338,10 +337,6 @@ def system_status(request):
         /api/system/status
     """
     try:
-        # Get circuit breaker status
-        espn_client = get_espn_client()
-        circuit_breaker_status = espn_client.get_circuit_breaker_status()
-
         # Get live state
         live_state = cache.get(settings.REDIS_KEY_LIVE_STATE) or {}
 
@@ -364,7 +359,6 @@ def system_status(request):
         return JsonResponse({
             'status': 'ok',
             'timestamp': timezone.now().isoformat(),
-            'circuit_breaker': circuit_breaker_status,
             'live_state': live_state,
             'last_poll': last_poll,
             'active_season': season_info,

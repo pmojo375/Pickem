@@ -15,9 +15,6 @@ except Exception:  # pragma: no cover
 LAST_CFBD_ERROR: str | None = None
 
 
-ESPN_SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard"
-
-
 def get_current_week(season: Optional[Season] = None, now: Optional[datetime] = None) -> Optional[Week]:
     """
     Get the current Week object based on the current datetime.
@@ -84,138 +81,24 @@ def get_week_window(now: datetime | None = None) -> Tuple[datetime, datetime]:
     return start, end
 
 
-def fetch_weekly_games(start: datetime, end: datetime) -> List[Dict]:
-    events: List[Dict] = []
-    day = start
-    while day.date() <= end.date():
-        params = {"dates": day.strftime("%Y%m%d")}
-        resp = requests.get(ESPN_SCOREBOARD_URL, params=params, timeout=20)
-        resp.raise_for_status()
-        data = resp.json()
-        day_events = data.get("events", [])
-        if day_events:
-            events.extend(day_events)
-        day = day + timedelta(days=1)
-    return events
-
-
-def _get_or_create_team(season: Season, team_obj: Dict) -> Team:
-    # ESPN shape (fallback)
-    espn_team_id = str(team_obj.get("id") or team_obj.get("uid", "").split(":")[-1]) if team_obj else None
-    school = team_obj.get("location") or team_obj.get("name") or team_obj.get("displayName") or team_obj.get("shortDisplayName")
-    nickname = team_obj.get("nickname") or ""
-    abbreviation = team_obj.get("abbreviation") or ""
-    logo_url = ""
-    logos = team_obj.get("logos") or []
-    if logos:
-        logo_url = logos[0].get("href") or ""
-
-    # Prefer matching by ESPN ID when present within same season
-    team = None
-    if espn_team_id:
-        team = Team.objects.filter(season=season, espn_id=espn_team_id).first()
-    if not team:
-        team = Team.objects.filter(season=season, name=school).first()
-
-    if team:
-        # Update metadata if missing
-        updates = {}
-        if not team.nickname and nickname:
-            updates["nickname"] = nickname
-        if not team.logo_url and logo_url:
-            updates["logo_url"] = logo_url
-        if not team.abbreviation and abbreviation:
-            updates["abbreviation"] = abbreviation
-        if espn_team_id and not team.espn_id:
-            updates["espn_id"] = espn_team_id
-        if updates:
-            for k, v in updates.items():
-                setattr(team, k, v)
-            team.save(update_fields=list(updates.keys()))
-        return team
-
-    return Team.objects.create(
-        season=season,
-        name=school,
-        nickname=nickname,
-        abbreviation=abbreviation,
-        logo_url=logo_url,
-        espn_id=espn_team_id or None,
-    )
 
 
 def fetch_and_store_week(now: datetime | None = None) -> int:
+    """
+    Fetch and store games for the current week using CFBD API.
+    
+    Returns:
+        Number of games imported
+    """
     start, end = get_week_window(now)
     year = start.year
     season, _ = Season.objects.get_or_create(year=year, defaults={"is_active": True})
-    count = 0
 
-    if settings.CFBD_API_KEY:
-        return _fetch_and_store_week_cfbd(season, start, end)
+    if not settings.CFBD_API_KEY:
+        # CFBD API key is required
+        return 0
 
-    for ev in fetch_weekly_games(start, end):
-        competitions = ev.get("competitions") or []
-        if not competitions:
-            continue
-        comp = competitions[0]
-        competitors = comp.get("competitors") or []
-        if len(competitors) != 2:
-            continue
-
-        # Determine home/away
-        home = next((c for c in competitors if c.get("homeAway") == "home"), None)
-        away = next((c for c in competitors if c.get("homeAway") == "away"), None)
-        if not home or not away:
-            continue
-
-        home_team = _get_or_create_team(season, home.get("team") or {})
-        away_team = _get_or_create_team(season, away.get("team") or {})
-
-        # kickoff
-        date_str = ev.get("date") or comp.get("date")
-        if not date_str:
-            continue
-        try:
-            kickoff = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-        except Exception:
-            continue
-        if not (start <= kickoff <= end):
-            # Only include this week's window
-            continue
-
-        external_id = str(ev.get("id") or comp.get("id") or "")
-
-        # Find the Week object for this game based on kickoff date
-        game_week = Week.objects.filter(
-            season=season,
-            start_date__lte=kickoff.date(),
-            end_date__gte=kickoff.date()
-        ).first()
-
-        game, created = Game.objects.update_or_create(
-            season=season,
-            external_id=external_id or None,
-            defaults={
-                "week": game_week,
-                "home_team": home_team,
-                "away_team": away_team,
-                "kickoff": kickoff,
-            },
-        )
-        # If external_id missing, fall back to tuple uniqueness
-        if not external_id:
-            game, created = Game.objects.get_or_create(
-                season=season,
-                home_team=home_team,
-                away_team=away_team,
-                kickoff=kickoff,
-                defaults={
-                    "week": game_week,
-                }
-            )
-        count += 1
-
-    return count
+    return _fetch_and_store_week_cfbd(season, start, end)
 
 
 def _get_overlapping_weeks(api, year: int, start: datetime, end: datetime, api_key: str) -> List[int]:

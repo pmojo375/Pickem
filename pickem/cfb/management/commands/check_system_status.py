@@ -7,7 +7,6 @@ from django.core.cache import cache
 from django.conf import settings
 from django.utils import timezone
 
-from cfb.services.espn_api import get_espn_client
 from cfb.models import Game, Season
 
 
@@ -27,25 +26,6 @@ class Command(BaseCommand):
             self.stdout.write(f'  Total games: {total_games}')
         else:
             self.stdout.write(self.style.ERROR('✗ No active season found'))
-
-        # Circuit Breaker Status
-        self.stdout.write(self.style.HTTP_INFO('\n--- Circuit Breaker Status ---'))
-        espn_client = get_espn_client()
-        cb_status = espn_client.get_circuit_breaker_status()
-        
-        if cb_status['is_open']:
-            self.stdout.write(self.style.ERROR('✗ Circuit breaker is OPEN'))
-            self.stdout.write(f'  Failure count: {cb_status["failure_count"]}')
-            if cb_status['last_failure_time']:
-                import datetime
-                last_failure = datetime.datetime.fromtimestamp(cb_status['last_failure_time'])
-                self.stdout.write(f'  Last failure: {last_failure}')
-        else:
-            self.stdout.write(self.style.SUCCESS('✓ Circuit breaker is CLOSED'))
-            if cb_status['failure_count'] > 0:
-                self.stdout.write(
-                    self.style.WARNING(f'  Warning: {cb_status["failure_count"]} recent failures')
-                )
 
         # Live State
         self.stdout.write(self.style.HTTP_INFO('\n--- Live Game State ---'))
