@@ -931,7 +931,7 @@ def initialize_season(season_year: int, force: bool = False):
         # Get or create season
         season, created = Season.objects.get_or_create(
             year=season_year,
-            defaults={'name': f'{season_year} Season', 'is_active': False}
+            defaults={'name': f'{season_year} Season', 'is_active': True}
         )
         
         if created:
