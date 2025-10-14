@@ -52,7 +52,7 @@ class CFBDAPIClient:
         try:
             # Create filename from endpoint and params
             param_str = '_'.join(f"{k}={v}" for k, v in sorted(params.items()))
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            timestamp = datetime.now().strftime('%Y%m%d')
             filename = f"{endpoint}_{param_str}_{timestamp}.json"
             
             # Clean filename
