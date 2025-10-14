@@ -78,21 +78,103 @@ TEMPLATES = [
     },
 ]
 
+LOG_DIR = Path(os.getenv("DJANGO_LOG_DIR", BASE_DIR / "logs"))
+LOG_DIR.mkdir(parents=True, exist_ok=True)  # make sure it exists
+
+LOG_FILE = LOG_DIR / "app.log"
+
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': 'debug.log',
+    "version": 1,
+    "disable_existing_loggers": False,  # keep Django’s defaults unless overridden
+
+    # Optional filters (e.g., only log when DEBUG=False)
+    "filters": {
+        "require_debug_false": {
+            "()": "django.utils.log.RequireDebugFalse",
         },
     },
-    'loggers': {
-        'django': {
-            'handlers': ['file'],
-            'level': 'DEBUG',
-            'propagate': True,
+
+    "formatters": {
+        "verbose": {
+            "format": "[{asctime}] {levelname} {name}:{lineno} [{process:d}/{threadName}] - {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "{levelname} {name} - {message}",
+            "style": "{",
+        },
+    },
+
+    "handlers": {
+        # Rotates by size (5 MB per file, keep 5 backups)
+        "rotating_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": str(LOG_FILE),
+            "maxBytes": 5 * 1024 * 1024,  # 5 MB
+            "backupCount": 5,
+            "encoding": "utf-8",
+            "formatter": "verbose",
+        },
+
+        # (Optional) Only errors to a separate file
+        "rotating_file_errors": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": str(LOG_DIR / "errors.log"),
+            "maxBytes": 5 * 1024 * 1024,
+            "backupCount": 5,
+            "encoding": "utf-8",
+            "formatter": "verbose",
+        },
+    },
+
+    # Loggers control what goes *into* the handlers above
+    "loggers": {
+        # Root logger (anything not matched below)
+        "": {
+            "handlers": ["rotating_file"],
+            "level": "INFO",          # raise to WARNING in prod if too chatty
+            "propagate": False,
+        },
+
+        # Django internals
+        "django": {
+            "handlers": ["rotating_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.request": {
+            "handlers": ["rotating_file", "rotating_file_errors"],
+            "level": "WARNING",       # WARNING and up from request flow
+            "propagate": False,
+        },
+        "django.server": {
+            "handlers": ["rotating_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.security": {
+            "handlers": ["rotating_file", "rotating_file_errors"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+
+        # Your app(s) — adjust names or add more blocks as needed
+        "pickem": {
+            "handlers": ["rotating_file"],
+            "level": "DEBUG",         # DEBUG for rich app logs
+            "propagate": False,
+        },
+
+        # Celery (if you use it)
+        "celery": {
+            "handlers": ["rotating_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "celery.app.trace": {
+            "handlers": ["rotating_file"],
+            "level": "WARNING",
+            "propagate": False,
         },
     },
 }

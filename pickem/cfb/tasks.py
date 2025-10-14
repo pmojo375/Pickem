@@ -13,7 +13,7 @@ from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
 
-from .models import Game, Team, Season, Location, Week, Ranking
+from .models import Game, Team, Season, Location, Week, Ranking, GameSpread
 from .services.espn_api import get_espn_client
 from .services.cfbd_api import get_cfbd_client
 from .services.live import grade_picks_for_game
@@ -568,36 +568,297 @@ def sync_upcoming_games():
     max_retries=3,
     default_retry_delay=300,
 )
-def update_spreads(self):
+def update_spreads(self, season_year: int, season_type: str = 'regular', week: int = None):
     """
-    Periodic task to update game spreads/odds from The Odds API.
+    Periodic task to update game spreads/odds from CFBD.
     Fetches spreads for all games in the current week.
     
     NOTE: Spreads captured on game day (9 AM daily) are considered the final
     spreads for that game. No post-game spread updates are performed.
     This ensures consistent 7 API calls per week maximum.
+    
+    Args:
+        season_year: Year of the season
+        season_type: 'regular' or 'postseason'
+        week: Week number to update spreads for
     """
     try:
-        from .services.odds import update_odds_for_week_games
-
-        logger.info("Starting spread update task")
+        # Verify season exists
+        try:
+            season = Season.objects.get(year=season_year)
+        except Season.DoesNotExist:
+            logger.error(f"Season {season_year} not found")
+            return
         
-        # Check if we have an API key configured
-        if not settings.ODDS_API_KEY:
-            logger.warning("ODDS_API_KEY not configured, skipping spread update")
+        logger.info(f"Updating spreads for {season_year} {season_type} week {week}")
+        
+        # Fetch lines from CFBD
+        cfbd_client = get_cfbd_client()
+        lines_data = cfbd_client.fetch_lines(
+            year=season_year,
+            week=week,
+            season_type=season_type
+        )
+        
+        if not lines_data:
+            logger.error(f"No lines data returned from CFBD for {season_year} {season_type} week {week}")
             return
 
-        # Update spreads for the current week's games
-        updated_count = update_odds_for_week_games()
+        logger.info(f"Fetched {len(lines_data)} games with lines from CFBD")
+
+        games_updated = 0
+        games_not_found = 0
+        games_no_lines = 0
+
+        for game_data in lines_data:
+            home_team_name = game_data.get('homeTeam')
+            away_team_name = game_data.get('awayTeam')
+            lines = game_data.get('lines', [])
+
+            if not lines:
+                logger.warning(f"No lines for {away_team_name} @ {home_team_name}")
+                games_no_lines += 1
+                continue
+
+            # Find the game in our database
+            game = Game.objects.filter(
+                season=season,
+                week=week,
+                season_type=season_type,
+                home_team__name__iexact=home_team_name,
+                away_team__name__iexact=away_team_name
+            ).first()
+
+            if not game:
+                logger.warning(f"Game not found in DB: {away_team_name} @ {home_team_name}")
+                games_not_found += 1
+                continue
+
+            # Extract first line with a valid spread
+            spread_data = None
+            for line in lines:
+                spread = line.get('spread')
+                spread_open = line.get('spreadOpen')
+                
+                if spread is not None:
+                    # Spread is from home team's perspective
+                    home_spread = Decimal(str(spread))
+                    away_spread = -home_spread
+                    
+                    # Handle opening spread
+                    if spread_open is not None:
+                        home_spread_open = Decimal(str(spread_open))
+                        away_spread_open = -home_spread_open
+                    else:
+                        # If no opening spread, use current spread
+                        home_spread_open = home_spread
+                        away_spread_open = away_spread
+                    
+                    spread_data = {
+                        'home_spread': home_spread,
+                        'away_spread': away_spread,
+                        'home_spread_open': home_spread_open,
+                        'away_spread_open': away_spread_open,
+                        'provider': line.get('provider', 'Unknown'),
+                    }
+                    break
+                        
+            if not spread_data:
+                logger.warning(f"No valid spread found for {away_team_name} @ {home_team_name}")
+                games_no_lines += 1
+                continue
+
+            # Update the game and create spread record
+            try:
+                home_spread = spread_data['home_spread']
+                away_spread = spread_data['away_spread']
+                home_spread_open = spread_data['home_spread_open']
+                away_spread_open = spread_data['away_spread_open']
+                provider = spread_data['provider']
+                
+                # Create GameSpread record to track this spread update
+                GameSpread.objects.create(
+                    game=game,
+                    home_spread=home_spread,
+                    away_spread=away_spread,
+                    source=provider
+                )
+                
+                # Always update current spread
+                game.current_home_spread = home_spread
+                game.current_away_spread = away_spread
+                
+                # Set opening spread only if not already set
+                if game.opening_home_spread is None:
+                    game.opening_home_spread = home_spread_open
+                    game.opening_away_spread = away_spread_open
+                    game.save(update_fields=[
+                        'current_home_spread',
+                        'current_away_spread',
+                        'opening_home_spread',
+                        'opening_away_spread'
+                    ])
+                else:
+                    game.save(update_fields=[
+                        'current_home_spread',
+                        'current_away_spread'
+                    ])
+                
+                games_updated += 1
+                logger.debug(f"Updated spreads for {away_team_name} @ {home_team_name}: {provider} {home_spread}/{away_spread}")
+                
+            except Exception as e:
+                logger.error(f"Error updating spreads for {away_team_name} @ {home_team_name}: {e}", exc_info=True)
+                continue
+
+        logger.info(
+            f"Spread update complete for {season_year} week {week}: "
+            f"{games_updated} updated, {games_not_found} not found, {games_no_lines} no lines"
+        )
         
-        logger.info(f"Spread update complete: {updated_count} games updated")
-
-        # Store last successful spread poll time
-        cache.set('spreads:last_poll', timezone.now().isoformat(), timeout=86400)  # 24 hours
-
     except Exception as exc:
-        logger.error(f"Error in spread update task: {exc}", exc_info=True)
-        # Retry with delay
+        logger.error(f"Error in update_spreads task: {exc}", exc_info=True)
+        raise self.retry(exc=exc)
+
+
+@shared_task(
+    bind=True,
+    name='cfb.tasks.update_rankings',
+    max_retries=3,
+    default_retry_delay=300,
+)
+def update_rankings(self, season_year: int, season_type: str = 'regular', week: int = None):
+    """
+    Update rankings for a given season and week.
+    
+    Args:
+        season_year: Year of the season
+        season_type: 'regular' or 'postseason'
+        week: Specific week number (optional, fetches all weeks if not provided)
+    """
+    try:
+        # Verify season exists
+        try:
+            season = Season.objects.get(year=season_year)
+        except Season.DoesNotExist:
+            logger.error(f"Season {season_year} not found")
+            return
+        
+        logger.info(f"Updating rankings for {season_year} {season_type}" + (f" week {week}" if week else ""))
+        
+        # Fetch rankings from CFBD
+        cfbd_client = get_cfbd_client()
+        rankings_data = cfbd_client.fetch_rankings(
+            year=season_year,
+            week=week,
+            season_type=season_type
+        )
+        
+        if not rankings_data:
+            logger.error(f"No rankings data returned from CFBD for {season_year} {season_type}" + (f" week {week}" if week else ""))
+            return
+        
+        logger.info(f"Fetched {len(rankings_data)} weeks of rankings from CFBD")
+        
+        total_created = 0
+        total_updated = 0
+        total_skipped = 0
+        
+        for week_data in rankings_data:
+            week_number = week_data.get('week')
+            polls = week_data.get('polls', [])
+
+            if not polls:
+                logger.warning(f"No polls for Week {week_number}")
+                continue
+
+            for poll_data in polls:
+                poll_name = poll_data.get('poll')
+                ranks = poll_data.get('ranks', [])
+
+                logger.info(f"Week {week_number} - {poll_name}: {len(ranks)} teams")
+
+                for rank_data in ranks:
+                    school_name = rank_data.get('school')
+                    team_id = rank_data.get('teamId')
+                    rank = rank_data.get('rank')
+                    first_place_votes = rank_data.get('firstPlaceVotes', 0)
+                    points = rank_data.get('points', 0)
+                    
+                    # Find team by CFBD ID or name
+                    team = None
+                    if team_id:
+                        team = Team.objects.filter(
+                            season=season,
+                            cfbd_id=team_id
+                        ).first()
+                    
+                    if not team:
+                        team = Team.objects.filter(
+                            season=season,
+                            name__iexact=school_name
+                        ).first()
+                    
+                    if not team:
+                        logger.warning(f"Team not found in DB: {school_name} (ID: {team_id})")
+                        continue
+
+                    # Get the Week object
+                    try:
+                        week_obj = Week.objects.get(
+                            season=season,
+                            number=week_number,
+                            season_type=season_type
+                        )
+                    except Week.DoesNotExist:
+                        logger.error(f"Week {week_number} not found for {season_year} {season_type}")
+                        continue
+                    
+                    # Check if ranking already exists
+                    try:
+                        existing_ranking = Ranking.objects.get(
+                            season=season,
+                            week=week_obj,
+                            season_type=season_type,
+                            team=team,
+                            poll=poll_name
+                        )
+                        
+                        # Check if anything changed
+                        if (existing_ranking.rank == rank and
+                            existing_ranking.first_place_votes == first_place_votes and
+                            existing_ranking.points == points):
+                            total_skipped += 1
+                            continue
+                        
+                        # Update the ranking
+                        existing_ranking.rank = rank
+                        existing_ranking.first_place_votes = first_place_votes
+                        existing_ranking.points = points
+                        existing_ranking.save()
+                        total_updated += 1
+                        
+                    except Ranking.DoesNotExist:
+                        # Create new ranking
+                        Ranking.objects.create(
+                            season=season,
+                            week=week_obj,
+                            season_type=season_type,
+                            team=team,
+                            poll=poll_name,
+                            rank=rank,
+                            first_place_votes=first_place_votes,
+                            points=points
+                        )
+                        total_created += 1
+        
+        logger.info(
+            f"Rankings update complete for {season_year}: "
+            f"{total_created} created, {total_updated} updated, {total_skipped} skipped"
+        )
+        
+    except Exception as exc:
+        logger.error(f"Error in update_rankings task: {exc}", exc_info=True)
         raise self.retry(exc=exc)
 
 
@@ -967,216 +1228,3 @@ def initialize_season(season_year: int, force: bool = False):
     
     except Exception as e:
         logger.error(f"Error initializing season {season_year}: {e}", exc_info=True)
-
-@shared_task(name='cfb.tasks.update_rankings')
-def update_rankings(season_year: int, season_type: str = 'regular', week: int = None):
-    """
-    Update rankings for a given season and week.
-    """
-
-    # Fetch rankings from CFBD
-    cfbd_client = get_cfbd_client()
-    rankings_data = cfbd_client.fetch_rankings(
-        year=season_year,
-        week=week,
-        season_type=season_type
-    )
-    
-    if not rankings_data:
-        logger.error(f"No rankings data returned from CFBD for {season_year} {season_type} {week}")
-    
-    logger.info(f'Fetched {len(rankings_data)} weeks of rankings from CFBD')
-
-    # Process each week's rankings
-    total_created = 0
-    total_updated = 0
-    total_skipped = 0
-    
-    season = Season.objects.get(year=season_year)
-
-    for week_data in rankings_data:
-        created, updated, skipped = _process_week_rankings(
-            week_data,
-            season,
-            season_type
-        )
-        total_created += created
-        total_updated += updated
-        total_skipped += skipped
-
-    logger.info(f'Summary: {total_created} created, {total_updated} updated, {total_skipped} skipped')
-
-def _process_week_rankings(
-    week_data: Dict,
-    season: Season,
-    season_type: str
-) -> tuple:
-    """
-    Process rankings for a single week.
-    
-    Returns:
-        Tuple of (created_count, updated_count, skipped_count)
-    """
-    week = week_data.get('week')
-    polls = week_data.get('polls', [])
-
-    if not polls:
-        logger.warning(f'  No polls for Week {week}')
-        return 0, 0, 0
-
-    created_count = 0
-    updated_count = 0
-    skipped_count = 0
-
-    for poll_data in polls:
-        poll_name = poll_data.get('poll')
-        ranks = poll_data.get('ranks', [])
-
-        logger.info(f'  Week {week} - {poll_name}: {len(ranks)} teams')
-
-        for rank_data in ranks:
-            result = _process_team_ranking(
-                season=season,
-                week=week,
-                season_type=season_type,
-                poll_name=poll_name,
-                rank_data=rank_data
-            )
-            
-            if result == 'created':
-                created_count += 1
-            elif result == 'updated':
-                updated_count += 1
-            elif result == 'skipped':
-                skipped_count += 1
-
-    return created_count, updated_count, skipped_count
-
-def _process_team_ranking(
-    season: Season,
-    week: int,
-    season_type: str,
-    poll_name: str,
-    rank_data: Dict
-) -> str:
-    """
-    Process a single team's ranking.
-    
-    Returns:
-        'created', 'updated', 'skipped', or 'error'
-    """
-    school_name = rank_data.get('school')
-    team_id = rank_data.get('teamId')
-    rank = rank_data.get('rank')
-    first_place_votes = rank_data.get('firstPlaceVotes', 0)
-    points = rank_data.get('points', 0)
-
-    # Find the team in our database
-    team = _find_team(season, school_name, team_id)
-    
-    if not team:
-        logger.warning(f'Team not found in DB: {school_name} (ID: {team_id})')
-        return 'error'
-
-    # Check if ranking already exists
-    try:
-        week = Week.objects.get(season=season, number=week, season_type=season_type)
-        
-        existing_ranking = Ranking.objects.get(
-            season=season,
-            week=week,
-            season_type=season_type,
-            team=team,
-            poll=poll_name
-        )
-        
-        # Check if anything changed
-        if (existing_ranking.rank == rank and
-            existing_ranking.first_place_votes == first_place_votes and
-            existing_ranking.points == points):
-            return 'skipped'
-        
-        # Update the ranking
-        existing_ranking.rank = rank
-        existing_ranking.first_place_votes = first_place_votes
-        existing_ranking.points = points
-        existing_ranking.save()
-        
-        return 'updated'
-        
-    except Ranking.DoesNotExist:
-        # Create new ranking
-        Ranking.objects.create(
-            season=season,
-            week=week,
-            season_type=season_type,
-            team=team,
-            poll=poll_name,
-            rank=rank,
-            first_place_votes=first_place_votes,
-            points=points
-        )
-        
-        return 'created'
-
-def _find_team(
-    season: Season,
-    school_name: str,
-    team_id: Optional[int]
-) -> Optional[Team]:
-    """
-    Find a team in the database by name or CFBD ID.
-    """
-    # First try by CFBD ID if available
-    if team_id:
-        team = Team.objects.filter(
-            season=season,
-            cfbd_id=team_id
-        ).first()
-        
-        if team:
-            return team
-    
-    # Try exact name match
-    team = Team.objects.filter(
-        season=season,
-        name__iexact=school_name
-    ).first()
-    
-    if team:
-        return team
-    
-    # Try fuzzy matching
-    teams = Team.objects.filter(season=season)
-    
-    for t in teams:
-        if _teams_match(t.name, school_name):
-            return t
-    
-    return None
-
-def _teams_match(db_name: str, api_name: str) -> bool:
-    """
-    Check if team names match with fuzzy logic.
-    """
-    db_normalized = db_name.lower().strip()
-    api_normalized = api_name.lower().strip()
-    
-    # Exact match
-    if db_normalized == api_normalized:
-        return True
-    
-    # One contains the other
-    if db_normalized in api_normalized or api_normalized in db_normalized:
-        return True
-    
-    # Check word overlap
-    db_words = set(db_normalized.split())
-    api_words = set(api_normalized.split())
-    common_words = db_words & api_words
-    
-    # At least 1 word in common for short names, 2 for longer names
-    if len(db_words) <= 2 or len(api_words) <= 2:
-        return len(common_words) >= 1
-    return len(common_words) >= 2
-

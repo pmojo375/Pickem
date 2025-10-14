@@ -88,7 +88,6 @@ class CFBDAPIClient:
         
         try:
             logger.info(f"Making CFBD API request to {endpoint} with params {params}")
-            print(f"Making CFBD API request to {endpoint} with params {params}")
             response = self.session.get(url, params=params, timeout=self.timeout)
             response.raise_for_status()
             
@@ -96,7 +95,7 @@ class CFBDAPIClient:
             
             # Save response to file
             self._save_json_response(endpoint.strip('/'), params, data)
-            print(f'Data length: {len(data)}')
+            
             return data
         
         except requests.exceptions.HTTPError as e:
@@ -118,7 +117,7 @@ class CFBDAPIClient:
     
     def fetch_teams(self, year: int) -> Optional[List[Dict[str, Any]]]:
         """
-        Fetch all FBS teams for a given year.
+        Fetch all FBS and FCS teams for a given year.
         
         Args:
             year: Season year
@@ -135,7 +134,7 @@ class CFBDAPIClient:
             return cached_data
         
         # Fetch from API
-        data = self._make_request('/teams/fbs', {'year': year})
+        data = self._make_request('/teams', {'year': year})
         
         if data:
             # Cache for 24 hours
@@ -211,27 +210,6 @@ class CFBDAPIClient:
         
         return all_games
     
-    def fetch_team_records(self, year: int, team: Optional[str] = None) -> Optional[List[Dict[str, Any]]]:
-        """
-        Fetch team records for a season.
-        
-        Args:
-            year: Season year
-            team: Optional team name to filter
-            
-        Returns:
-            List of team record dictionaries
-        """
-        params = {'year': year}
-        if team:
-            params['team'] = team
-        
-        data = self._make_request('/records', params)
-        
-        if data:
-            logger.info(f"Fetched records for {year}")
-        
-        return data
     
     def fetch_lines(
         self,
