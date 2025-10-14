@@ -34,9 +34,13 @@ The system uses a tiered approach to determine which spread to lock:
 
 #### B. Manual Game Selection Lock
 - **Trigger**: When admin selects games in Settings page
-- **Condition**: Only if `against_the_spread_enabled=True` AND spread not already locked
-- **Action**: Immediately locks spread using the same tiered logic
-- **Note**: Admin can also use the "Lock spread when selecting games" checkbox for manual control
+- **Conditions for immediate locking**:
+  - `against_the_spread_enabled=True` AND spread not already locked
+  - **If AFTER lock day**: Locks using tiered logic (lock day → next day → latest)
+  - **If ON lock day**: Only locks if a spread from that day already exists
+  - **If BEFORE lock day**: Does not lock (waits for automated task)
+- **Important**: If games are selected before the lock day OR on the lock day but before spreads are pulled, they remain unlocked and will be locked automatically by the daily task
+- **Note**: Admin can also use the "Lock spread when selecting games" checkbox for manual control (bypasses all lock day checks)
 
 ## Implementation Details
 
@@ -109,10 +113,11 @@ if league_game.locked_home_spread:
 ## Edge Cases Handled
 
 1. **No spreads available**: Skips locking, logs warning
-2. **Spread lock day not yet reached**: Uses latest available spread
+2. **Spread lock day not yet reached**: Spreads remain **unlocked** until lock day arrives (automated task will lock them)
 3. **Multiple spreads on lock day**: Uses first one found
 4. **Game already has locked spread**: Skips (doesn't overwrite)
 5. **ATS disabled for league**: Skips that league entirely
+6. **Games selected before lock day**: Spreads remain unlocked, will be locked by automated task on lock day
 
 ## Logging
 All spread locking operations are logged with INFO level:
@@ -134,11 +139,34 @@ lock_league_spreads_for_week()
 5. Check logs and verify spreads are locked in `LeagueGame` table
 
 ### Test Auto-Lock on Game Selection
-1. Enable ATS for a league
-2. Go to Settings page
-3. Select games for the current week
-4. Save selections
-5. Verify spreads are automatically locked based on the rule
+
+#### Test Case 1: Games Selected Before Lock Day
+1. Enable ATS for a league (set lock day to Wednesday)
+2. On Monday, go to Settings page and select games
+3. Save selections
+4. **Expected**: Spreads should remain **unlocked** (NULL)
+5. On Wednesday (or after), run the automated task or wait for daily spread update
+6. **Expected**: Spreads should now be locked
+
+#### Test Case 2: Games Selected On Lock Day (Before Spread Pull)
+1. Enable ATS for a league (set lock day to Wednesday)
+2. On Wednesday morning (before daily spread update), select games
+3. Save selections
+4. **Expected**: Spreads remain **unlocked** (no spread from Wednesday yet)
+5. After daily spread update runs on Wednesday
+6. **Expected**: Spreads should now be locked with Wednesday's spread
+
+#### Test Case 3: Games Selected On Lock Day (After Spread Pull)
+1. Enable ATS for a league (set lock day to Wednesday)
+2. After Wednesday's spread update has run, select games
+3. Save selections
+4. **Expected**: Spreads should be **immediately locked** using Wednesday's spread
+
+#### Test Case 4: Games Selected After Lock Day
+1. Enable ATS for a league (set lock day to Wednesday)
+2. On Thursday or later, go to Settings page and select games
+3. Save selections
+4. **Expected**: Spreads should be **immediately locked** using Wednesday's spread (or next available)
 
 ## Future Enhancements
 - Add UI to view spread history for a game
