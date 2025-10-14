@@ -463,39 +463,12 @@ def settings_view(request):
             "manageable_leagues": manageable_leagues,
             "start": None,
             "end": None,
-            "cfbd_enabled": bool(settings.CFBD_API_KEY),
-            "odds_enabled": bool(settings.ODDS_API_KEY)
+            "cfbd_enabled": bool(settings.CFBD_API_KEY)
         }
         return render(request, "cfb/settings.html", context)
     
     if request.method == "POST":
         action = request.POST.get("do")
-        if action == "import_week":
-            imported = services.schedule.fetch_and_store_week()
-            if imported == 0:
-                last_err = getattr(services.schedule, 'LAST_CFBD_ERROR', None)
-                if last_err:
-                    messages.error(request, f"CFBD import failed: {last_err}. Falling back to ESPN (public).")
-                else:
-                    messages.warning(request, "No games found in the current window.")
-            else:
-                messages.success(request, f"Imported/updated {imported} games and teams for this week.")
-            return redirect(f"/settings/?league_id={league.id}")
-        if action == "update_odds":
-            updated = services.odds.update_odds_for_week_games()
-            if updated > 0:
-                messages.success(request, f"Updated spreads for {updated} games.")
-            else:
-                odds_key_set = bool(settings.ODDS_API_KEY)
-                if not odds_key_set:
-                    messages.error(request, "ODDS_API_KEY not set in environment variables.")
-                else:
-                    messages.warning(request, "No spreads were updated. Check if games exist or API is responding.")
-            return redirect(f"/settings/?league_id={league.id}")
-        if action == "update_live":
-            updated = services.live.fetch_and_store_live_scores()
-            messages.success(request, f"Updated live scores for {updated} games (stub).")
-            return redirect(f"/settings/?league_id={league.id}")
         
         if action == "save_league_rules":
             # Get league from form
@@ -701,8 +674,7 @@ def settings_view(request):
         "start": start,
         "end": end,
         "team_rankings": team_rankings,
-        "cfbd_enabled": bool(settings.CFBD_API_KEY),
-        "odds_enabled": bool(settings.ODDS_API_KEY)
+        "cfbd_enabled": bool(settings.CFBD_API_KEY)
     }
     return render(request, "cfb/settings.html", context)
 
@@ -767,12 +739,6 @@ def picked_team_id_not_in_game(picked_team_id: int, game: Game) -> bool:
 def admin_import_schedule(request):
     count = services.schedule.fetch_and_store_week()
     return JsonResponse({"ok": True, "imported": count})
-
-
-@user_passes_test(lambda u: u.is_staff)
-def admin_update_odds(request):
-    updated = services.odds.update_odds_for_week_games()
-    return JsonResponse({"ok": True, "updated": updated})
 
 
 @user_passes_test(lambda u: u.is_staff)

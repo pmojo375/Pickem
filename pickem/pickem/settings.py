@@ -244,7 +244,6 @@ LOGOUT_REDIRECT_URL = '/'
 
 # External API keys
 CFBD_API_KEY = os.getenv('CFBD_API_KEY', '')
-ODDS_API_KEY = os.getenv('ODDS_API_KEY', '')
 
 # ============================================================================
 # CELERY & REDIS CONFIGURATION

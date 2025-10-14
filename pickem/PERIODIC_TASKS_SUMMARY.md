@@ -13,7 +13,7 @@ Your request to add periodic tasks for game polling and spread updates has been 
 
 ### 2. **Daily Spread Update** → `update_spreads`
 - **When**: Daily at 9:00 AM
-- **What**: Fetches betting spreads from The Odds API
+- **What**: Fetches betting spreads from CFBD API
 - **Result**: Spreads updated once per day
 
 ### 3. **Post-Completion Spread Update** → `check_and_update_spreads_on_completion`
@@ -59,15 +59,10 @@ check_and_update_spreads_on_completion.delay()
 
 ## ⚙️ Configuration Required
 
-### Game Polling (CFBD preferred)
+### CFBD API (Required)
 ```bash
-CFBD_API_KEY=your_key_here  # Recommended
-# Falls back to ESPN if not set
-```
-
-### Spread Updates (Required)
-```bash
-ODDS_API_KEY=your_key_here  # Required for spreads
+CFBD_API_KEY=your_key_here  # Required for game data and spreads
+# Falls back to ESPN for game data only if not set
 ```
 
 ## 📊 Task Schedule
@@ -86,9 +81,9 @@ Daily 9:00 AM  → Update spreads (final for game day)
 ## ✨ Key Features
 
 - ✅ Automatic game synchronization
-- ✅ Daily spread updates (7 API calls max per week)
+- ✅ Daily spread updates from CFBD API
 - ✅ Game-day spreads treated as final
-- ✅ CFBD API with ESPN fallback
+- ✅ CFBD API with ESPN fallback for game data
 - ✅ Rate limiting and error handling
 - ✅ Prevents duplicate updates
 - ✅ Redis caching for efficiency
@@ -98,7 +93,7 @@ Daily 9:00 AM  → Update spreads (final for game day)
 - Game sync uses existing `fetch_and_store_week()` which prefers CFBD over ESPN
 - Spread updates only happen if spreads change by >= 0.5 points
 - Spreads captured at 9 AM on game day are considered final for that game
-- Maximum 7 API calls per week to The Odds API (daily spread updates)
+- Spreads are fetched from CFBD API
 - All tasks route to the 'scores' queue
 - Tasks expire if not executed within their timeout window
 

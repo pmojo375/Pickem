@@ -4,11 +4,10 @@ This document describes the Celery periodic tasks configured for automatic game 
 
 ## Overview
 
-The system now has three main periodic tasks running via Celery Beat:
+The system now has periodic tasks running via Celery Beat:
 
 1. **Game Polling** - Syncs upcoming games from CFBD/ESPN
-2. **Spread Updates** - Fetches betting spreads from The Odds API
-3. **Post-Completion Spread Update** - Updates spreads once after all games complete
+2. **Spread Updates** - Fetches betting spreads from CFBD API
 
 ## Periodic Tasks
 
@@ -44,15 +43,15 @@ sync_upcoming_games.delay()
 
 **Task**: `cfb.tasks.update_spreads`  
 **Schedule**: Daily at 9:00 AM  
-**Purpose**: Fetches betting spreads/odds for games in the current week
+**Purpose**: Fetches betting spreads for games in the current week
 
 **Behavior**:
-- Fetches spreads from The Odds API
+- Fetches spreads from CFBD API
 - Only updates spreads that have changed (>= 0.5 point difference)
 - Stores spread history in `GameSpread` table
 - Updates `current_home_spread` and `current_away_spread` on `Game` model
 - Sets `opening_spread` if not already set
-- Requires `ODDS_API_KEY` to be configured in settings
+- Requires `CFBD_API_KEY` to be configured in settings
 
 **Configuration**:
 ```python
@@ -69,11 +68,9 @@ from cfb.tasks import update_spreads
 update_spreads.delay()
 ```
 
-**Note**: This task uses The Odds API which has rate limits. Be mindful of API usage.
-
 ### 3. ~~Check Games Completion~~ (REMOVED)
 
-**Note**: The post-completion spread update task has been removed. Spreads captured at 9 AM daily are now considered final for games that day, ensuring a maximum of 7 API calls per week to The Odds API.
+**Note**: The post-completion spread update task has been removed. Spreads captured at 9 AM daily are now considered final for games that day.
 
 ## Existing Tasks
 
@@ -96,23 +93,14 @@ These tasks were already configured and continue to run:
 
 ## API Keys Required
 
-### CFBD API Key (Recommended)
+### CFBD API Key (Required)
 ```bash
 # In .env file or environment
 CFBD_API_KEY=your_cfbd_api_key_here
 ```
-- Used for: Game data and team metadata
-- Fallback: ESPN API (no key required)
+- Used for: Game data, team metadata, and betting spreads
+- Fallback: ESPN API (no key required) for game data only
 - Get key at: https://collegefootballdata.com/key
-
-### The Odds API Key (Required for Spreads)
-```bash
-# In .env file or environment
-ODDS_API_KEY=your_odds_api_key_here
-```
-- Used for: Betting spreads/odds
-- No fallback available
-- Get key at: https://the-odds-api.com/
 
 ## Starting Celery Beat
 
@@ -208,7 +196,7 @@ app.conf.beat_schedule = {
 3. Verify task is registered: `celery -A pickem inspect registered`
 
 ### Spreads Not Updating
-1. Verify `ODDS_API_KEY` is set
+1. Verify `CFBD_API_KEY` is set
 2. Check API quota/rate limits
 3. Review task logs for errors
 
