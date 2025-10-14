@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Season, Team, Game, GameSpread, Rules, Pick, League, LeagueMembership, LeagueGame, LeagueRules, Location, Week
+from .models import Season, Team, Game, GameSpread, Rules, Pick, League, LeagueMembership, LeagueGame, LeagueRules, Location, Week, Ranking
 
 
 @admin.register(Season)
@@ -192,3 +192,11 @@ class WeekAdmin(admin.ModelAdmin):
     search_fields = ("season__year", "number")
     autocomplete_fields = ("season",)
     readonly_fields = ("start_date", "end_date")
+
+@admin.register(Ranking)
+class RankingAdmin(admin.ModelAdmin):
+    list_display = ("season", "week", "team", "poll", "rank", "first_place_votes", "points")
+    list_filter = ("season", "week", "poll")
+    search_fields = ("season__year", "week__number", "team__name", "poll")
+    autocomplete_fields = ("season", "week", "team")
+
