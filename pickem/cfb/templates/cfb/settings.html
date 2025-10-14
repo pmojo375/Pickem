@@ -101,6 +101,23 @@
                     </label>
                 </div>
                 
+                <!-- Against the Spread Enabled -->
+                <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                        <input type="checkbox" 
+                               name="against_the_spread_enabled" 
+                               {% if league_rules.against_the_spread_enabled %}checked{% endif %}
+                               class="checkbox checkbox-primary" />
+                        <div>
+                            <span class="label-text font-semibold">
+                                <i class="fas fa-chart-line text-info mr-1"></i>
+                                Enable Against the Spread
+                            </span>
+                            <p class="text-sm text-base-content/60">Lock spreads on specific day for pick'em</p>
+                        </div>
+                    </label>
+                </div>
+                
                 <!-- Spread Lock Weekday -->
                 <div class="form-control">
                     <label class="label">

@@ -13,7 +13,7 @@ from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
 
-from .models import Game, Team, Season, Location, Week, Ranking, GameSpread
+from .models import Game, Team, Season, Location, Week, Ranking, GameSpread, League, LeagueRules, LeagueGame
 from .services.cfbd_api import get_cfbd_client
 from .services.live import grade_picks_for_game, fetch_and_store_live_scores
 
@@ -351,6 +351,9 @@ def update_spreads(self, season_year: int = None, season_type: str = 'regular', 
             f"Spread update complete for {season_year} week {week}: "
             f"{games_updated} updated, {games_not_found} not found, {games_no_lines} no lines"
         )
+        
+        # After updating spreads, lock spreads for leagues with against_the_spread enabled
+        lock_league_spreads_for_week(season_year=season_year, week=week, season_type=season_type)
         
     except Exception as exc:
         logger.error(f"Error in update_spreads task: {exc}", exc_info=True)
@@ -845,6 +848,150 @@ def pull_season_games(season_year: int = None, season_type: str = 'regular', for
         logger.error(f"Season {season_year} not found")
     except Exception as e:
         logger.error(f"Error pulling games for {season_year}: {e}", exc_info=True)
+
+
+@shared_task(name='cfb.tasks.lock_league_spreads_for_week')
+def lock_league_spreads_for_week(season_year: int = None, season_type: str = 'regular', week: int = None):
+    """
+    Lock spreads for all leagues that have against_the_spread enabled.
+    This task should run after update_spreads to ensure we have the latest spread data.
+    
+    Spread locking logic:
+    1. If a spread exists from the spread_lock_weekday, use it
+    2. Otherwise, use the next spread pulled after that day
+    3. If no future spreads exist, use the latest available spread
+    
+    Args:
+        season_year: Year of the season (if None, uses active season)
+        season_type: 'regular' or 'postseason'
+        week: Week number to lock spreads for (if None, uses current week)
+    """
+    try:
+        from .services.schedule import get_current_week
+        
+        # Auto-determine parameters if not provided
+        if season_year is None or week is None:
+            current_week = get_current_week()
+            if not current_week:
+                logger.error("No current week found and parameters not provided")
+                return
+            
+            if season_year is None:
+                season_year = current_week.season.year
+            if week is None:
+                week = current_week.number
+            if season_type == 'regular':
+                season_type = current_week.season_type
+        
+        # Verify season exists
+        try:
+            season = Season.objects.get(year=season_year)
+        except Season.DoesNotExist:
+            logger.error(f"Season {season_year} not found")
+            return
+        
+        # Get week object
+        try:
+            week_obj = Week.objects.get(season=season, number=week, season_type=season_type)
+        except Week.DoesNotExist:
+            logger.error(f"Week {week} not found for {season_year} {season_type}")
+            return
+        
+        logger.info(f"Locking spreads for leagues in {season_year} {season_type} week {week}")
+        
+        # Get all active leagues with against_the_spread enabled for this season
+        league_rules = LeagueRules.objects.filter(
+            season=season,
+            against_the_spread_enabled=True
+        ).select_related('league')
+        
+        if not league_rules.exists():
+            logger.info("No leagues have against_the_spread enabled for this season")
+            return
+        
+        total_locked = 0
+        total_skipped = 0
+        
+        for rule in league_rules:
+            league = rule.league
+            spread_lock_weekday = rule.spread_lock_weekday
+            
+            logger.info(f"Processing league '{league.name}' (lock day: {spread_lock_weekday})")
+            
+            # Get all league games for this week that don't have locked spreads yet
+            league_games = LeagueGame.objects.filter(
+                league=league,
+                game__week=week_obj,
+                is_active=True,
+                locked_home_spread__isnull=True
+            ).select_related('game')
+            
+            for league_game in league_games:
+                game = league_game.game
+                
+                # Get the spread lock target date (the specified weekday of the game week)
+                # Calculate which day is the spread_lock_weekday in the week
+                week_start = week_obj.start_date
+                
+                # Calculate the target lock date (spread_lock_weekday within the week)
+                days_until_lock_day = (spread_lock_weekday - week_start.weekday()) % 7
+                lock_target_date = week_start + timedelta(days=days_until_lock_day)
+                
+                # Get all spreads for this game ordered by timestamp
+                game_spreads = GameSpread.objects.filter(game=game).order_by('timestamp')
+                
+                if not game_spreads.exists():
+                    logger.warning(f"No spreads found for game {game.id} ({game})")
+                    total_skipped += 1
+                    continue
+                
+                # Find the best spread according to the locking rules:
+                # 1. Prefer spread from lock_target_date
+                # 2. Otherwise, use next spread after lock_target_date
+                # 3. Otherwise, use latest spread
+                
+                spread_to_use = None
+                
+                # Try to find spread from the lock target date
+                for spread in game_spreads:
+                    if spread.timestamp.date() == lock_target_date:
+                        spread_to_use = spread
+                        logger.debug(f"Found spread from lock day {lock_target_date} for game {game.id}")
+                        break
+                
+                # If no spread from lock day, find the next spread after lock day
+                if not spread_to_use:
+                    for spread in game_spreads:
+                        if spread.timestamp.date() > lock_target_date:
+                            spread_to_use = spread
+                            logger.debug(f"Using next spread after {lock_target_date} (from {spread.timestamp.date()}) for game {game.id}")
+                            break
+                
+                # If still no spread, use the latest one
+                if not spread_to_use:
+                    spread_to_use = game_spreads.last()
+                    logger.debug(f"Using latest spread (from {spread_to_use.timestamp.date()}) for game {game.id}")
+                
+                # Lock the spread
+                if spread_to_use:
+                    league_game.locked_home_spread = spread_to_use.home_spread
+                    league_game.locked_away_spread = spread_to_use.away_spread
+                    league_game.spread_locked_at = timezone.now()
+                    league_game.save(update_fields=['locked_home_spread', 'locked_away_spread', 'spread_locked_at'])
+                    
+                    total_locked += 1
+                    logger.debug(f"Locked spread for {game} in league '{league.name}': {spread_to_use.home_spread}/{spread_to_use.away_spread}")
+                else:
+                    logger.warning(f"Could not find suitable spread for game {game.id} ({game})")
+                    total_skipped += 1
+        
+        logger.info(
+            f"Spread locking complete for {season_year} week {week}: "
+            f"{total_locked} spreads locked, {total_skipped} skipped"
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in lock_league_spreads_for_week task: {e}", exc_info=True)
 
 
 @shared_task(name='cfb.tasks.initialize_season')

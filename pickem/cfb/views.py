@@ -491,6 +491,7 @@ def settings_view(request):
                         defaults={
                             'points_per_correct_pick': int(request.POST.get("points_per_correct_pick", 1)),
                             'key_pick_extra_points': int(request.POST.get("key_pick_extra_points", 1)),
+                            'against_the_spread_enabled': request.POST.get("against_the_spread_enabled") == "on",
                             'spread_lock_weekday': int(request.POST.get("spread_lock_weekday", 2)),
                             'pickable_games_per_week': int(request.POST.get("pickable_games_per_week", 10)),
                             'picks_per_week': int(request.POST.get("picks_per_week", 0)),
@@ -503,6 +504,7 @@ def settings_view(request):
                         # Update existing rules
                         league_rules.points_per_correct_pick = int(request.POST.get("points_per_correct_pick", 1))
                         league_rules.key_pick_extra_points = int(request.POST.get("key_pick_extra_points", 1))
+                        league_rules.against_the_spread_enabled = request.POST.get("against_the_spread_enabled") == "on"
                         league_rules.spread_lock_weekday = int(request.POST.get("spread_lock_weekday", 2))
                         league_rules.pickable_games_per_week = int(request.POST.get("pickable_games_per_week", 10))
                         league_rules.picks_per_week = int(request.POST.get("picks_per_week", 0))
@@ -544,6 +546,10 @@ def settings_view(request):
             if active_season:
                 league_rules = LeagueRules.objects.filter(league=league, season=active_season).first()
             
+            # Check if against_the_spread is enabled for this league
+            ats_enabled = league_rules.against_the_spread_enabled if league_rules else False
+            spread_lock_weekday = league_rules.spread_lock_weekday if league_rules else 2
+            
             # Count how many games are being selected
             selected_games = []
             for game_id in game_ids:
@@ -583,6 +589,50 @@ def settings_view(request):
                             league_game.spread_locked_at = timezone.now()
                             league_game.save(update_fields=["locked_home_spread", "locked_away_spread", "spread_locked_at"])
                             locked_count += 1
+                        elif ats_enabled and league_game.locked_home_spread is None:
+                            # If against_the_spread is enabled and no locked spread yet, apply the spread lock rule
+                            from .models import GameSpread, Week
+                            from datetime import timedelta
+                            
+                            # Get the week for this game
+                            week_obj = game.week
+                            if week_obj:
+                                week_start = week_obj.start_date
+                                
+                                # Calculate the target lock date (spread_lock_weekday within the week)
+                                days_until_lock_day = (spread_lock_weekday - week_start.weekday()) % 7
+                                lock_target_date = week_start + timedelta(days=days_until_lock_day)
+                                
+                                # Get all spreads for this game ordered by timestamp
+                                game_spreads = GameSpread.objects.filter(game=game).order_by('timestamp')
+                                
+                                if game_spreads.exists():
+                                    spread_to_use = None
+                                    
+                                    # Try to find spread from the lock target date
+                                    for spread in game_spreads:
+                                        if spread.timestamp.date() == lock_target_date:
+                                            spread_to_use = spread
+                                            break
+                                    
+                                    # If no spread from lock day, find the next spread after lock day
+                                    if not spread_to_use:
+                                        for spread in game_spreads:
+                                            if spread.timestamp.date() > lock_target_date:
+                                                spread_to_use = spread
+                                                break
+                                    
+                                    # If still no spread, use the latest one
+                                    if not spread_to_use:
+                                        spread_to_use = game_spreads.last()
+                                    
+                                    # Lock the spread
+                                    if spread_to_use:
+                                        league_game.locked_home_spread = spread_to_use.home_spread
+                                        league_game.locked_away_spread = spread_to_use.away_spread
+                                        league_game.spread_locked_at = timezone.now()
+                                        league_game.save(update_fields=['locked_home_spread', 'locked_away_spread', 'spread_locked_at'])
+                                        locked_count += 1
                         elif not created:
                             # Just ensure it's active
                             league_game.is_active = True

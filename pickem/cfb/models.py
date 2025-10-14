@@ -44,11 +44,17 @@ class LeagueRules(models.Model):
     points_per_correct_pick = models.IntegerField(default=1, help_text="Points awarded for each correct pick")
     key_pick_extra_points = models.IntegerField(default=1, help_text="Extra points for correct key picks")
     
+    # Game Mode
+    against_the_spread_enabled = models.BooleanField(
+        default=True,
+        help_text="Allow users to pick against the spread"
+    )
+    
     # Game Selection Rules
     spread_lock_weekday = models.IntegerField(
         choices=WEEKDAY_CHOICES, 
         default=2,  # Wednesday
-        help_text="Day of the week when spreads lock in place"
+        help_text="Day of the week when spreads lock in place if against the spread is enabled"
     )
     pickable_games_per_week = models.IntegerField(
         default=10, 
