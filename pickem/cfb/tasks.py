@@ -20,12 +20,7 @@ from .services.live import grade_picks_for_game, fetch_and_store_live_scores
 logger = logging.getLogger(__name__)
 
 
-@shared_task(
-    bind=True,
-    name='cfb.tasks.poll_espn_scores',
-    max_retries=3,
-    default_retry_delay=60,
-)
+@shared_task(bind=True, name='cfb.tasks.poll_espn_scores', max_retries=3, default_retry_delay=60,)
 def poll_espn_scores(self):
     """
     Main task to poll ESPN for live game scores and update database.
@@ -205,12 +200,7 @@ def sync_upcoming_games():
         logger.error(f"Error syncing upcoming games: {e}", exc_info=True)
 
 
-@shared_task(
-    bind=True,
-    name='cfb.tasks.update_spreads',
-    max_retries=3,
-    default_retry_delay=300,
-)
+@shared_task(bind=True, name='cfb.tasks.update_spreads', max_retries=3, default_retry_delay=300,)
 def update_spreads(self, season_year: int, season_type: str = 'regular', week: int = None):
     """
     Periodic task to update game spreads/odds from CFBD.
@@ -364,12 +354,7 @@ def update_spreads(self, season_year: int, season_type: str = 'regular', week: i
         raise self.retry(exc=exc)
 
 
-@shared_task(
-    bind=True,
-    name='cfb.tasks.update_rankings',
-    max_retries=3,
-    default_retry_delay=300,
-)
+@shared_task(bind=True, name='cfb.tasks.update_rankings', max_retries=3, default_retry_delay=300,)
 def update_rankings(self, season_year: int, season_type: str = 'regular', week: int = None):
     """
     Update rankings for a given season and week.
