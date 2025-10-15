@@ -37,6 +37,13 @@ class LeagueRules(models.Model):
         (6, "Sunday"),
     ]
     
+    TIEBREAKER_CHOICES = [
+        (0, "None"),
+        (1, "Correct Key Picks (if enabled)"),
+        (2, "Total Points"),
+        (3, "Correct Picks"),
+    ]
+    
     league = models.ForeignKey(League, on_delete=models.CASCADE, related_name="rules")
     season = models.ForeignKey('Season', on_delete=models.CASCADE, related_name="league_rules")
     
@@ -48,6 +55,12 @@ class LeagueRules(models.Model):
     against_the_spread_enabled = models.BooleanField(
         default=True,
         help_text="Allow users to pick against the spread"
+    )
+    
+    tiebreaker = models.IntegerField(
+        choices=TIEBREAKER_CHOICES,
+        default=0,
+        help_text="Tiebreaker rule"
     )
     
     # Game Selection Rules
@@ -227,10 +240,10 @@ class Game(models.Model):
     # Odds snapshots
     opening_home_spread = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     opening_away_spread = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    opening_total = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    opening_over_under = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
     current_home_spread = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     current_away_spread = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    current_total = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    current_over_under = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
 
     # Live status fields
     home_score = models.PositiveIntegerField(null=True, blank=True)
@@ -310,6 +323,8 @@ class LeagueGame(models.Model):
     locked_away_spread = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     spread_locked_at = models.DateTimeField(null=True, blank=True)
     
+    is_total_points_game = models.BooleanField(default=False)
+    
     # When this game was added to the league
     selected_at = models.DateTimeField(auto_now_add=True)
     
@@ -346,6 +361,8 @@ class Pick(models.Model):
     is_key_pick = models.BooleanField(default=False)
     is_correct = models.BooleanField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_total_points_game = models.BooleanField(default=False)
+    points_guess = models.IntegerField(null=True, blank=True)
 
     class Meta:
         unique_together = ("league", "game", "user")  # One pick per user per game per league

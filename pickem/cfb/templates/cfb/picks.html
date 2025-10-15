@@ -163,6 +163,46 @@
             {% endwith %}
             {% endfor %}
         </div>
+        
+        <!-- Total Points Tiebreaker Input -->
+        {% if league_rules and league_rules.tiebreaker == 2 and total_points_game %}
+        <div class="card bg-base-100 shadow-xl mt-4">
+            <div class="card-body p-3 md:p-4">
+                <h3 class="card-title text-lg md:text-xl mb-2">
+                    <i class="fas fa-calculator text-success mr-2"></i>
+                    Tiebreaker: Total Points Prediction
+                </h3>
+                <p class="text-sm text-base-content/70 mb-3">
+                    Predict the total combined points for <strong>{{ total_points_game.away_team.name }} @ {{ total_points_game.home_team.name }}</strong>
+                </p>
+                
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Your Prediction</span>
+                    </label>
+                    <input type="number" 
+                           name="total_points_guess" 
+                           id="total-points-input"
+                           value="{{ total_points_pick.points_guess|default:'' }}" 
+                           min="0"
+                           step="1"
+                           placeholder="e.g., 45"
+                           class="input input-bordered input-primary" />
+                    <label class="label">
+                        <span class="label-text-alt text-base-content/60">Enter your prediction for the combined final score</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Save All Button - Bottom -->
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary btn-md md:btn-lg w-full shadow-xl">
+                <i class="fas fa-save mr-2"></i>
+                Save All Picks
+            </button>
+        </div>
     </form>
 {% elif current_league %}
     <div class="card bg-base-100 shadow-xl">
@@ -337,6 +377,14 @@
                 const requiredKeyPicks = {{ league_rules.number_of_key_picks }};
                 if (keyPicksMade < requiredKeyPicks) {
                     warnings.push(`You've only made ${keyPicksMade} key pick${keyPicksMade !== 1 ? 's' : ''} out of ${requiredKeyPicks} allowed.`);
+                }
+            {% endif %}
+            
+            // Warning 3: Total points prediction not filled
+            {% if league_rules and league_rules.tiebreaker == 2 and total_points_game %}
+                const totalPointsInput = document.getElementById('total-points-input');
+                if (totalPointsInput && !totalPointsInput.value) {
+                    warnings.push('You have not entered a total points prediction for the tiebreaker.');
                 }
             {% endif %}
             

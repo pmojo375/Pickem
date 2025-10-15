@@ -232,6 +232,50 @@ def picks_view(request):
                     errors.append(f"Invalid game or team selection")
                     continue
         
+        # Handle total points prediction if tiebreaker is enabled
+        if league_rules and league_rules.tiebreaker == 2:
+            total_points_guess = request.POST.get("total_points_guess")
+            
+            # Find the game marked as total points game for this league
+            total_points_league_game = LeagueGame.objects.filter(
+                league=league,
+                is_total_points_game=True,
+                is_active=True
+            ).first()
+            
+            if total_points_league_game and total_points_guess:
+                try:
+                    points_guess_value = int(total_points_guess)
+                    game = total_points_league_game.game
+                    
+                    # Check if game has started
+                    if not game.has_started():
+                        # Find existing pick for this game (may or may not exist yet)
+                        pick = Pick.objects.filter(
+                            user=request.user,
+                            league=league,
+                            game=game
+                        ).first()
+                        
+                        if pick:
+                            # Update existing pick with total points guess
+                            pick.points_guess = points_guess_value
+                            pick.is_total_points_game = True
+                            pick.save(update_fields=["points_guess", "is_total_points_game"])
+                        else:
+                            # Create a new pick with just the total points guess
+                            # Use home team as placeholder (user hasn't made team pick yet)
+                            Pick.objects.create(
+                                user=request.user,
+                                league=league,
+                                game=game,
+                                picked_team=game.home_team,
+                                points_guess=points_guess_value,
+                                is_total_points_game=True
+                            )
+                except (ValueError, TypeError):
+                    errors.append("Invalid total points prediction value.")
+        
         # Show results
         if saved_count > 0:
             messages.success(request, f"Successfully saved {saved_count} pick{'s' if saved_count != 1 else ''}! 🏈")
@@ -285,12 +329,34 @@ def picks_view(request):
     # Combine league_games with picks
     games_with_picks = [(lg, existing_picks_by_game_id.get(lg.game.id)) for lg in league_games]
     
+    # Get total points game if tiebreaker is enabled
+    total_points_game = None
+    total_points_pick = None
+    if league_rules and league_rules.tiebreaker == 2:
+        # Find the game marked as total points game for this league
+        total_points_league_game = LeagueGame.objects.filter(
+            league=league,
+            is_total_points_game=True,
+            is_active=True
+        ).select_related('game__home_team', 'game__away_team').first()
+        
+        if total_points_league_game:
+            total_points_game = total_points_league_game.game
+            # Get existing pick for this game (which may have total points prediction)
+            total_points_pick = Pick.objects.filter(
+                user=request.user,
+                league=league,
+                game=total_points_game
+            ).first()
+    
     context = {
         "games_with_picks": games_with_picks,
         "current_league": league,
         "user_leagues": user_leagues,
         "league_rules": league_rules,
         "current_key_picks_count": current_key_picks_count,
+        "total_points_game": total_points_game,
+        "total_points_pick": total_points_pick,
     }
     return render(request, "cfb/picks.html", context)
 
@@ -497,6 +563,7 @@ def settings_view(request):
                             'picks_per_week': int(request.POST.get("picks_per_week", 0)),
                             'key_picks_enabled': request.POST.get("key_picks_enabled") == "on",
                             'number_of_key_picks': int(request.POST.get("number_of_key_picks", 1)),
+                            'tiebreaker': int(request.POST.get("tiebreaker", 0)),
                         }
                     )
                     
@@ -510,6 +577,7 @@ def settings_view(request):
                         league_rules.picks_per_week = int(request.POST.get("picks_per_week", 0))
                         league_rules.key_picks_enabled = request.POST.get("key_picks_enabled") == "on"
                         league_rules.number_of_key_picks = int(request.POST.get("number_of_key_picks", 1))
+                        league_rules.tiebreaker = int(request.POST.get("tiebreaker", 0))
                         league_rules.save()
                     
                     action_word = "created" if created else "updated"
@@ -663,6 +731,38 @@ def settings_view(request):
                         
                 except Game.DoesNotExist:
                     continue
+            
+            # Handle total points game selection
+            total_points_game_id = request.POST.get("total_points_game_id")
+            
+            # Clear any existing total points game for this league
+            old_total_points_games = LeagueGame.objects.filter(league=league, is_total_points_game=True)
+            for old_game in old_total_points_games:
+                old_game.is_total_points_game = False
+                old_game.save(update_fields=["is_total_points_game"])
+                
+                # Clear is_total_points_game flag from any picks for this game
+                Pick.objects.filter(league=league, game=old_game.game, is_total_points_game=True).update(is_total_points_game=False)
+            
+            # Set the new total points game if one was selected
+            if total_points_game_id:
+                try:
+                    game = Game.objects.get(pk=total_points_game_id)
+                    # Verify this game is in the selected games
+                    league_game = LeagueGame.objects.get(league=league, game=game, is_active=True)
+                    league_game.is_total_points_game = True
+                    league_game.save(update_fields=["is_total_points_game"])
+                    
+                    # Re-enable is_total_points_game flag for any picks that have points_guess for this game
+                    # This handles the case where admin changes tiebreaker game and then changes it back
+                    Pick.objects.filter(
+                        league=league,
+                        game=game,
+                        points_guess__isnull=False
+                    ).update(is_total_points_game=True)
+                except (Game.DoesNotExist, LeagueGame.DoesNotExist):
+                    # Silently ignore if game not found or not selected
+                    pass
             
             # Show results
             if selected_count > 0:

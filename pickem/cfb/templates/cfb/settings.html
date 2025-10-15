@@ -210,6 +210,25 @@
                         <span class="label-text-alt text-base-content/60">Number of key picks allowed weekly</span>
                     </label>
                 </div>
+                
+                <!-- Tiebreaker -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">
+                            <i class="fas fa-equals text-info mr-1"></i>
+                            Tiebreaker Method
+                        </span>
+                    </label>
+                    <select name="tiebreaker" id="tiebreaker-select" class="select select-bordered">
+                        <option value="0" {% if league_rules.tiebreaker == 0 %}selected{% endif %}>None</option>
+                        <option value="1" {% if league_rules.tiebreaker == 1 %}selected{% endif %} data-requires-key-picks="true">Correct Key Picks (if enabled)</option>
+                        <option value="2" {% if league_rules.tiebreaker == 2 %}selected{% endif %}>Total Points</option>
+                        <option value="3" {% if league_rules.tiebreaker == 3 %}selected{% endif %}>Correct Picks</option>
+                    </select>
+                    <label class="label">
+                        <span class="label-text-alt text-base-content/60">Method for breaking ties</span>
+                    </label>
+                </div>
             </div>
             
             <div class="card-actions justify-end mt-6">
@@ -241,6 +260,7 @@
         </div>
     </div>
 </div>
+
 
 <!-- Games Selection -->
 <div class="card bg-base-100 shadow-xl">
@@ -281,6 +301,33 @@
                     <i class="fas fa-star mr-2"></i>
                     Select All AP Top 25 Games
                 </button>
+            </div>
+            
+            <!-- Total Points Tiebreaker Game Selection -->
+            <div class="mb-4" id="total-points-section" style="display: none;">
+                <div class="card bg-base-200 border-2 border-success">
+                    <div class="card-body p-4">
+                        <h3 class="font-bold text-lg flex items-center gap-2 mb-2">
+                            <i class="fas fa-calculator text-success"></i>
+                            Total Points Tiebreaker Game
+                        </h3>
+                        <p class="text-sm text-base-content/70 mb-3">
+                            Select one of the checked games below as the tiebreaker game for total points predictions.
+                        </p>
+                        
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-semibold">Tiebreaker Game</span>
+                            </label>
+                            <select name="total_points_game_id" id="total-points-game-select" class="select select-bordered select-success">
+                                <option value="">None (will be cleared)</option>
+                            </select>
+                            <label class="label">
+                                <span class="label-text-alt text-base-content/60">Only checked games are available</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <div class="grid grid-cols-1 gap-3">
@@ -434,6 +481,131 @@
     if (gamesForm) {
       gamesForm.addEventListener('submit', function(e) {
         lockSpreadField.value = lockSpreadCheckbox.checked ? 'on' : '';
+      });
+    }
+    
+    // Handle tiebreaker selection
+    const tiebreakerSelect = document.getElementById('tiebreaker-select');
+    const totalPointsSection = document.getElementById('total-points-section');
+    const keyPicksCheckbox = document.querySelector('input[name="key_picks_enabled"]');
+    const leagueRulesForm = document.getElementById('league-rules-form');
+    
+    function updateTiebreakerUI() {
+      const selectedValue = tiebreakerSelect.value;
+      const keyPicksEnabled = keyPicksCheckbox ? keyPicksCheckbox.checked : false;
+      
+      // Show/hide total points section
+      if (selectedValue === '2') {
+        totalPointsSection.style.display = 'block';
+      } else {
+        totalPointsSection.style.display = 'none';
+      }
+      
+      // Disable "Correct Key Picks" option if key picks are not enabled
+      const keyPickOption = tiebreakerSelect.querySelector('option[value="1"]');
+      if (keyPickOption) {
+        if (!keyPicksEnabled) {
+          keyPickOption.disabled = true;
+          if (selectedValue === '1') {
+            tiebreakerSelect.value = '0'; // Reset to None if key picks option was selected
+          }
+        } else {
+          keyPickOption.disabled = false;
+        }
+      }
+    }
+    
+    // Initial update
+    if (tiebreakerSelect && totalPointsSection) {
+      updateTiebreakerUI();
+      
+      // Listen for changes
+      tiebreakerSelect.addEventListener('change', updateTiebreakerUI);
+      if (keyPicksCheckbox) {
+        keyPicksCheckbox.addEventListener('change', updateTiebreakerUI);
+      }
+    }
+    
+    // Update total points game dropdown based on selected games
+    const totalPointsGameSelect = document.getElementById('total-points-game-select');
+    
+    function updateTotalPointsGameDropdown() {
+      if (!totalPointsGameSelect) return;
+      
+      // Get current selection
+      const currentSelection = totalPointsGameSelect.value;
+      
+      // Clear all options except the first (None)
+      totalPointsGameSelect.innerHTML = '<option value="">None (will be cleared)</option>';
+      
+      // Add options for all checked games
+      const gameCheckboxes = document.querySelectorAll('.game-checkbox');
+      gameCheckboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+          const gameId = checkbox.name.match(/game_(\d+)_select/)[1];
+          const gameCard = checkbox.closest('.game-card');
+          const gameCardContent = gameCard.querySelector('.game-card-content');
+          
+          // Extract game info from the card - get all team names
+          const teamNames = gameCardContent.querySelectorAll('.font-semibold.text-sm.md\\:text-base');
+          const awayTeamName = teamNames[0]?.textContent?.trim() || '';
+          const homeTeamName = teamNames[1]?.textContent?.trim() || '';
+          const kickoffTime = gameCardContent.querySelector('.badge.badge-ghost')?.textContent?.trim() || '';
+          
+          const option = document.createElement('option');
+          option.value = gameId;
+          option.textContent = `${awayTeamName} @ ${homeTeamName} - ${kickoffTime}`;
+          
+          // Check if this game is currently marked as total points game
+          const hiddenInput = checkbox.nextElementSibling; // game_X_id input
+          if (hiddenInput) {
+            const checkGameId = hiddenInput.value;
+            // Check if this was the selected total points game from server
+            {% if games_with_selection %}
+            {% for g, lg in games_with_selection %}
+            {% if lg and lg.is_total_points_game %}
+            if (checkGameId === '{{ g.id }}') {
+              option.selected = true;
+            }
+            {% endif %}
+            {% endfor %}
+            {% endif %}
+          }
+          
+          totalPointsGameSelect.appendChild(option);
+        }
+      });
+      
+      // Restore selection if it's still available
+      if (currentSelection) {
+        const optionExists = Array.from(totalPointsGameSelect.options).some(opt => opt.value === currentSelection);
+        if (optionExists) {
+          totalPointsGameSelect.value = currentSelection;
+        }
+      }
+    }
+    
+    // Initial population and setup listeners
+    if (totalPointsGameSelect) {
+      updateTotalPointsGameDropdown();
+      
+      // Update dropdown when games are checked/unchecked
+      const gameCheckboxes = document.querySelectorAll('.game-checkbox');
+      gameCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateTotalPointsGameDropdown);
+      });
+    }
+    
+    // Validate tiebreaker selection on form submit
+    if (leagueRulesForm && tiebreakerSelect && keyPicksCheckbox) {
+      leagueRulesForm.addEventListener('submit', function(e) {
+        const selectedValue = tiebreakerSelect.value;
+        const keyPicksEnabled = keyPicksCheckbox.checked;
+        
+        if (selectedValue === '1' && !keyPicksEnabled) {
+          e.preventDefault();
+          alert('Cannot select "Correct Key Picks" as tiebreaker when key picks are disabled. Please enable key picks first or select a different tiebreaker.');
+        }
       });
     }
     
