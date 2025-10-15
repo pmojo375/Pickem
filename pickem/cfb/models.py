@@ -57,6 +57,11 @@ class LeagueRules(models.Model):
         help_text="Allow users to pick against the spread"
     )
     
+    force_hooks = models.BooleanField(
+        default=False,
+        help_text="Force users to pick with hooks"
+    )
+    
     tiebreaker = models.IntegerField(
         choices=TIEBREAKER_CHOICES,
         default=0,
