@@ -259,7 +259,7 @@ class Game(models.Model):
         ]
 
     def __str__(self) -> str:
-        week_str = f"Week {self.week} - " if self.week else ""
+        week_str = f"Week {self.week.number} - " if self.week else ""
         return f"{week_str}{self.away_team} at {self.home_team}"
     
     def has_started(self):
@@ -307,7 +307,7 @@ class Ranking(models.Model):
         ]
     
     def __str__(self) -> str:
-        return f"{self.team.name} - #{self.rank} {self.poll} (Week {self.week}, {self.season.year})"
+        return f"{self.team.name} - #{self.rank} {self.poll} (Week {self.week.number}, {self.season.year})"
 
 
 class LeagueGame(models.Model):
