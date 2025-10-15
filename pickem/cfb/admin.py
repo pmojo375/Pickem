@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Season, Team, Game, GameSpread, Rules, Pick, League, LeagueMembership, LeagueGame, LeagueRules, Location, Week, Ranking
+from .models import Season, Team, Game, GameSpread, Pick, League, LeagueMembership, LeagueGame, LeagueRules, Location, Week, Ranking
 
 
 @admin.register(Season)
@@ -74,16 +74,6 @@ class GameSpreadAdmin(admin.ModelAdmin):
     autocomplete_fields = ("game",)
     readonly_fields = ("timestamp",)
     ordering = ("-timestamp",)
-
-
-@admin.register(Rules)
-class RulesAdmin(admin.ModelAdmin):
-    list_display = (
-        "season",
-        "max_key_picks_per_week",
-        "points_per_correct_pick",
-        "points_per_key_pick",
-    )
 
 
 @admin.register(Pick)

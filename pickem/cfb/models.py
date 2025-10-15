@@ -94,7 +94,8 @@ class LeagueRules(models.Model):
     class Meta:
         unique_together = ("league", "season")
         ordering = ["-season__year"]
-        verbose_name_plural = "League rules"
+        verbose_name_plural = "League Rules"
+        verbose_name = "League Rule"
 
     def __str__(self) -> str:
         return f"{self.league.name} - {self.season.year} Rules"
@@ -115,6 +116,9 @@ class LeagueMembership(models.Model):
     class Meta:
         unique_together = ("league", "user")
         ordering = ["-joined_at"]
+        
+        verbose_name = "League Membership"
+        verbose_name_plural = "League Memberships"
 
     def __str__(self) -> str:
         return f"{self.user.username} in {self.league.name} ({self.role})"
@@ -196,16 +200,6 @@ class Team(models.Model):
         return f"{self.name} ({self.season.year})"
 
 
-class Rules(models.Model):
-    season = models.OneToOneField(Season, on_delete=models.CASCADE, related_name="rules")
-    max_key_picks_per_week = models.PositiveIntegerField(default=1)
-    points_per_correct_pick = models.IntegerField(default=1)
-    points_per_key_pick = models.IntegerField(default=2)
-
-    def __str__(self) -> str:
-        return f"Rules {self.season.year}"
-
-
 class Week(models.Model):
     season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="weeks")
     number = models.PositiveIntegerField()
@@ -219,6 +213,9 @@ class Week(models.Model):
         indexes = [
             models.Index(fields=["season", "number", "season_type"]),
         ]
+        
+    def __str__(self) -> str:
+        return f"Week {self.number} - {self.season.year}"
 
 
 class Game(models.Model):
@@ -282,6 +279,8 @@ class GameSpread(models.Model):
         indexes = [
             models.Index(fields=["game", "-timestamp"]),
         ]
+        verbose_name = "Game Spread"
+        verbose_name_plural = "Game Spreads"
 
     def __str__(self) -> str:
         return f"{self.game} - {self.home_spread}/{self.away_spread} at {self.timestamp}"
@@ -337,6 +336,8 @@ class LeagueGame(models.Model):
         indexes = [
             models.Index(fields=["league", "game"]),
         ]
+        verbose_name = "League Game"
+        verbose_name_plural = "League Games"
 
     def __str__(self) -> str:
         return f"{self.league.name}: {self.game}"
