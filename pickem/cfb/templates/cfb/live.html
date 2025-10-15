@@ -126,13 +126,15 @@
                         <div class="text-center mt-2">
                             <div class="badge badge-secondary badge-sm">
                                 <i class="fas fa-lock mr-1"></i>
-                                {% if lg.locked_home_spread < 0 %}
-                                    {{ p.game.home_team.abbreviation|default:p.game.home_team.name }} {{ lg.locked_home_spread }}
-                                {% elif lg.locked_home_spread > 0 %}
-                                    {{ p.game.away_team.abbreviation|default:p.game.away_team.name }} -{{ lg.locked_home_spread }}
-                                {% else %}
-                                    Pick 'Em
-                                {% endif %}
+                                {% with display_spread=lg.locked_home_spread|apply_hooks:league_rules.force_hooks %}
+                                    {% if display_spread < 0 %}
+                                        {{ p.game.home_team.abbreviation|default:p.game.home_team.name }} {{ display_spread|floatformat:1 }}
+                                    {% elif display_spread > 0 %}
+                                        {{ p.game.away_team.abbreviation|default:p.game.away_team.name }} -{{ display_spread|floatformat:1 }}
+                                    {% else %}
+                                        Pick 'Em
+                                    {% endif %}
+                                {% endwith %}
                             </div>
                         </div>
                         {% endif %}

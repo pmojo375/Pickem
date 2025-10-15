@@ -106,6 +106,7 @@
                     <label class="label cursor-pointer justify-start gap-4">
                         <input type="checkbox" 
                                name="against_the_spread_enabled" 
+                               id="against_the_spread_enabled"
                                {% if league_rules.against_the_spread_enabled %}checked{% endif %}
                                class="checkbox checkbox-primary" />
                         <div>
@@ -119,11 +120,11 @@
                 </div>
                 
                 <!-- Spread Lock Weekday -->
-                <div class="form-control">
+                <div class="form-control ats-dependent-field" id="spread-lock-weekday-field" style="display: {% if league_rules.against_the_spread_enabled %}block{% else %}none{% endif %};">
                     <label class="label">
                         <span class="label-text font-semibold">
                             <i class="fas fa-calendar text-info mr-1"></i>
-                            Spread Lock Day (if ATS is enabled)
+                            Spread Lock Day
                         </span>
                     </label>
                     <select name="spread_lock_weekday" class="select select-bordered">
@@ -137,6 +138,23 @@
                     </select>
                     <label class="label">
                         <span class="label-text-alt text-base-content/60">Day when spreads lock in place</span>
+                    </label>
+                </div>
+                
+                <!-- Force Hooks (Half-Point Spreads) -->
+                <div class="form-control ats-dependent-field" id="force-hooks-field" style="display: {% if league_rules.against_the_spread_enabled %}block{% else %}none{% endif %};">
+                    <label class="label cursor-pointer justify-start gap-4">
+                        <input type="checkbox" 
+                               name="force_hooks" 
+                               {% if league_rules.force_hooks %}checked{% endif %}
+                               class="checkbox checkbox-primary" />
+                        <div>
+                            <span class="label-text font-semibold">
+                                <i class="fas fa-balance-scale text-info mr-1"></i>
+                                Force Hooks (Half-Point Spreads)
+                            </span>
+                            <p class="text-sm text-base-content/60">Convert whole number spreads to half-point spreads (e.g., 3 → 3.5) to prevent ties</p>
+                        </div>
                     </label>
                 </div>
                 
@@ -388,15 +406,31 @@
                                 {% if lg and lg.locked_home_spread is not None %}
                                 <span class="badge badge-warning badge-sm gap-1">
                                     <i class="fas fa-lock text-xs"></i>
-                                    {% if lg.locked_home_spread > 0 %}
-                                        {{ g.home_team.abbreviation|default:g.home_team.name }} -{{ lg.locked_home_spread }}
-                                    {% else %}
-                                        {{ g.away_team.abbreviation|default:g.away_team.name }} -{{ lg.locked_away_spread|floatformat:1 }}
-                                    {% endif %}
+                                    {% with display_spread=lg.locked_home_spread|apply_hooks:league_rules.force_hooks %}
+                                        {% if display_spread > 0 %}
+                                            {{ g.home_team.abbreviation|default:g.home_team.name }} -{{ display_spread|floatformat:1 }}
+                                        {% elif display_spread < 0 %}
+                                            {% with away_spread=lg.locked_away_spread|apply_hooks:league_rules.force_hooks %}
+                                                {{ g.away_team.abbreviation|default:g.away_team.name }} -{{ away_spread|floatformat:1 }}
+                                            {% endwith %}
+                                        {% else %}
+                                            Pick 'Em
+                                        {% endif %}
+                                    {% endwith %}
                                 </span>
                                 {% elif g.current_home_spread is not None %}
                                 <span class="badge badge-secondary badge-sm">
-                                    {% game_spread g %}
+                                    {% with display_spread=g.current_home_spread|apply_hooks:league_rules.force_hooks %}
+                                        {% if display_spread > 0 %}
+                                            {{ g.home_team.abbreviation|default:g.home_team.name }} -{{ display_spread|floatformat:1 }}
+                                        {% elif display_spread < 0 %}
+                                            {% with away_spread=g.current_away_spread|apply_hooks:league_rules.force_hooks %}
+                                                {{ g.away_team.abbreviation|default:g.away_team.name }} -{{ away_spread|floatformat:1 }}
+                                            {% endwith %}
+                                        {% else %}
+                                            Pick 'Em
+                                        {% endif %}
+                                    {% endwith %}
                                 </span>
                                 {% endif %}
                             </div>
@@ -482,6 +516,31 @@
       gamesForm.addEventListener('submit', function(e) {
         lockSpreadField.value = lockSpreadCheckbox.checked ? 'on' : '';
       });
+    }
+    
+    // Handle ATS-dependent fields (spread lock weekday and force hooks)
+    const atsCheckbox = document.getElementById('against_the_spread_enabled');
+    const spreadLockWeekdayField = document.getElementById('spread-lock-weekday-field');
+    const forceHooksField = document.getElementById('force-hooks-field');
+    
+    function updateATSDependentFields() {
+      const isAtsEnabled = atsCheckbox ? atsCheckbox.checked : false;
+      
+      if (spreadLockWeekdayField) {
+        spreadLockWeekdayField.style.display = isAtsEnabled ? 'block' : 'none';
+      }
+      
+      if (forceHooksField) {
+        forceHooksField.style.display = isAtsEnabled ? 'block' : 'none';
+      }
+    }
+    
+    // Initial update
+    if (atsCheckbox) {
+      updateATSDependentFields();
+      
+      // Listen for changes
+      atsCheckbox.addEventListener('change', updateATSDependentFields);
     }
     
     // Handle tiebreaker selection

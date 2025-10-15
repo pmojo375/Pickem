@@ -419,10 +419,17 @@ def live_view(request):
         league_game = league_games_dict.get(pick.game_id)
         picks_with_league_game.append((pick, league_game))
     
+    # Get league rules for force_hooks setting
+    active_season = Season.objects.filter(is_active=True).first()
+    league_rules = None
+    if active_season:
+        league_rules = LeagueRules.objects.filter(league=league, season=active_season).first()
+    
     context = {
         "picks_with_league_game": picks_with_league_game,
         "current_league": league,
         "user_leagues": user_leagues,
+        "league_rules": league_rules,
     }
     return render(request, "cfb/live.html", context)
 
@@ -558,6 +565,7 @@ def settings_view(request):
                             'points_per_correct_pick': int(request.POST.get("points_per_correct_pick", 1)),
                             'key_pick_extra_points': int(request.POST.get("key_pick_extra_points", 1)),
                             'against_the_spread_enabled': request.POST.get("against_the_spread_enabled") == "on",
+                            'force_hooks': request.POST.get("force_hooks") == "on",
                             'spread_lock_weekday': int(request.POST.get("spread_lock_weekday", 2)),
                             'pickable_games_per_week': int(request.POST.get("pickable_games_per_week", 10)),
                             'picks_per_week': int(request.POST.get("picks_per_week", 0)),
@@ -572,6 +580,7 @@ def settings_view(request):
                         league_rules.points_per_correct_pick = int(request.POST.get("points_per_correct_pick", 1))
                         league_rules.key_pick_extra_points = int(request.POST.get("key_pick_extra_points", 1))
                         league_rules.against_the_spread_enabled = request.POST.get("against_the_spread_enabled") == "on"
+                        league_rules.force_hooks = request.POST.get("force_hooks") == "on"
                         league_rules.spread_lock_weekday = int(request.POST.get("spread_lock_weekday", 2))
                         league_rules.pickable_games_per_week = int(request.POST.get("pickable_games_per_week", 10))
                         league_rules.picks_per_week = int(request.POST.get("picks_per_week", 0))

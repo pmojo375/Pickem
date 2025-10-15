@@ -186,3 +186,76 @@ def get_item(dictionary, key):
     if dictionary is None:
         return None
     return dictionary.get(key)
+
+
+@register.filter
+def apply_hooks(spread, force_hooks=False):
+    """
+    Apply hooks (half-point spreads) to a spread value if force_hooks is enabled.
+    If the spread is a whole number and force_hooks is True, round up to the next half point.
+    
+    Args:
+        spread: The spread value (can be None, int, float, or Decimal)
+        force_hooks: Whether to force hooks (half-point spreads)
+    
+    Returns:
+        The spread value with hooks applied if necessary, or the original value
+    """
+    if spread is None:
+        return spread
+    
+    if not force_hooks:
+        return spread
+    
+    # Convert to float for processing
+    try:
+        spread_val = float(spread)
+    except (ValueError, TypeError):
+        return spread
+    
+    # Check if it's a whole number
+    if spread_val == int(spread_val):
+        # Round up to next half point (e.g., 3.0 -> 3.5, -3.0 -> -3.5)
+        if spread_val > 0:
+            return spread_val + 0.5
+        elif spread_val < 0:
+            return spread_val - 0.5
+        else:
+            # For 0, we keep it as Pick 'Em
+            return spread_val
+    
+    # Already has a hook, return as is
+    return spread_val
+
+
+@register.filter
+def format_spread_display(spread, force_hooks=False):
+    """
+    Format a spread value for display, applying hooks if needed.
+    
+    Args:
+        spread: The spread value
+        force_hooks: Whether to force hooks
+    
+    Returns:
+        Formatted string like "-7", "-7.5", etc.
+    """
+    if spread is None:
+        return ""
+    
+    # Apply hooks if needed
+    spread_val = apply_hooks(spread, force_hooks)
+    
+    try:
+        spread_float = float(spread_val)
+    except (ValueError, TypeError):
+        return str(spread)
+    
+    if spread_float == 0:
+        return "0"
+    
+    # Format with one decimal place if not whole number
+    if spread_float == int(spread_float):
+        return f"{int(spread_float)}"
+    else:
+        return f"{spread_float:.1f}"
