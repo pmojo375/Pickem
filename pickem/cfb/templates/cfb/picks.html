@@ -269,10 +269,10 @@
         const keyPickCheckboxes = document.querySelectorAll('.key-pick-checkbox');
         
         function updateKeyPickUI() {
-            // Count currently checked key picks (excluding game-started ones)
+            // Count currently checked key picks (including game-started ones for quota)
             let checkedCount = 0;
             keyPickCheckboxes.forEach(checkbox => {
-                if (checkbox.checked && !checkbox.dataset.gameStarted) {
+                if (checkbox.checked) {
                     checkedCount++;
                 }
             });
