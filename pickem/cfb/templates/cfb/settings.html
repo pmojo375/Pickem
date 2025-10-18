@@ -34,13 +34,17 @@
 
 {% if current_league %}
 
-<!-- League Rules -->
-<div class="card bg-base-100 shadow-xl mb-6">
-    <div class="card-body">
-        <h2 class="card-title">
-            <i class="fas fa-gavel text-primary mr-2"></i>
-            League Rules
-        </h2>
+<!-- League Rules (Accordion) -->
+<div class="collapse collapse-arrow bg-base-100 shadow-xl mb-6 border border-base-300">
+    <input type="checkbox" class="peer" /> 
+    <div class="collapse-title text-xl font-bold">
+        <div class="flex items-center gap-2">
+            <i class="fas fa-gavel text-primary"></i>
+            <span>League Rules</span>
+            <span class="text-sm font-normal text-base-content/70 ml-2">(Click to expand)</span>
+        </div>
+    </div>
+    <div class="collapse-content">
         <p class="text-sm text-base-content/70 mb-4">Configure scoring, picking, and other rules for this league. Rules are season-specific.</p>
         
         {% if not active_season %}
@@ -260,25 +264,6 @@
     </div>
 </div>
 
-<!-- Spread Locking Option -->
-<div class="card bg-base-100 shadow-xl mb-6">
-    <div class="card-body">
-        <h2 class="card-title">
-            <i class="fas fa-lock text-warning mr-2"></i>
-            Spread Locking
-        </h2>
-        <div class="form-control">
-            <label class="label cursor-pointer justify-start gap-4">
-                <input type="checkbox" id="lock_spread_option" class="checkbox checkbox-warning" />
-                <div>
-                    <span class="label-text font-bold text-base">Lock spreads when selecting games</span>
-                    <p class="text-sm text-base-content/70">When checked, saving game selections will lock the current spreads for those games.</p>
-                </div>
-            </label>
-        </div>
-    </div>
-</div>
-
 
 <!-- Games Selection -->
 <div class="card bg-base-100 shadow-xl">
@@ -303,7 +288,6 @@
             {% csrf_token %}
             <input type="hidden" name="do" value="save_selections" />
             <input type="hidden" name="league_id" value="{{ current_league.id }}" />
-            <input type="hidden" name="lock_spread" value="" id="lock_spread_field" />
             
             <!-- Save All Button - Top -->
             <div class="mb-4">
@@ -506,18 +490,7 @@
 
 {% block extra_js %}
 <script>
-  // Sync the global lock spread checkbox with form submission
   document.addEventListener('DOMContentLoaded', function() {
-    const lockSpreadCheckbox = document.getElementById('lock_spread_option');
-    const gamesForm = document.getElementById('games-form');
-    const lockSpreadField = document.getElementById('lock_spread_field');
-    
-    if (gamesForm) {
-      gamesForm.addEventListener('submit', function(e) {
-        lockSpreadField.value = lockSpreadCheckbox.checked ? 'on' : '';
-      });
-    }
-    
     // Handle ATS-dependent fields (spread lock weekday and force hooks)
     const atsCheckbox = document.getElementById('against_the_spread_enabled');
     const spreadLockWeekdayField = document.getElementById('spread-lock-weekday-field');
