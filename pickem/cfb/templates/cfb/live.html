@@ -223,7 +223,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/live-score-updater.js' %}"></script>
+<script src="{% static 'js/live-score-updater.js' %}?v=5"></script>
 <script>
 /**
  * Initialize Live Score Updates
@@ -241,8 +241,17 @@
         return;
     }
     
+    console.log('[LiveScores] Games container found, initializing live score updater...');
+    
+    // Check if LiveScoreUpdater class exists
+    if (typeof LiveScoreUpdater === 'undefined') {
+        console.error('[LiveScores] ERROR: LiveScoreUpdater class not found! JavaScript file may not have loaded.');
+        return;
+    }
+    
     // Initialize the updater
-    const updater = new LiveScoreUpdater({
+    try {
+        const updater = new LiveScoreUpdater({
         apiEndpoint: '/api/games/',
         
         // Polling intervals (milliseconds)
@@ -343,6 +352,11 @@
     // Log initialization
     console.log('[LiveScores] Auto-update initialized and running');
     console.log('[LiveScores] Debug: window.liveScoreUpdater.getState()');
+    
+    } catch (error) {
+        console.error('[LiveScores] ERROR during initialization:', error);
+        console.error('[LiveScores] Stack trace:', error.stack);
+    }
     
 })();
 

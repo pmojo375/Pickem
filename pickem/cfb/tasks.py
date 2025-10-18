@@ -53,7 +53,6 @@ def poll_espn_scores(self):
         active_games = Game.objects.filter(
             season=active_season,
             kickoff__gte=start_date,
-            kickoff__lte=end_date,
             is_final=False,
             kickoff__lte=now
         )

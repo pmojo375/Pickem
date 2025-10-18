@@ -192,32 +192,38 @@ class LiveScoreUpdater {
         }
         
         try {
-            // Query for recent games using local browser date
-            // Format date as YYYY-MM-DD in local timezone (not UTC)
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            const localDate = `${year}-${month}-${day}`;
+            // Get the game IDs that are actually on the page
+            const gameElements = document.querySelectorAll('[data-game-id]');
+            const gameIds = Array.from(gameElements).map(el => el.getAttribute('data-game-id'));
             
-            // Also get yesterday's date to catch games that started late
-            const yesterday = new Date(now);
-            yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayDate = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+            console.log(`[LiveScoreUpdater] Found ${gameIds.length} games on page: ${gameIds.join(', ')}`);
             
-            // Query without date filter to get all recent games
-            // This avoids timezone issues and catches games from the last 2-3 days
-            const url = `${this.config.apiEndpoint}?limit=100`;
+            if (gameIds.length === 0) {
+                console.warn('[LiveScoreUpdater] No game elements found on page, skipping poll');
+                this.scheduleNextPoll();
+                return;
+            }
             
-            console.log(`[LiveScoreUpdater] Polling ${url} (Local date: ${localDate}, UTC would be: ${new Date().toISOString().split('T')[0]})`);
+            // Fetch data for ALL games (we'll filter client-side)
+            // Use a reasonable limit that should cover the current week
+            const url = `${this.config.apiEndpoint}?limit=500`;
+            
+            console.log(`[LiveScoreUpdater] Polling ${url}`);
+            
+            // Create abort controller for manual timeout (better browser compatibility)
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
             
             const response = await fetch(url, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
                 },
-                signal: AbortSignal.timeout(10000) // 10 second timeout
+                signal: controller.signal
             });
+            
+            // Clear timeout if request succeeds
+            clearTimeout(timeoutId);
             
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -225,8 +231,17 @@ class LiveScoreUpdater {
             
             const data = await response.json();
             
-            // Process the response
-            this.processGamesData(data);
+            // Filter to only games that are on the page
+            const gameIdsOnPage = new Set(gameIds);
+            const relevantGames = data.games.filter(game => gameIdsOnPage.has(String(game.id)));
+            
+            console.log(`[LiveScoreUpdater] API returned ${data.games.length} games, ${relevantGames.length} are on this page`);
+            
+            // Process only the relevant games
+            this.processGamesData({
+                ...data,
+                games: relevantGames
+            });
             
             // Reset retry count on success
             this.state.retryCount = 0;
@@ -263,8 +278,18 @@ class LiveScoreUpdater {
             const existingGame = this.state.gamesData.get(game.id);
             
             if (!existingGame) {
-                // New game
+                // New game - store it and do initial UI update
+                console.log(`[LiveScoreUpdater] New game detected: ${game.id} (${game.away_team.name} @ ${game.home_team.name})`);
                 this.state.gamesData.set(game.id, game);
+                
+                // Do initial update to sync with current state
+                const initialChanges = [
+                    { type: 'home_score', old: null, new: game.home_score },
+                    { type: 'away_score', old: null, new: game.away_score },
+                    { type: 'quarter', old: null, new: game.quarter },
+                    { type: 'clock', old: null, new: game.clock }
+                ];
+                this.updateGameUI(game, initialChanges);
             } else {
                 // Check what changed
                 const changes = this.detectChanges(existingGame, game);
@@ -279,6 +304,8 @@ class LiveScoreUpdater {
                     this.updateGameUI(game, changes);
                     
                     updatedGames.push({ game, changes });
+                } else {
+                    console.log(`[LiveScoreUpdater] Game ${game.id} - no changes`);
                 }
             }
         });
@@ -320,6 +347,13 @@ class LiveScoreUpdater {
     detectChanges(oldGame, newGame) {
         const changes = [];
         
+        console.log(`[LiveScoreUpdater] Comparing game ${newGame.id}:`);
+        console.log(`  home_score: ${oldGame.home_score} → ${newGame.home_score}`);
+        console.log(`  away_score: ${oldGame.away_score} → ${newGame.away_score}`);
+        console.log(`  quarter: ${oldGame.quarter} → ${newGame.quarter}`);
+        console.log(`  clock: "${oldGame.clock}" → "${newGame.clock}"`);
+        console.log(`  is_final: ${oldGame.is_final} → ${newGame.is_final}`);
+        
         // Check score changes
         if (oldGame.home_score !== newGame.home_score) {
             changes.push({
@@ -346,8 +380,11 @@ class LiveScoreUpdater {
             });
         }
         
-        // Check clock changes
-        if (oldGame.clock !== newGame.clock) {
+        // Check clock changes - normalize empty string and null
+        const oldClock = oldGame.clock || '';
+        const newClock = newGame.clock || '';
+        if (oldClock !== newClock) {
+            console.log(`  ✓ Clock changed: "${oldClock}" → "${newClock}"`);
             changes.push({
                 type: 'clock',
                 old: oldGame.clock,
@@ -364,6 +401,8 @@ class LiveScoreUpdater {
             });
         }
         
+        console.log(`  → Total changes: ${changes.length}`);
+        
         return changes;
     }
     
@@ -374,10 +413,17 @@ class LiveScoreUpdater {
         // Find game element by data-game-id attribute
         const gameElement = document.querySelector(`[data-game-id="${game.id}"]`);
         
+        console.log(`[LiveScoreUpdater] Updating UI for game ${game.id}...`);
+        console.log(`[LiveScoreUpdater] Found element:`, gameElement !== null);
+        
         if (!gameElement) {
-            console.warn(`[LiveScoreUpdater] Game element not found for game ${game.id}`);
+            console.warn(`[LiveScoreUpdater] ❌ Game element not found for game ${game.id}`);
+            console.warn(`[LiveScoreUpdater] Available game elements:`, 
+                Array.from(document.querySelectorAll('[data-game-id]')).map(el => el.getAttribute('data-game-id')));
             return;
         }
+        
+        console.log(`[LiveScoreUpdater] ✓ Found game element, applying ${changes.length} changes`);
         
         // Save scroll position
         const scrollY = window.scrollY;
@@ -423,10 +469,15 @@ class LiveScoreUpdater {
         const scoreSelector = `[data-score="${team}"]`;
         const scoreElement = gameElement.querySelector(scoreSelector);
         
+        console.log(`[LiveScoreUpdater] Updating ${team} score to ${newScore}`);
+        
         if (!scoreElement) {
-            console.warn(`[LiveScoreUpdater] Score element not found for ${team}`);
+            console.warn(`[LiveScoreUpdater] ❌ Score element not found for ${team} (selector: ${scoreSelector})`);
             return;
         }
+        
+        const oldValue = scoreElement.textContent;
+        console.log(`[LiveScoreUpdater] ✓ Updating ${team} score: ${oldValue} → ${newScore}`);
         
         // Update score value
         scoreElement.textContent = newScore || '-';
@@ -436,6 +487,8 @@ class LiveScoreUpdater {
         // Force reflow to restart animation
         void scoreElement.offsetWidth;
         scoreElement.classList.add('score-pulse');
+        
+        console.log(`[LiveScoreUpdater] ✓ Applied pulse animation to ${team} score`);
         
         // Remove animation class after duration
         setTimeout(() => {
