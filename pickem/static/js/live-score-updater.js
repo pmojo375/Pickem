@@ -176,7 +176,7 @@ class LiveScoreUpdater {
         
         this.state.currentInterval = this.getCurrentInterval();
         
-        console.log(`[LiveScoreUpdater] Next poll in ${this.state.currentInterval}ms`);
+        // Next poll scheduled
         
         this.state.pollTimer = setTimeout(() => {
             this.poll();
@@ -196,19 +196,14 @@ class LiveScoreUpdater {
             const gameElements = document.querySelectorAll('[data-game-id]');
             const gameIds = Array.from(gameElements).map(el => el.getAttribute('data-game-id'));
             
-            console.log(`[LiveScoreUpdater] Found ${gameIds.length} games on page: ${gameIds.join(', ')}`);
-            
             if (gameIds.length === 0) {
-                console.warn('[LiveScoreUpdater] No game elements found on page, skipping poll');
+                console.warn('[LiveScores] No games on page, skipping poll');
                 this.scheduleNextPoll();
                 return;
             }
             
             // Fetch data for ALL games (we'll filter client-side)
-            // Use a reasonable limit that should cover the current week
             const url = `${this.config.apiEndpoint}?limit=500`;
-            
-            console.log(`[LiveScoreUpdater] Polling ${url}`);
             
             // Create abort controller for manual timeout (better browser compatibility)
             const controller = new AbortController();
@@ -234,8 +229,6 @@ class LiveScoreUpdater {
             // Filter to only games that are on the page
             const gameIdsOnPage = new Set(gameIds);
             const relevantGames = data.games.filter(game => gameIdsOnPage.has(String(game.id)));
-            
-            console.log(`[LiveScoreUpdater] API returned ${data.games.length} games, ${relevantGames.length} are on this page`);
             
             // Process only the relevant games
             this.processGamesData({
@@ -265,8 +258,6 @@ class LiveScoreUpdater {
         let liveGameCount = 0;
         let updatedGames = [];
         
-        console.log(`[LiveScoreUpdater] Processing ${games.length} games`);
-        
         games.forEach(game => {
             // Check if game is live
             const isLive = this.isGameLive(game);
@@ -279,7 +270,6 @@ class LiveScoreUpdater {
             
             if (!existingGame) {
                 // New game - store it and do initial UI update
-                console.log(`[LiveScoreUpdater] New game detected: ${game.id} (${game.away_team.name} @ ${game.home_team.name})`);
                 this.state.gamesData.set(game.id, game);
                 
                 // Do initial update to sync with current state
@@ -295,7 +285,7 @@ class LiveScoreUpdater {
                 const changes = this.detectChanges(existingGame, game);
                 
                 if (changes.length > 0) {
-                    console.log(`[LiveScoreUpdater] Game ${game.id} changed:`, changes);
+                    console.log(`[LiveScores] ${game.away_team.abbreviation || game.away_team.name} @ ${game.home_team.abbreviation || game.home_team.name} updated`);
                     
                     // Update stored game data
                     this.state.gamesData.set(game.id, game);
@@ -304,8 +294,6 @@ class LiveScoreUpdater {
                     this.updateGameUI(game, changes);
                     
                     updatedGames.push({ game, changes });
-                } else {
-                    console.log(`[LiveScoreUpdater] Game ${game.id} - no changes`);
                 }
             }
         });
@@ -347,13 +335,6 @@ class LiveScoreUpdater {
     detectChanges(oldGame, newGame) {
         const changes = [];
         
-        console.log(`[LiveScoreUpdater] Comparing game ${newGame.id}:`);
-        console.log(`  home_score: ${oldGame.home_score} → ${newGame.home_score}`);
-        console.log(`  away_score: ${oldGame.away_score} → ${newGame.away_score}`);
-        console.log(`  quarter: ${oldGame.quarter} → ${newGame.quarter}`);
-        console.log(`  clock: "${oldGame.clock}" → "${newGame.clock}"`);
-        console.log(`  is_final: ${oldGame.is_final} → ${newGame.is_final}`);
-        
         // Check score changes
         if (oldGame.home_score !== newGame.home_score) {
             changes.push({
@@ -384,7 +365,6 @@ class LiveScoreUpdater {
         const oldClock = oldGame.clock || '';
         const newClock = newGame.clock || '';
         if (oldClock !== newClock) {
-            console.log(`  ✓ Clock changed: "${oldClock}" → "${newClock}"`);
             changes.push({
                 type: 'clock',
                 old: oldGame.clock,
@@ -401,8 +381,6 @@ class LiveScoreUpdater {
             });
         }
         
-        console.log(`  → Total changes: ${changes.length}`);
-        
         return changes;
     }
     
@@ -413,17 +391,10 @@ class LiveScoreUpdater {
         // Find game element by data-game-id attribute
         const gameElement = document.querySelector(`[data-game-id="${game.id}"]`);
         
-        console.log(`[LiveScoreUpdater] Updating UI for game ${game.id}...`);
-        console.log(`[LiveScoreUpdater] Found element:`, gameElement !== null);
-        
         if (!gameElement) {
-            console.warn(`[LiveScoreUpdater] ❌ Game element not found for game ${game.id}`);
-            console.warn(`[LiveScoreUpdater] Available game elements:`, 
-                Array.from(document.querySelectorAll('[data-game-id]')).map(el => el.getAttribute('data-game-id')));
+            console.warn(`[LiveScores] Game element not found for ID ${game.id}`);
             return;
         }
-        
-        console.log(`[LiveScoreUpdater] ✓ Found game element, applying ${changes.length} changes`);
         
         // Save scroll position
         const scrollY = window.scrollY;
@@ -453,7 +424,7 @@ class LiveScoreUpdater {
             }
         });
         
-        // If game just became final, show notification to refresh for pick results
+        // If game just became final, show notification
         if (gameBecameFinal) {
             this.showGameFinalNotification(game);
         }
@@ -469,15 +440,9 @@ class LiveScoreUpdater {
         const scoreSelector = `[data-score="${team}"]`;
         const scoreElement = gameElement.querySelector(scoreSelector);
         
-        console.log(`[LiveScoreUpdater] Updating ${team} score to ${newScore}`);
-        
         if (!scoreElement) {
-            console.warn(`[LiveScoreUpdater] ❌ Score element not found for ${team} (selector: ${scoreSelector})`);
             return;
         }
-        
-        const oldValue = scoreElement.textContent;
-        console.log(`[LiveScoreUpdater] ✓ Updating ${team} score: ${oldValue} → ${newScore}`);
         
         // Update score value
         scoreElement.textContent = newScore || '-';
@@ -487,8 +452,6 @@ class LiveScoreUpdater {
         // Force reflow to restart animation
         void scoreElement.offsetWidth;
         scoreElement.classList.add('score-pulse');
-        
-        console.log(`[LiveScoreUpdater] ✓ Applied pulse animation to ${team} score`);
         
         // Remove animation class after duration
         setTimeout(() => {
@@ -510,37 +473,65 @@ class LiveScoreUpdater {
         // Get the kickoff time from the page (already formatted)
         // Try to extract from any existing time display
         let kickoffTimeText = '';
-        const existingTimeElement = statusElement.querySelector('.text-xs');
-        if (existingTimeElement) {
-            kickoffTimeText = existingTimeElement.textContent;
+        
+        // Look for the main time text (not the "Scheduled" label)
+        // Try multiple selectors since the class varies by game state
+        const timeSelectors = [
+            '.text-base.md\\:text-lg',  // Scheduled games
+            '.text-xs.text-base-content\\/60'  // Final/Live games (below status)
+        ];
+        
+        for (const selector of timeSelectors) {
+            const timeElement = statusElement.querySelector(selector);
+            if (timeElement && timeElement.textContent && !timeElement.textContent.includes('Scheduled')) {
+                kickoffTimeText = timeElement.textContent.trim();
+                break;
+            }
+        }
+        
+        // Fallback: if no time found, look for ANY text that looks like a date/time
+        if (!kickoffTimeText) {
+            const allText = statusElement.textContent;
+            const timeMatch = allText.match(/(Mon|Tue|Wed|Thu|Fri|Sat|Sun),.*?ET/);
+            if (timeMatch) {
+                kickoffTimeText = timeMatch[0];
+            }
+        }
+        
+        // IMPORTANT: Preserve the spread badge HTML if it exists
+        let spreadBadgeHTML = '';
+        const spreadContainer = statusElement.querySelector('.text-center.mt-2');
+        if (spreadContainer) {
+            // Save the entire spread container (including the mt-2 wrapper)
+            spreadBadgeHTML = spreadContainer.outerHTML;
         }
         
         let statusHTML = '';
         
         if (game.is_final) {
             statusHTML = `
-                <div class="text-center">
-                    <div class="text-2xl md:text-3xl font-bold text-success mb-1">FINAL</div>
-                    ${kickoffTimeText ? `<div class="text-xs text-base-content/60">${kickoffTimeText}</div>` : ''}
-                </div>
-            `;
+<div class="text-center">
+    <div class="text-2xl md:text-3xl font-bold text-success mb-1">FINAL</div>
+    ${kickoffTimeText ? `<div class="text-xs text-base-content/60">${kickoffTimeText}</div>` : ''}
+</div>
+${spreadBadgeHTML}`;
         } else if (game.quarter) {
             statusHTML = `
-                <div class="text-center">
-                    <div class="text-xl md:text-2xl font-bold text-warning animate-pulse mb-1">
-                        Q${game.quarter}
-                    </div>
-                    <div class="text-sm md:text-base font-semibold text-warning">${game.clock || ''}</div>
-                    ${kickoffTimeText ? `<div class="text-xs text-base-content/60 mt-1">${kickoffTimeText}</div>` : ''}
-                </div>
-            `;
+<div class="text-center">
+    <div class="text-xl md:text-2xl font-bold text-warning animate-pulse mb-1">
+        Q${game.quarter}
+    </div>
+    <div class="text-sm md:text-base font-semibold text-warning">${game.clock || ''}</div>
+    ${kickoffTimeText ? `<div class="text-xs text-base-content/60 mt-1">${kickoffTimeText}</div>` : ''}
+</div>
+${spreadBadgeHTML}`;
         } else {
             statusHTML = `
-                <div class="text-center">
-                    ${kickoffTimeText ? `<div class="text-base md:text-lg font-semibold text-base-content/70 mb-1">${kickoffTimeText}</div>` : ''}
-                    <div class="text-xs text-base-content/50">Scheduled</div>
-                </div>
-            `;
+<div class="text-center">
+    ${kickoffTimeText ? `<div class="text-base md:text-lg font-semibold text-base-content/70 mb-1">${kickoffTimeText}</div>` : ''}
+    <div class="text-xs text-base-content/50">Scheduled</div>
+</div>
+${spreadBadgeHTML}`;
         }
         
         statusElement.innerHTML = statusHTML;
@@ -553,12 +544,6 @@ class LiveScoreUpdater {
     updateGameFinalIndicators(gameElement, game) {
         // Add visual feedback that game is final
         gameElement.classList.add('game-final');
-        
-        // You could add winner badges here, but since we need backend
-        // data for spread coverage and pick results, we'll just show
-        // a subtle indicator that the game is complete
-        
-        console.log(`[LiveScoreUpdater] Game ${game.id} is now final - refresh page to see pick results`);
     }
     
     /**
@@ -650,8 +635,6 @@ class LiveScoreUpdater {
         const exponentialDelay = baseDelay * Math.pow(2, this.state.retryCount - 1);
         const jitter = Math.random() * 1000; // Add jitter to avoid thundering herd
         const retryDelay = Math.min(exponentialDelay + jitter, this.config.maxRetryDelay);
-        
-        console.log(`[LiveScoreUpdater] Retrying in ${Math.round(retryDelay)}ms (attempt ${this.state.retryCount}/${this.config.maxRetries})`);
         
         // Schedule retry
         if (this.state.pollTimer) {

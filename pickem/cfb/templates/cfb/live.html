@@ -56,10 +56,34 @@
     </div>
 </div>
 
-{% if picks_with_league_game %}
+{% if picks_with_sections %}
     <div class="grid grid-cols-1 gap-3" id="games-container">
-        {% for p, lg in picks_with_league_game %}
-        <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow" 
+        {% for item in picks_with_sections %}
+            {% if item.is_section %}
+                {# Section header #}
+                <div class="flex items-center gap-3 {% if not forloop.first %}mt-6{% else %}mt-2{% endif %} mb-2">
+                    {% if item.status == 'live' %}
+                        <div class="badge badge-warning badge-lg gap-2">
+                            <i class="fas fa-circle animate-pulse"></i>
+                            LIVE GAMES
+                        </div>
+                    {% elif item.status == 'final' %}
+                        <div class="badge badge-success badge-lg gap-2">
+                            <i class="fas fa-check-circle"></i>
+                            FINAL GAMES
+                        </div>
+                    {% else %}
+                        <div class="badge badge-info badge-lg gap-2">
+                            <i class="fas fa-clock"></i>
+                            UPCOMING GAMES
+                        </div>
+                    {% endif %}
+                    <div class="flex-1 h-px bg-base-300"></div>
+                </div>
+            {% else %}
+                {# Game card #}
+                {% with p=item.pick lg=item.league_game %}
+                <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow" 
              data-game-id="{{ p.game.id }}"
              data-external-id="{{ p.game.external_id }}">
             <div class="card-body p-3 md:p-4">
@@ -115,8 +139,12 @@
                                 </div>
                             {% else %}
                                 <div class="text-center">
-                                    <div class="text-base md:text-lg font-semibold text-base-content/70 mb-1">{{ p.game.kickoff|eastern_time }}</div>
-                                    <div class="text-xs text-base-content/50">Scheduled</div>
+                                    {% if p.game.kickoff %}
+                                        <div class="text-base md:text-lg font-semibold text-base-content/70 mb-1">{{ p.game.kickoff|eastern_time|default:p.game.kickoff }}</div>
+                                        <div class="text-xs text-base-content/50">Scheduled</div>
+                                    {% else %}
+                                        <div class="text-base md:text-lg font-semibold text-base-content/50">Time TBD</div>
+                                    {% endif %}
                                 </div>
                             {% endif %}
                         {% endif %}
@@ -184,6 +212,8 @@
                 
             </div>
         </div>
+                {% endwith %}
+            {% endif %}
         {% endfor %}
     </div>
     
@@ -223,7 +253,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/live-score-updater.js' %}?v=5"></script>
+<script src="{% static 'js/live-score-updater.js' %}?v=9"></script>
 <script>
 /**
  * Initialize Live Score Updates
@@ -241,11 +271,9 @@
         return;
     }
     
-    console.log('[LiveScores] Games container found, initializing live score updater...');
-    
     // Check if LiveScoreUpdater class exists
     if (typeof LiveScoreUpdater === 'undefined') {
-        console.error('[LiveScores] ERROR: LiveScoreUpdater class not found! JavaScript file may not have loaded.');
+        console.error('[LiveScores] LiveScoreUpdater class not found');
         return;
     }
     
@@ -261,15 +289,11 @@
         
         // Callbacks
         onUpdate: function(updatedGames) {
-            console.log(`[LiveScores] Updated ${updatedGames.length} game(s)`);
-            
-            // Optional: Show a subtle notification
+            // Show subtle notifications for score changes
             updatedGames.forEach(({ game, changes }) => {
-                // Check if score changed
                 const scoreChanged = changes.some(c => 
                     c.type === 'home_score' || c.type === 'away_score'
                 );
-                
                 if (scoreChanged) {
                     showScoreUpdateNotification(game);
                 }
@@ -277,17 +301,12 @@
         },
         
         onError: function(error, retryCount) {
-            console.error(`[LiveScores] Error (attempt ${retryCount}):`, error);
-            
-            // Show error to user if too many failures
             if (retryCount >= 3) {
                 showConnectionWarning();
             }
         },
         
         onStatusChange: function({ hasLiveGames, liveGameCount }) {
-            console.log(`[LiveScores] Status changed: ${liveGameCount} live game(s)`);
-            
             // Update page title to show live game count
             if (hasLiveGames) {
                 document.title = `(${liveGameCount} Live) Live Games - CFB Pick'em`;
@@ -349,20 +368,12 @@
     // Expose updater globally for debugging
     window.liveScoreUpdater = updater;
     
-    // Log initialization
-    console.log('[LiveScores] Auto-update initialized and running');
-    console.log('[LiveScores] Debug: window.liveScoreUpdater.getState()');
+    console.log('[LiveScores] Auto-update active');
     
     } catch (error) {
-        console.error('[LiveScores] ERROR during initialization:', error);
-        console.error('[LiveScores] Stack trace:', error.stack);
+        console.error('[LiveScores] Initialization error:', error);
     }
     
 })();
-
-// Temporary diagnostic logging
-console.log('[LiveScores] Checking page state...');
-console.log('[LiveScores] Games container exists:', document.getElementById('games-container') !== null);
-console.log('[LiveScores] Game elements found:', document.querySelectorAll('[data-game-id]').length);
 </script>
 {% endblock %}

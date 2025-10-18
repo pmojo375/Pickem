@@ -20,21 +20,33 @@ def eastern_time(value):
     if not value:
         return ""
     
-    # Get Eastern timezone
-    eastern = pytz.timezone('America/New_York')
-    
-    # Convert to Eastern if not already
-    if timezone.is_aware(value):
-        value = value.astimezone(eastern)
-    else:
-        # If naive, assume it's UTC and convert
-        value = timezone.make_aware(value, pytz.UTC).astimezone(eastern)
-    
-    # Format: "Mon, Oct 1 at 3:30 PM ET"
-    # Use cross-platform formatting (Windows doesn't support -)
-    day = value.day
-    hour = value.strftime('%I').lstrip('0') or '12'
-    return f"{value.strftime('%a, %b')} {day} at {hour}:{value.strftime('%M %p')} ET"
+    try:
+        # Get Eastern timezone
+        eastern = pytz.timezone('America/New_York')
+        
+        # Convert to Eastern if not already
+        if timezone.is_aware(value):
+            value = value.astimezone(eastern)
+        else:
+            # If naive, assume it's UTC and convert
+            value = timezone.make_aware(value, pytz.UTC).astimezone(eastern)
+        
+        # Format: "Mon, Oct 1 at 3:30 PM ET"
+        # Use cross-platform formatting (Windows doesn't support -)
+        day = value.day
+        hour = value.strftime('%I').lstrip('0') or '12'
+        minute = value.strftime('%M')
+        am_pm = value.strftime('%p')
+        month_abbr = value.strftime('%b')
+        day_abbr = value.strftime('%a')
+        
+        return f"{day_abbr}, {month_abbr} {day} at {hour}:{minute} {am_pm} ET"
+    except Exception as e:
+        # Log the error but return a safe fallback
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error formatting eastern_time for value {value}: {e}")
+        return str(value)  # Return raw value as fallback
 
 
 @register.filter

@@ -419,6 +419,51 @@ def live_view(request):
         league_game = league_games_dict.get(pick.game_id)
         picks_with_league_game.append((pick, league_game))
     
+    # Sort games by status priority: Live > Final > Scheduled
+    # Within each group, sort by kickoff time (earliest first)
+    def get_game_status(game):
+        """Helper to determine game status"""
+        if not game.is_final and game.quarter and game.quarter > 0:
+            return 'live'
+        elif game.is_final:
+            return 'final'
+        else:
+            return 'scheduled'
+    
+    def get_game_sort_key(pick_tuple):
+        pick, league_game = pick_tuple
+        game = pick.game
+        status = get_game_status(game)
+        
+        # Status priority: live=0, final=1, scheduled=2
+        status_priority = {'live': 0, 'final': 1, 'scheduled': 2}[status]
+        
+        # Return tuple: (status_priority, kickoff_time)
+        return (status_priority, game.kickoff)
+    
+    picks_with_league_game.sort(key=get_game_sort_key)
+    
+    # Add section markers for template
+    picks_with_sections = []
+    prev_status = None
+    for pick, league_game in picks_with_league_game:
+        current_status = get_game_status(pick.game)
+        
+        # Add section marker if status changed
+        if current_status != prev_status:
+            picks_with_sections.append({
+                'is_section': True,
+                'status': current_status
+            })
+            prev_status = current_status
+        
+        # Add the actual game
+        picks_with_sections.append({
+            'is_section': False,
+            'pick': pick,
+            'league_game': league_game
+        })
+    
     # Get league rules for force_hooks setting
     active_season = Season.objects.filter(is_active=True).first()
     league_rules = None
@@ -426,7 +471,8 @@ def live_view(request):
         league_rules = LeagueRules.objects.filter(league=league, season=active_season).first()
     
     context = {
-        "picks_with_league_game": picks_with_league_game,
+        "picks_with_league_game": picks_with_league_game,  # Keep for backward compatibility
+        "picks_with_sections": picks_with_sections,  # New organized structure
         "current_league": league,
         "user_leagues": user_leagues,
         "league_rules": league_rules,
