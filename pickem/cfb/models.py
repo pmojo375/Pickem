@@ -50,6 +50,7 @@ class LeagueRules(models.Model):
     # Scoring Rules
     points_per_correct_pick = models.IntegerField(default=1, help_text="Points awarded for each correct pick")
     key_pick_extra_points = models.IntegerField(default=1, help_text="Extra points for correct key picks")
+    drop_weeks = models.IntegerField(default=0, help_text="Number of weeks to drop from the season")
     
     # Game Mode
     against_the_spread_enabled = models.BooleanField(

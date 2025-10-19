@@ -638,6 +638,7 @@ def settings_view(request):
                         defaults={
                             'points_per_correct_pick': int(request.POST.get("points_per_correct_pick", 1)),
                             'key_pick_extra_points': int(request.POST.get("key_pick_extra_points", 1)),
+                            'drop_weeks': int(request.POST.get("drop_weeks", 0)),
                             'against_the_spread_enabled': request.POST.get("against_the_spread_enabled") == "on",
                             'force_hooks': request.POST.get("force_hooks") == "on",
                             'spread_lock_weekday': int(request.POST.get("spread_lock_weekday", 2)),
@@ -653,6 +654,7 @@ def settings_view(request):
                         # Update existing rules
                         league_rules.points_per_correct_pick = int(request.POST.get("points_per_correct_pick", 1))
                         league_rules.key_pick_extra_points = int(request.POST.get("key_pick_extra_points", 1))
+                        league_rules.drop_weeks = int(request.POST.get("drop_weeks", 0))
                         league_rules.against_the_spread_enabled = request.POST.get("against_the_spread_enabled") == "on"
                         league_rules.force_hooks = request.POST.get("force_hooks") == "on"
                         league_rules.spread_lock_weekday = int(request.POST.get("spread_lock_weekday", 2))

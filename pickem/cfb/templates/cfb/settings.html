@@ -105,6 +105,24 @@
                     </label>
                 </div>
                 
+                <!-- Drop Weeks -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">
+                            <i class="fas fa-calendar-times text-info mr-1"></i>
+                            Drop Worst Weeks
+                        </span>
+                    </label>
+                    <input type="number" 
+                           name="drop_weeks" 
+                           value="{{ league_rules.drop_weeks }}" 
+                           min="0"
+                           class="input input-bordered" />
+                    <label class="label">
+                        <span class="label-text-alt text-base-content/60">Number of worst weeks to drop from season standings (0 = drop none)</span>
+                    </label>
+                </div>
+                
                 <!-- Against the Spread Enabled -->
                 <div class="form-control">
                     <label class="label cursor-pointer justify-start gap-4">
