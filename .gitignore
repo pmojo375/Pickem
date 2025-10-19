@@ -8,6 +8,7 @@ __pycache__/
 dist/
 build/
 *.whl
+*.pyc
 
 # Django
 *.log
@@ -69,6 +70,8 @@ coverage.xml
 # Celery
 celerybeat-schedule
 celerybeat.pid
+celerybeat-schedule-shm
+celerybeat-schedule-wal
 
 # Translations
 *.mo
@@ -79,4 +82,3 @@ docs/_build/
 
 # PyBuilder
 target/
-*.pyc
