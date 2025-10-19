@@ -113,6 +113,7 @@ class LeagueRulesAdmin(admin.ModelAdmin):
         "season",
         "points_per_correct_pick",
         "key_pick_extra_points",
+        "drop_weeks",
         "spread_lock_weekday",
         "pickable_games_per_week",
         "key_picks_enabled",
@@ -128,7 +129,7 @@ class LeagueRulesAdmin(admin.ModelAdmin):
             "fields": ("league", "season")
         }),
         ("Scoring Rules", {
-            "fields": ("points_per_correct_pick", "key_pick_extra_points")
+            "fields": ("points_per_correct_pick", "key_pick_extra_points", "drop_weeks")
         }),
         ("Game Selection Rules", {
             "fields": ("spread_lock_weekday", "pickable_games_per_week", "picks_per_week")
@@ -219,18 +220,47 @@ class MemberWeekAdmin(admin.ModelAdmin):
 
 @admin.register(MemberSeason)
 class MemberSeasonAdmin(admin.ModelAdmin):
-    list_display = ("league", "season", "user", "through_week", "picks_made", "correct", "incorrect", "ties", "correct_key", "points", "rank", "updated_at")
+    list_display = ("league", "season", "user", "through_week", "picks_made", "correct", "incorrect", "ties", "correct_key", "points", "points_dropped", "adjusted_points", "rank", "updated_at")
     list_filter = ("league", "season", "updated_at")
     search_fields = ("league__name", "season__year", "user__username")
     autocomplete_fields = ("league", "season", "user")
-    readonly_fields = ("updated_at",)
+    readonly_fields = ("updated_at", "adjusted_points", "adjusted_correct", "adjusted_correct_key")
+    
+    def adjusted_points(self, obj):
+        """Display adjusted points (full season - dropped weeks)"""
+        return obj.points - obj.points_dropped
+    adjusted_points.short_description = "Adjusted Points"
+    adjusted_points.admin_order_field = "points"
+    
+    def adjusted_correct(self, obj):
+        """Display adjusted correct picks (full season - dropped weeks)"""
+        return obj.correct - obj.correct_dropped
+    adjusted_correct.short_description = "Adjusted Correct"
+    adjusted_correct.admin_order_field = "correct"
+    
+    def adjusted_correct_key(self, obj):
+        """Display adjusted key picks correct (full season - dropped weeks)"""
+        return obj.correct_key - obj.correct_key_dropped
+    adjusted_correct_key.short_description = "Adjusted Key Correct"
+    adjusted_correct_key.admin_order_field = "correct_key"
     
     fieldsets = (
         ("Member & Season", {
             "fields": ("league", "season", "user")
         }),
-        ("Statistics", {
-            "fields": ("through_week", "picks_made", "correct", "incorrect", "ties", "correct_key", "points", "rank")
+        ("Full Season Statistics", {
+            "fields": ("through_week", "picks_made", "correct", "incorrect", "ties", "correct_key", "points")
+        }),
+        ("Dropped Week Statistics", {
+            "fields": ("picks_made_dropped", "correct_dropped", "incorrect_dropped", "ties_dropped", "correct_key_dropped", "points_dropped"),
+            "description": "Statistics from the worst performing weeks that were dropped from standings"
+        }),
+        ("Adjusted Statistics (For Rankings)", {
+            "fields": ("adjusted_points", "adjusted_correct", "adjusted_correct_key"),
+            "description": "Final statistics used for standings (Full Season - Dropped Weeks)"
+        }),
+        ("Ranking", {
+            "fields": ("rank",)
         }),
         ("Timestamps", {
             "fields": ("updated_at",),
