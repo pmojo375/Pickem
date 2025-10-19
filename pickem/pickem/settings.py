@@ -78,21 +78,13 @@ TEMPLATES = [
     },
 ]
 
+LBASE_DIR = Path(__file__).resolve().parent.parent
 LOG_DIR = Path(os.getenv("DJANGO_LOG_DIR", BASE_DIR / "logs"))
-LOG_DIR.mkdir(parents=True, exist_ok=True)  # make sure it exists
-
-LOG_FILE = LOG_DIR / "app.log"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 LOGGING = {
     "version": 1,
-    "disable_existing_loggers": False,  # keep Django’s defaults unless overridden
-
-    # Optional filters (e.g., only log when DEBUG=False)
-    "filters": {
-        "require_debug_false": {
-            "()": "django.utils.log.RequireDebugFalse",
-        },
-    },
+    "disable_existing_loggers": False,
 
     "formatters": {
         "verbose": {
@@ -100,26 +92,58 @@ LOGGING = {
             "style": "{",
         },
         "simple": {
-            "format": "{levelname} {name} - {message}",
+            "format": "[{asctime}] {levelname} {name} - {message}",
+            "style": "{",
+        },
+        "error": {
+            "format": "[{asctime}] {levelname} {name}:{lineno} - {message}",
             "style": "{",
         },
     },
 
     "handlers": {
-        # Rotates by size (5 MB per file, keep 5 backups)
-        "rotating_file": {
+        # --- Console handler for terminal output ---
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+            "level": "INFO",
+        },
+
+        # --- Your app logs ---
+        "app_file": {
             "class": "logging.handlers.RotatingFileHandler",
-            "filename": str(LOG_FILE),
+            "filename": str(LOG_DIR / "app.log"),
             "maxBytes": 5 * 1024 * 1024,  # 5 MB
             "backupCount": 5,
             "encoding": "utf-8",
             "formatter": "verbose",
         },
 
-        # (Optional) Only errors to a separate file
-        "rotating_file_errors": {
+        # --- Django internal logs ---
+        "django_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": str(LOG_DIR / "django.log"),
+            "maxBytes": 5 * 1024 * 1024,
+            "backupCount": 5,
+            "encoding": "utf-8",
+            "formatter": "simple",
+        },
+
+        # --- Errors (ERROR level only) ---
+        "error_file": {
             "class": "logging.handlers.RotatingFileHandler",
             "filename": str(LOG_DIR / "errors.log"),
+            "maxBytes": 5 * 1024 * 1024,
+            "backupCount": 5,
+            "encoding": "utf-8",
+            "formatter": "error",
+            "level": "ERROR",
+        },
+
+        # --- Celery infrastructure logs (worker/beat) ---
+        "celery_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": str(LOG_DIR / "celery.log"),
             "maxBytes": 5 * 1024 * 1024,
             "backupCount": 5,
             "encoding": "utf-8",
@@ -127,53 +151,71 @@ LOGGING = {
         },
     },
 
-    # Loggers control what goes *into* the handlers above
     "loggers": {
-        # Root logger (anything not matched below)
+        # Root logger (catch-all for your code)
         "": {
-            "handlers": ["rotating_file"],
-            "level": "INFO",          # raise to WARNING in prod if too chatty
+            "handlers": ["console", "app_file", "error_file"],
+            "level": "INFO",
             "propagate": False,
         },
 
-        # Django internals
+        # Your apps (example: pickem, chatterboxgolf, etc.)
+        "cfb": {
+            "handlers": ["console", "app_file", "error_file"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+
+        # Django internals — go to separate file and console for warnings/errors
         "django": {
-            "handlers": ["rotating_file"],
-            "level": "INFO",
+            "handlers": ["console", "django_file"],
+            "level": "WARNING",  # cut out most noise
             "propagate": False,
         },
         "django.request": {
-            "handlers": ["rotating_file", "rotating_file_errors"],
-            "level": "WARNING",       # WARNING and up from request flow
+            "handlers": ["console", "django_file", "error_file"],
+            "level": "ERROR",
             "propagate": False,
         },
         "django.server": {
-            "handlers": ["rotating_file"],
-            "level": "INFO",
+            "handlers": ["console", "django_file"],
+            "level": "WARNING",
             "propagate": False,
         },
         "django.security": {
-            "handlers": ["rotating_file", "rotating_file_errors"],
+            "handlers": ["console", "django_file", "error_file"],
             "level": "WARNING",
             "propagate": False,
         },
 
-        # Your app(s) — adjust names or add more blocks as needed
-        "pickem": {
-            "handlers": ["rotating_file"],
-            "level": "DEBUG",         # DEBUG for rich app logs
-            "propagate": False,
-        },
-
-        # Celery (if you use it)
+        # Celery infrastructure - worker/beat logs go to separate file
         "celery": {
-            "handlers": ["rotating_file"],
+            "handlers": ["console", "celery_file", "error_file"],
             "level": "INFO",
             "propagate": False,
         },
-        "celery.app.trace": {
-            "handlers": ["rotating_file"],
-            "level": "WARNING",
+        "celery.worker": {
+            "handlers": ["console", "celery_file", "error_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "celery.beat": {
+            "handlers": ["console", "celery_file", "error_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        
+        # Celery task infrastructure (task execution framework)
+        "celery.task": {
+            "handlers": ["celery_file", "error_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        
+        # Your actual task application code - goes to app.log with your other app logs
+        "cfb.tasks": {
+            "handlers": ["console", "app_file", "error_file"],
+            "level": "DEBUG",
             "propagate": False,
         },
     },
@@ -255,6 +297,11 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_ENABLE_UTC = True
+
+# Celery logging configuration - use Django's logging setup
+CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+CELERY_WORKER_LOG_FORMAT = '[%(asctime)s: %(levelname)s/%(processName)s] %(message)s'
+CELERY_WORKER_TASK_LOG_FORMAT = '[%(asctime)s: %(levelname)s/%(processName)s][%(task_name)s(%(task_id)s)] %(message)s'
 
 # Redis cache configuration
 CACHES = {

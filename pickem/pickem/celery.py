@@ -4,7 +4,6 @@ Celery configuration for pickem project.
 import os
 from celery import Celery
 from celery.schedules import crontab
-from django.conf import settings
 
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'pickem.settings')
@@ -17,6 +16,19 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 
 # Load task modules from all registered Django apps.
 app.autodiscover_tasks()
+
+# Configure Celery to use Django's logging
+from celery.signals import worker_process_init
+
+@worker_process_init.connect
+def config_worker_logging(**kwargs):
+    """Configure logging for Celery worker processes."""
+    import logging.config
+    from django.conf import settings
+    
+    # Use Django's logging configuration for Celery workers
+    if hasattr(settings, 'LOGGING'):
+        logging.config.dictConfig(settings.LOGGING)
 
 
 @app.task(bind=True, ignore_result=True)

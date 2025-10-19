@@ -19,6 +19,7 @@ from .services.live import grade_picks_for_game, fetch_and_store_live_scores
 
 logger = logging.getLogger(__name__)
 
+logger.info("Logger initialized")
 
 @shared_task(bind=True, name='cfb.tasks.poll_espn_scores', max_retries=3, default_retry_delay=60,)
 def poll_espn_scores(self):
