@@ -1,0 +1,316 @@
+week_title,player,col_index,picked_team_full,line_value,is_key,result
+Week 8 Winners,Brandon Smith,0,Michigan,-5.5,True,win
+Week 8 Winners,Brandon Smith,1,LSU,2.5,True,loss
+Week 8 Winners,Brandon Smith,2,Oklahoma,-4.5,True,win
+Week 8 Winners,Brandon Smith,3,Northwestern,-3.5,True,win
+Week 8 Winners,Brandon Smith,4,Georgia,-6.5,True,win
+Week 8 Winners,Brandon Smith,5,Wisconsin,26.5,False,loss
+Week 8 Winners,Brandon Smith,6,Michigan State,26.5,False,win
+Week 8 Winners,Brandon Smith,7,Arizona State,12.5,False,win
+Week 8 Winners,Brandon Smith,8,Oregon,-16.5,False,win
+Week 8 Winners,Brandon Smith,9,Washington State,16.5,False,win
+Week 8 Winners,Brandon Smith,10,UCLA,-3.5,False,loss
+Week 8 Winners,Brandon Smith,11,Penn State,2.5,False,win
+Week 8 Winners,Brandon Smith,12,Texas,-12.5,False,loss
+Week 8 Winners,Brandon Smith,13,Notre Dame,-7.5,False,win
+Week 8 Winners,Brandon Smith,14,Alabama,-7.5,False,win
+Week 8 Winners,Jon Malm,0,Washington,5.5,False,loss
+Week 8 Winners,Jon Malm,1,Vanderbilt,-2.5,False,win
+Week 8 Winners,Jon Malm,2,Oklahoma,-4.5,True,win
+Week 8 Winners,Jon Malm,3,Northwestern,-3.5,False,win
+Week 8 Winners,Jon Malm,4,Georgia,-6.5,True,win
+Week 8 Winners,Jon Malm,5,Ohio State,-26.5,False,win
+Week 8 Winners,Jon Malm,6,Michigan State,26.5,False,win
+Week 8 Winners,Jon Malm,7,Texas Tech,-12.5,False,loss
+Week 8 Winners,Jon Malm,8,Oregon,-16.5,True,win
+Week 8 Winners,Jon Malm,9,Virginia,-16.5,False,loss
+Week 8 Winners,Jon Malm,10,UCLA,-3.5,False,loss
+Week 8 Winners,Jon Malm,11,Iowa,-2.5,True,loss
+Week 8 Winners,Jon Malm,12,Texas,-12.5,False,loss
+Week 8 Winners,Jon Malm,13,Notre Dame,-7.5,True,win
+Week 8 Winners,Jon Malm,14,Alabama,-7.5,False,win
+Week 8 Winners,chris cross,0,Washington,5.5,True,loss
+Week 8 Winners,chris cross,1,LSU,2.5,False,loss
+Week 8 Winners,chris cross,2,Oklahoma,-4.5,False,win
+Week 8 Winners,chris cross,3,Northwestern,-3.5,True,win
+Week 8 Winners,chris cross,4,Georgia,-6.5,False,win
+Week 8 Winners,chris cross,5,Ohio State,-26.5,False,win
+Week 8 Winners,chris cross,6,Indiana,-26.5,False,loss
+Week 8 Winners,chris cross,7,Arizona State,12.5,True,win
+Week 8 Winners,chris cross,8,Oregon,-16.5,False,win
+Week 8 Winners,chris cross,9,Virginia,-16.5,False,loss
+Week 8 Winners,chris cross,10,UCLA,-3.5,True,loss
+Week 8 Winners,chris cross,11,Penn State,2.5,False,win
+Week 8 Winners,chris cross,12,Texas,-12.5,False,loss
+Week 8 Winners,chris cross,13,Notre Dame,-7.5,False,win
+Week 8 Winners,chris cross,14,Alabama,-7.5,True,win
+Week 8 Winners,Nancie Oxley,0,Michigan,-5.5,False,win
+Week 8 Winners,Nancie Oxley,1,LSU,2.5,True,loss
+Week 8 Winners,Nancie Oxley,2,South Carolina,4.5,False,loss
+Week 8 Winners,Nancie Oxley,3,Northwestern,-3.5,False,win
+Week 8 Winners,Nancie Oxley,4,Ole Miss,6.5,True,loss
+Week 8 Winners,Nancie Oxley,5,Wisconsin,26.5,True,loss
+Week 8 Winners,Nancie Oxley,6,Michigan State,26.5,False,win
+Week 8 Winners,Nancie Oxley,7,Arizona State,12.5,False,win
+Week 8 Winners,Nancie Oxley,8,Oregon,-16.5,False,win
+Week 8 Winners,Nancie Oxley,9,Washington State,16.5,True,win
+Week 8 Winners,Nancie Oxley,10,Maryland,3.5,True,win
+Week 8 Winners,Nancie Oxley,11,Penn State,2.5,False,win
+Week 8 Winners,Nancie Oxley,12,Texas,-12.5,False,loss
+Week 8 Winners,Nancie Oxley,13,Notre Dame,-7.5,False,win
+Week 8 Winners,Nancie Oxley,14,Alabama,-7.5,False,win
+Week 8 Winners,Apollo Braganini,0,Michigan,-5.5,False,win
+Week 8 Winners,Apollo Braganini,1,LSU,2.5,True,loss
+Week 8 Winners,Apollo Braganini,2,Oklahoma,-4.5,True,win
+Week 8 Winners,Apollo Braganini,3,Purdue,3.5,False,loss
+Week 8 Winners,Apollo Braganini,4,Ole Miss,6.5,True,loss
+Week 8 Winners,Apollo Braganini,5,Ohio State,-26.5,False,win
+Week 8 Winners,Apollo Braganini,6,Indiana,-26.5,False,loss
+Week 8 Winners,Apollo Braganini,7,Arizona State,12.5,False,win
+Week 8 Winners,Apollo Braganini,8,Oregon,-16.5,True,win
+Week 8 Winners,Apollo Braganini,9,Virginia,-16.5,False,loss
+Week 8 Winners,Apollo Braganini,10,Maryland,3.5,False,win
+Week 8 Winners,Apollo Braganini,11,Penn State,2.5,False,win
+Week 8 Winners,Apollo Braganini,12,Texas,-12.5,False,loss
+Week 8 Winners,Apollo Braganini,13,USC,7.5,False,loss
+Week 8 Winners,Apollo Braganini,14,Alabama,-7.5,True,win
+Week 8 Winners,Mary Mojsiejenko,0,Michigan,-5.5,False,win
+Week 8 Winners,Mary Mojsiejenko,1,LSU,2.5,False,loss
+Week 8 Winners,Mary Mojsiejenko,2,Oklahoma,-4.5,False,win
+Week 8 Winners,Mary Mojsiejenko,3,Northwestern,-3.5,False,win
+Week 8 Winners,Mary Mojsiejenko,4,Georgia,-6.5,False,win
+Week 8 Winners,Mary Mojsiejenko,5,Ohio State,-26.5,True,win
+Week 8 Winners,Mary Mojsiejenko,6,Indiana,-26.5,False,loss
+Week 8 Winners,Mary Mojsiejenko,7,Texas Tech,-12.5,False,loss
+Week 8 Winners,Mary Mojsiejenko,8,Oregon,-16.5,True,win
+Week 8 Winners,Mary Mojsiejenko,9,Virginia,-16.5,False,loss
+Week 8 Winners,Mary Mojsiejenko,10,UCLA,-3.5,False,loss
+Week 8 Winners,Mary Mojsiejenko,11,Iowa,-2.5,True,loss
+Week 8 Winners,Mary Mojsiejenko,12,Texas,-12.5,True,loss
+Week 8 Winners,Mary Mojsiejenko,13,Notre Dame,-7.5,True,win
+Week 8 Winners,Mary Mojsiejenko,14,Alabama,-7.5,False,win
+Week 8 Winners,Parker Mojsiejenko,0,Washington,5.5,False,loss
+Week 8 Winners,Parker Mojsiejenko,1,LSU,2.5,False,loss
+Week 8 Winners,Parker Mojsiejenko,2,South Carolina,4.5,False,loss
+Week 8 Winners,Parker Mojsiejenko,3,Northwestern,-3.5,False,win
+Week 8 Winners,Parker Mojsiejenko,4,Ole Miss,6.5,False,loss
+Week 8 Winners,Parker Mojsiejenko,5,Ohio State,-26.5,False,win
+Week 8 Winners,Parker Mojsiejenko,6,Indiana,-26.5,True,loss
+Week 8 Winners,Parker Mojsiejenko,7,Arizona State,12.5,True,win
+Week 8 Winners,Parker Mojsiejenko,8,Oregon,-16.5,False,win
+Week 8 Winners,Parker Mojsiejenko,9,Virginia,-16.5,False,loss
+Week 8 Winners,Parker Mojsiejenko,10,UCLA,-3.5,False,loss
+Week 8 Winners,Parker Mojsiejenko,11,Penn State,2.5,True,win
+Week 8 Winners,Parker Mojsiejenko,12,Texas,-12.5,False,loss
+Week 8 Winners,Parker Mojsiejenko,13,Notre Dame,-7.5,True,win
+Week 8 Winners,Parker Mojsiejenko,14,Alabama,-7.5,True,win
+Week 8 Winners,Kyle Totzke,0,Michigan,-5.5,False,win
+Week 8 Winners,Kyle Totzke,1,LSU,2.5,False,loss
+Week 8 Winners,Kyle Totzke,2,South Carolina,4.5,False,loss
+Week 8 Winners,Kyle Totzke,3,Purdue,3.5,False,loss
+Week 8 Winners,Kyle Totzke,4,Georgia,-6.5,False,win
+Week 8 Winners,Kyle Totzke,5,Ohio State,-26.5,False,win
+Week 8 Winners,Kyle Totzke,6,Indiana,-26.5,False,loss
+Week 8 Winners,Kyle Totzke,7,Arizona State,12.5,False,win
+Week 8 Winners,Kyle Totzke,8,Oregon,-16.5,True,win
+Week 8 Winners,Kyle Totzke,9,Virginia,-16.5,True,loss
+Week 8 Winners,Kyle Totzke,10,Maryland,3.5,True,win
+Week 8 Winners,Kyle Totzke,11,Iowa,-2.5,True,loss
+Week 8 Winners,Kyle Totzke,12,Kentucky,12.5,False,win
+Week 8 Winners,Kyle Totzke,13,Notre Dame,-7.5,True,win
+Week 8 Winners,Kyle Totzke,14,Tennessee,7.5,False,loss
+Week 8 Winners,Mike Augustine,0,Washington,5.5,False,loss
+Week 8 Winners,Mike Augustine,1,Vanderbilt,-2.5,False,win
+Week 8 Winners,Mike Augustine,2,Oklahoma,-4.5,False,win
+Week 8 Winners,Mike Augustine,3,Northwestern,-3.5,True,win
+Week 8 Winners,Mike Augustine,4,Ole Miss,6.5,False,loss
+Week 8 Winners,Mike Augustine,5,Ohio State,-26.5,True,win
+Week 8 Winners,Mike Augustine,6,Indiana,-26.5,True,loss
+Week 8 Winners,Mike Augustine,7,Arizona State,12.5,False,win
+Week 8 Winners,Mike Augustine,8,Oregon,-16.5,False,win
+Week 8 Winners,Mike Augustine,9,Virginia,-16.5,False,loss
+Week 8 Winners,Mike Augustine,10,UCLA,-3.5,False,loss
+Week 8 Winners,Mike Augustine,11,Iowa,-2.5,True,loss
+Week 8 Winners,Mike Augustine,12,Texas,-12.5,False,loss
+Week 8 Winners,Mike Augustine,13,Notre Dame,-7.5,True,win
+Week 8 Winners,Mike Augustine,14,Tennessee,7.5,False,loss
+Week 8 Winners,Adam Huttenstine,0,Washington,5.5,False,loss
+Week 8 Winners,Adam Huttenstine,1,Vanderbilt,-2.5,False,win
+Week 8 Winners,Adam Huttenstine,2,Oklahoma,-4.5,False,win
+Week 8 Winners,Adam Huttenstine,3,Purdue,3.5,True,loss
+Week 8 Winners,Adam Huttenstine,4,Ole Miss,6.5,False,loss
+Week 8 Winners,Adam Huttenstine,5,Ohio State,-26.5,False,win
+Week 8 Winners,Adam Huttenstine,6,Indiana,-26.5,True,loss
+Week 8 Winners,Adam Huttenstine,7,Arizona State,12.5,True,win
+Week 8 Winners,Adam Huttenstine,8,Oregon,-16.5,False,win
+Week 8 Winners,Adam Huttenstine,9,Virginia,-16.5,False,loss
+Week 8 Winners,Adam Huttenstine,10,Maryland,3.5,False,win
+Week 8 Winners,Adam Huttenstine,11,Iowa,-2.5,True,loss
+Week 8 Winners,Adam Huttenstine,12,Kentucky,12.5,False,win
+Week 8 Winners,Adam Huttenstine,13,Notre Dame,-7.5,True,win
+Week 8 Winners,Adam Huttenstine,14,Tennessee,7.5,False,loss
+Week 8 Winners,Erich Kirchner,0,Michigan,-5.5,False,win
+Week 8 Winners,Erich Kirchner,1,LSU,2.5,False,loss
+Week 8 Winners,Erich Kirchner,2,Oklahoma,-4.5,True,win
+Week 8 Winners,Erich Kirchner,3,Northwestern,-3.5,False,win
+Week 8 Winners,Erich Kirchner,4,Georgia,-6.5,True,win
+Week 8 Winners,Erich Kirchner,5,Ohio State,-26.5,True,win
+Week 8 Winners,Erich Kirchner,6,Indiana,-26.5,False,loss
+Week 8 Winners,Erich Kirchner,7,Texas Tech,-12.5,False,loss
+Week 8 Winners,Erich Kirchner,8,Oregon,-16.5,False,win
+Week 8 Winners,Erich Kirchner,9,Virginia,-16.5,False,loss
+Week 8 Winners,Erich Kirchner,10,Maryland,3.5,False,win
+Week 8 Winners,Erich Kirchner,11,Iowa,-2.5,True,loss
+Week 8 Winners,Erich Kirchner,12,Texas,-12.5,True,loss
+Week 8 Winners,Erich Kirchner,13,USC,7.5,False,loss
+Week 8 Winners,Erich Kirchner,14,Tennessee,7.5,False,loss
+Week 8 Winners,Zac Nemitz,0,Washington,5.5,False,loss
+Week 8 Winners,Zac Nemitz,1,Vanderbilt,-2.5,False,win
+Week 8 Winners,Zac Nemitz,2,Oklahoma,-4.5,False,win
+Week 8 Winners,Zac Nemitz,3,Purdue,3.5,False,loss
+Week 8 Winners,Zac Nemitz,4,Ole Miss,6.5,False,loss
+Week 8 Winners,Zac Nemitz,5,Ohio State,-26.5,True,win
+Week 8 Winners,Zac Nemitz,6,Indiana,-26.5,False,loss
+Week 8 Winners,Zac Nemitz,7,Arizona State,12.5,False,win
+Week 8 Winners,Zac Nemitz,8,Rutgers,16.5,True,loss
+Week 8 Winners,Zac Nemitz,9,Washington State,16.5,False,win
+Week 8 Winners,Zac Nemitz,10,UCLA,-3.5,False,loss
+Week 8 Winners,Zac Nemitz,11,Iowa,-2.5,True,loss
+Week 8 Winners,Zac Nemitz,12,Kentucky,12.5,True,win
+Week 8 Winners,Zac Nemitz,13,USC,7.5,False,loss
+Week 8 Winners,Zac Nemitz,14,Alabama,-7.5,True,win
+Week 8 Winners,Verne Rambo,0,Washington,5.5,False,loss
+Week 8 Winners,Verne Rambo,1,LSU,2.5,False,loss
+Week 8 Winners,Verne Rambo,2,South Carolina,4.5,False,loss
+Week 8 Winners,Verne Rambo,3,Northwestern,-3.5,True,win
+Week 8 Winners,Verne Rambo,4,Georgia,-6.5,False,win
+Week 8 Winners,Verne Rambo,5,Ohio State,-26.5,True,win
+Week 8 Winners,Verne Rambo,6,Indiana,-26.5,True,loss
+Week 8 Winners,Verne Rambo,7,Arizona State,12.5,False,win
+Week 8 Winners,Verne Rambo,8,Rutgers,16.5,False,loss
+Week 8 Winners,Verne Rambo,9,Virginia,-16.5,False,loss
+Week 8 Winners,Verne Rambo,10,UCLA,-3.5,False,loss
+Week 8 Winners,Verne Rambo,11,Iowa,-2.5,True,loss
+Week 8 Winners,Verne Rambo,12,Kentucky,12.5,False,win
+Week 8 Winners,Verne Rambo,13,Notre Dame,-7.5,True,win
+Week 8 Winners,Verne Rambo,14,Alabama,-7.5,False,win
+Week 8 Winners,Ralf Mojsiejenko,0,Washington,5.5,False,loss
+Week 8 Winners,Ralf Mojsiejenko,1,LSU,2.5,True,loss
+Week 8 Winners,Ralf Mojsiejenko,2,Oklahoma,-4.5,False,win
+Week 8 Winners,Ralf Mojsiejenko,3,Purdue,3.5,False,loss
+Week 8 Winners,Ralf Mojsiejenko,4,Ole Miss,6.5,False,loss
+Week 8 Winners,Ralf Mojsiejenko,5,Ohio State,-26.5,False,win
+Week 8 Winners,Ralf Mojsiejenko,6,Michigan State,26.5,False,win
+Week 8 Winners,Ralf Mojsiejenko,7,Texas Tech,-12.5,True,loss
+Week 8 Winners,Ralf Mojsiejenko,8,Oregon,-16.5,False,win
+Week 8 Winners,Ralf Mojsiejenko,9,Washington State,16.5,False,win
+Week 8 Winners,Ralf Mojsiejenko,10,UCLA,-3.5,False,loss
+Week 8 Winners,Ralf Mojsiejenko,11,Penn State,2.5,True,win
+Week 8 Winners,Ralf Mojsiejenko,12,Texas,-12.5,False,loss
+Week 8 Winners,Ralf Mojsiejenko,13,USC,7.5,True,loss
+Week 8 Winners,Ralf Mojsiejenko,14,Alabama,-7.5,True,win
+Week 8 Winners,Roger Mojsiejenko,0,Washington,5.5,False,loss
+Week 8 Winners,Roger Mojsiejenko,1,LSU,2.5,False,loss
+Week 8 Winners,Roger Mojsiejenko,2,Oklahoma,-4.5,False,win
+Week 8 Winners,Roger Mojsiejenko,3,Purdue,3.5,False,loss
+Week 8 Winners,Roger Mojsiejenko,4,Georgia,-6.5,False,win
+Week 8 Winners,Roger Mojsiejenko,5,Ohio State,-26.5,True,win
+Week 8 Winners,Roger Mojsiejenko,6,Indiana,-26.5,True,loss
+Week 8 Winners,Roger Mojsiejenko,7,Texas Tech,-12.5,True,loss
+Week 8 Winners,Roger Mojsiejenko,8,Oregon,-16.5,False,win
+Week 8 Winners,Roger Mojsiejenko,9,Washington State,16.5,False,win
+Week 8 Winners,Roger Mojsiejenko,10,UCLA,-3.5,False,loss
+Week 8 Winners,Roger Mojsiejenko,11,Iowa,-2.5,False,loss
+Week 8 Winners,Roger Mojsiejenko,12,Texas,-12.5,True,loss
+Week 8 Winners,Roger Mojsiejenko,13,Notre Dame,-7.5,True,win
+Week 8 Winners,Roger Mojsiejenko,14,Alabama,-7.5,False,win
+Week 8 Winners,Danielle Mojsiejenko,0,Washington,5.5,True,loss
+Week 8 Winners,Danielle Mojsiejenko,1,LSU,2.5,True,loss
+Week 8 Winners,Danielle Mojsiejenko,2,Oklahoma,-4.5,False,win
+Week 8 Winners,Danielle Mojsiejenko,3,Northwestern,-3.5,False,win
+Week 8 Winners,Danielle Mojsiejenko,4,Ole Miss,6.5,False,loss
+Week 8 Winners,Danielle Mojsiejenko,5,Ohio State,-26.5,False,win
+Week 8 Winners,Danielle Mojsiejenko,6,Michigan State,26.5,False,win
+Week 8 Winners,Danielle Mojsiejenko,7,Texas Tech,-12.5,False,loss
+Week 8 Winners,Danielle Mojsiejenko,8,Oregon,-16.5,True,win
+Week 8 Winners,Danielle Mojsiejenko,9,Washington State,16.5,False,win
+Week 8 Winners,Danielle Mojsiejenko,10,UCLA,-3.5,False,loss
+Week 8 Winners,Danielle Mojsiejenko,11,Iowa,-2.5,True,loss
+Week 8 Winners,Danielle Mojsiejenko,12,Texas,-12.5,True,loss
+Week 8 Winners,Danielle Mojsiejenko,13,USC,7.5,False,loss
+Week 8 Winners,Danielle Mojsiejenko,14,Alabama,-7.5,False,win
+Week 8 Winners,Ryan Smith,0,Washington,5.5,False,loss
+Week 8 Winners,Ryan Smith,1,Vanderbilt,-2.5,True,win
+Week 8 Winners,Ryan Smith,2,South Carolina,4.5,False,loss
+Week 8 Winners,Ryan Smith,3,Purdue,3.5,False,loss
+Week 8 Winners,Ryan Smith,4,Ole Miss,6.5,False,loss
+Week 8 Winners,Ryan Smith,5,Ohio State,-26.5,False,win
+Week 8 Winners,Ryan Smith,6,Indiana,-26.5,True,loss
+Week 8 Winners,Ryan Smith,7,Arizona State,12.5,True,win
+Week 8 Winners,Ryan Smith,8,Rutgers,16.5,False,loss
+Week 8 Winners,Ryan Smith,9,Washington State,16.5,False,win
+Week 8 Winners,Ryan Smith,10,Maryland,3.5,False,win
+Week 8 Winners,Ryan Smith,11,Iowa,-2.5,False,loss
+Week 8 Winners,Ryan Smith,12,Kentucky,12.5,False,win
+Week 8 Winners,Ryan Smith,13,USC,7.5,True,loss
+Week 8 Winners,Ryan Smith,14,Tennessee,7.5,True,loss
+Week 8 Winners,David Zdanek,0,Washington,5.5,False,loss
+Week 8 Winners,David Zdanek,1,Vanderbilt,-2.5,False,win
+Week 8 Winners,David Zdanek,2,South Carolina,4.5,False,loss
+Week 8 Winners,David Zdanek,3,Northwestern,-3.5,False,win
+Week 8 Winners,David Zdanek,4,Ole Miss,6.5,False,loss
+Week 8 Winners,David Zdanek,5,Ohio State,-26.5,True,win
+Week 8 Winners,David Zdanek,6,Indiana,-26.5,True,loss
+Week 8 Winners,David Zdanek,7,Arizona State,12.5,False,win
+Week 8 Winners,David Zdanek,8,Oregon,-16.5,True,win
+Week 8 Winners,David Zdanek,9,Virginia,-16.5,False,loss
+Week 8 Winners,David Zdanek,10,UCLA,-3.5,True,loss
+Week 8 Winners,David Zdanek,11,Iowa,-2.5,False,loss
+Week 8 Winners,David Zdanek,12,Kentucky,12.5,False,win
+Week 8 Winners,David Zdanek,13,USC,7.5,False,loss
+Week 8 Winners,David Zdanek,14,Tennessee,7.5,True,loss
+Week 8 Winners,Scott Zdanek,0,Washington,5.5,False,loss
+Week 8 Winners,Scott Zdanek,1,LSU,2.5,True,loss
+Week 8 Winners,Scott Zdanek,2,Oklahoma,-4.5,True,win
+Week 8 Winners,Scott Zdanek,3,Northwestern,-3.5,False,win
+Week 8 Winners,Scott Zdanek,4,Ole Miss,6.5,False,loss
+Week 8 Winners,Scott Zdanek,5,Wisconsin,26.5,False,loss
+Week 8 Winners,Scott Zdanek,6,Michigan State,26.5,False,win
+Week 8 Winners,Scott Zdanek,7,Texas Tech,-12.5,False,loss
+Week 8 Winners,Scott Zdanek,8,Oregon,-16.5,False,win
+Week 8 Winners,Scott Zdanek,9,Virginia,-16.5,True,loss
+Week 8 Winners,Scott Zdanek,10,Maryland,3.5,False,win
+Week 8 Winners,Scott Zdanek,11,Penn State,2.5,True,win
+Week 8 Winners,Scott Zdanek,12,Texas,-12.5,True,loss
+Week 8 Winners,Scott Zdanek,13,USC,7.5,False,loss
+Week 8 Winners,Scott Zdanek,14,Tennessee,7.5,False,loss
+Week 8 Winners,Ryan Fechner,0,Washington,5.5,True,loss
+Week 8 Winners,Ryan Fechner,1,Vanderbilt,-2.5,False,win
+Week 8 Winners,Ryan Fechner,2,Oklahoma,-4.5,False,win
+Week 8 Winners,Ryan Fechner,3,Northwestern,-3.5,False,win
+Week 8 Winners,Ryan Fechner,4,Ole Miss,6.5,True,loss
+Week 8 Winners,Ryan Fechner,5,Ohio State,-26.5,False,win
+Week 8 Winners,Ryan Fechner,6,Indiana,-26.5,True,loss
+Week 8 Winners,Ryan Fechner,7,Texas Tech,-12.5,True,loss
+Week 8 Winners,Ryan Fechner,8,Oregon,-16.5,True,win
+Week 8 Winners,Ryan Fechner,9,Virginia,-16.5,False,loss
+Week 8 Winners,Ryan Fechner,10,UCLA,-3.5,False,loss
+Week 8 Winners,Ryan Fechner,11,Iowa,-2.5,False,loss
+Week 8 Winners,Ryan Fechner,12,Texas,-12.5,False,loss
+Week 8 Winners,Ryan Fechner,13,Notre Dame,-7.5,False,win
+Week 8 Winners,Ryan Fechner,14,Tennessee,7.5,False,loss
+Week 8 Winners,Brian Christoffersen,0,Washington,5.5,True,loss
+Week 8 Winners,Brian Christoffersen,1,Vanderbilt,-2.5,True,win
+Week 8 Winners,Brian Christoffersen,2,Oklahoma,-4.5,False,win
+Week 8 Winners,Brian Christoffersen,3,Northwestern,-3.5,False,win
+Week 8 Winners,Brian Christoffersen,4,Ole Miss,6.5,False,loss
+Week 8 Winners,Brian Christoffersen,5,Ohio State,-26.5,False,win
+Week 8 Winners,Brian Christoffersen,6,Indiana,-26.5,True,loss
+Week 8 Winners,Brian Christoffersen,7,Arizona State,12.5,False,win
+Week 8 Winners,Brian Christoffersen,8,Rutgers,16.5,False,loss
+Week 8 Winners,Brian Christoffersen,9,Virginia,-16.5,False,loss
+Week 8 Winners,Brian Christoffersen,10,UCLA,-3.5,True,loss
+Week 8 Winners,Brian Christoffersen,11,Iowa,-2.5,True,loss
+Week 8 Winners,Brian Christoffersen,12,Texas,-12.5,False,loss
+Week 8 Winners,Brian Christoffersen,13,USC,7.5,False,loss
+Week 8 Winners,Brian Christoffersen,14,Tennessee,7.5,False,loss

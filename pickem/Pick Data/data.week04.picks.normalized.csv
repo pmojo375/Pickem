@@ -1,0 +1,316 @@
+week_title,player,col_index,picked_team_full,line_value,is_key,result
+Week 4 Winners,Ryan Fechner,0,Texas Tech,3.5,True,win
+Week 4 Winners,Ryan Fechner,1,Syracuse,17.5,False,win
+Week 4 Winners,Ryan Fechner,2,Memphis,6.5,False,win
+Week 4 Winners,Ryan Fechner,3,Maryland,8.5,False,win
+Week 4 Winners,Ryan Fechner,4,Oregon,-34.5,False,loss
+Week 4 Winners,Ryan Fechner,5,Nebraska,3.5,True,win
+Week 4 Winners,Ryan Fechner,6,Notre Dame,-26.5,False,loss
+Week 4 Winners,Ryan Fechner,7,Oklahoma,-5.5,True,win
+Week 4 Winners,Ryan Fechner,8,Missouri,-13.5,False,loss
+Week 4 Winners,Ryan Fechner,9,Baylor,-2.5,False,loss
+Week 4 Winners,Ryan Fechner,10,Washington,-20.5,False,win
+Week 4 Winners,Ryan Fechner,11,Indiana,-4.5,True,win
+Week 4 Winners,Ryan Fechner,12,Miami,-2.5,True,win
+Week 4 Winners,Ryan Fechner,13,Virginia,-14.5,False,win
+Week 4 Winners,Ryan Fechner,14,USC,-15.5,False,loss
+Week 4 Winners,Mike Augustine,0,Texas Tech,3.5,True,win
+Week 4 Winners,Mike Augustine,1,Clemson,-17.5,False,loss
+Week 4 Winners,Mike Augustine,2,Memphis,6.5,False,win
+Week 4 Winners,Mike Augustine,3,Maryland,8.5,True,win
+Week 4 Winners,Mike Augustine,4,Oregon,-34.5,False,loss
+Week 4 Winners,Mike Augustine,5,Nebraska,3.5,False,win
+Week 4 Winners,Mike Augustine,6,Notre Dame,-26.5,True,loss
+Week 4 Winners,Mike Augustine,7,Oklahoma,-5.5,False,win
+Week 4 Winners,Mike Augustine,8,South Carolina,13.5,False,win
+Week 4 Winners,Mike Augustine,9,Arizona State,2.5,False,win
+Week 4 Winners,Mike Augustine,10,Washington,-20.5,False,win
+Week 4 Winners,Mike Augustine,11,Illinois,4.5,True,loss
+Week 4 Winners,Mike Augustine,12,Miami,-2.5,False,win
+Week 4 Winners,Mike Augustine,13,Virginia,-14.5,False,win
+Week 4 Winners,Mike Augustine,14,Michigan State,15.5,True,win
+Week 4 Winners,Brian Christoffersen,0,Utah,-3.5,False,loss
+Week 4 Winners,Brian Christoffersen,1,Syracuse,17.5,False,win
+Week 4 Winners,Brian Christoffersen,2,Memphis,6.5,False,win
+Week 4 Winners,Brian Christoffersen,3,Maryland,8.5,False,win
+Week 4 Winners,Brian Christoffersen,4,Oregon,-34.5,True,loss
+Week 4 Winners,Brian Christoffersen,5,Nebraska,3.5,True,win
+Week 4 Winners,Brian Christoffersen,6,Notre Dame,-26.5,False,loss
+Week 4 Winners,Brian Christoffersen,7,Auburn,5.5,False,loss
+Week 4 Winners,Brian Christoffersen,8,Missouri,-13.5,False,loss
+Week 4 Winners,Brian Christoffersen,9,Arizona State,2.5,False,win
+Week 4 Winners,Brian Christoffersen,10,Washington State,20.5,False,loss
+Week 4 Winners,Brian Christoffersen,11,Indiana,-4.5,True,win
+Week 4 Winners,Brian Christoffersen,12,Miami,-2.5,True,win
+Week 4 Winners,Brian Christoffersen,13,Virginia,-14.5,False,win
+Week 4 Winners,Brian Christoffersen,14,Michigan State,15.5,True,win
+Week 4 Winners,chris cross,0,Texas Tech,3.5,False,win
+Week 4 Winners,chris cross,1,Syracuse,17.5,False,win
+Week 4 Winners,chris cross,2,Memphis,6.5,False,win
+Week 4 Winners,chris cross,3,Maryland,8.5,True,win
+Week 4 Winners,chris cross,4,Oregon,-34.5,False,loss
+Week 4 Winners,chris cross,5,Nebraska,3.5,True,win
+Week 4 Winners,chris cross,6,Purdue,26.5,False,win
+Week 4 Winners,chris cross,7,Oklahoma,-5.5,False,win
+Week 4 Winners,chris cross,8,Missouri,-13.5,False,loss
+Week 4 Winners,chris cross,9,Arizona State,2.5,False,win
+Week 4 Winners,chris cross,10,Washington,-20.5,False,win
+Week 4 Winners,chris cross,11,Illinois,4.5,False,loss
+Week 4 Winners,chris cross,12,Miami,-2.5,True,win
+Week 4 Winners,chris cross,13,Stanford,14.5,True,loss
+Week 4 Winners,chris cross,14,USC,-15.5,True,loss
+Week 4 Winners,Jon Malm,0,Utah,-3.5,False,loss
+Week 4 Winners,Jon Malm,1,Syracuse,17.5,True,win
+Week 4 Winners,Jon Malm,2,Arkansas,-6.5,True,loss
+Week 4 Winners,Jon Malm,3,Maryland,8.5,False,win
+Week 4 Winners,Jon Malm,4,Oregon,-34.5,False,loss
+Week 4 Winners,Jon Malm,5,Nebraska,3.5,False,win
+Week 4 Winners,Jon Malm,6,Notre Dame,-26.5,True,loss
+Week 4 Winners,Jon Malm,7,Oklahoma,-5.5,False,win
+Week 4 Winners,Jon Malm,8,Missouri,-13.5,False,loss
+Week 4 Winners,Jon Malm,9,Baylor,-2.5,False,loss
+Week 4 Winners,Jon Malm,10,Washington,-20.5,False,win
+Week 4 Winners,Jon Malm,11,Indiana,-4.5,False,win
+Week 4 Winners,Jon Malm,12,Miami,-2.5,True,win
+Week 4 Winners,Jon Malm,13,Virginia,-14.5,False,win
+Week 4 Winners,Jon Malm,14,Michigan State,15.5,True,win
+Week 4 Winners,Parker Mojsiejenko,0,Texas Tech,3.5,False,win
+Week 4 Winners,Parker Mojsiejenko,1,Syracuse,17.5,False,win
+Week 4 Winners,Parker Mojsiejenko,2,Memphis,6.5,False,win
+Week 4 Winners,Parker Mojsiejenko,3,Wisconsin,-8.5,False,loss
+Week 4 Winners,Parker Mojsiejenko,4,Oregon,-34.5,False,loss
+Week 4 Winners,Parker Mojsiejenko,5,Nebraska,3.5,True,win
+Week 4 Winners,Parker Mojsiejenko,6,Notre Dame,-26.5,False,loss
+Week 4 Winners,Parker Mojsiejenko,7,Auburn,5.5,True,loss
+Week 4 Winners,Parker Mojsiejenko,8,Missouri,-13.5,False,loss
+Week 4 Winners,Parker Mojsiejenko,9,Arizona State,2.5,True,win
+Week 4 Winners,Parker Mojsiejenko,10,Washington,-20.5,False,win
+Week 4 Winners,Parker Mojsiejenko,11,Indiana,-4.5,False,win
+Week 4 Winners,Parker Mojsiejenko,12,Miami,-2.5,True,win
+Week 4 Winners,Parker Mojsiejenko,13,Virginia,-14.5,False,win
+Week 4 Winners,Parker Mojsiejenko,14,USC,-15.5,True,loss
+Week 4 Winners,Ralf Mojsiejenko,0,Texas Tech,3.5,True,win
+Week 4 Winners,Ralf Mojsiejenko,1,Syracuse,17.5,False,win
+Week 4 Winners,Ralf Mojsiejenko,2,Memphis,6.5,False,win
+Week 4 Winners,Ralf Mojsiejenko,3,Maryland,8.5,False,win
+Week 4 Winners,Ralf Mojsiejenko,4,Oregon,-34.5,False,loss
+Week 4 Winners,Ralf Mojsiejenko,5,Michigan,-3.5,True,loss
+Week 4 Winners,Ralf Mojsiejenko,6,Notre Dame,-26.5,False,loss
+Week 4 Winners,Ralf Mojsiejenko,7,Oklahoma,-5.5,True,win
+Week 4 Winners,Ralf Mojsiejenko,8,South Carolina,13.5,False,win
+Week 4 Winners,Ralf Mojsiejenko,9,Arizona State,2.5,False,win
+Week 4 Winners,Ralf Mojsiejenko,10,Washington,-20.5,False,win
+Week 4 Winners,Ralf Mojsiejenko,11,Illinois,4.5,True,loss
+Week 4 Winners,Ralf Mojsiejenko,12,Miami,-2.5,False,win
+Week 4 Winners,Ralf Mojsiejenko,13,Virginia,-14.5,False,win
+Week 4 Winners,Ralf Mojsiejenko,14,USC,-15.5,True,loss
+Week 4 Winners,Zac Nemitz,0,Texas Tech,3.5,False,win
+Week 4 Winners,Zac Nemitz,1,Syracuse,17.5,True,win
+Week 4 Winners,Zac Nemitz,2,Arkansas,-6.5,True,loss
+Week 4 Winners,Zac Nemitz,3,Wisconsin,-8.5,False,loss
+Week 4 Winners,Zac Nemitz,4,Oregon,-34.5,False,loss
+Week 4 Winners,Zac Nemitz,5,Nebraska,3.5,False,win
+Week 4 Winners,Zac Nemitz,6,Purdue,26.5,False,win
+Week 4 Winners,Zac Nemitz,7,Oklahoma,-5.5,False,win
+Week 4 Winners,Zac Nemitz,8,Missouri,-13.5,False,loss
+Week 4 Winners,Zac Nemitz,9,Arizona State,2.5,False,win
+Week 4 Winners,Zac Nemitz,10,Washington State,20.5,True,loss
+Week 4 Winners,Zac Nemitz,11,Indiana,-4.5,True,win
+Week 4 Winners,Zac Nemitz,12,Miami,-2.5,True,win
+Week 4 Winners,Zac Nemitz,13,Virginia,-14.5,False,win
+Week 4 Winners,Zac Nemitz,14,USC,-15.5,False,loss
+Week 4 Winners,Brandon Smith,0,Texas Tech,3.5,False,win
+Week 4 Winners,Brandon Smith,1,Syracuse,17.5,True,win
+Week 4 Winners,Brandon Smith,2,Memphis,6.5,False,win
+Week 4 Winners,Brandon Smith,3,Maryland,8.5,False,win
+Week 4 Winners,Brandon Smith,4,Oregon State,34.5,False,win
+Week 4 Winners,Brandon Smith,5,Michigan,-3.5,True,loss
+Week 4 Winners,Brandon Smith,6,Notre Dame,-26.5,True,loss
+Week 4 Winners,Brandon Smith,7,Auburn,5.5,False,loss
+Week 4 Winners,Brandon Smith,8,Missouri,-13.5,False,loss
+Week 4 Winners,Brandon Smith,9,Arizona State,2.5,False,win
+Week 4 Winners,Brandon Smith,10,Washington State,20.5,False,loss
+Week 4 Winners,Brandon Smith,11,Indiana,-4.5,True,win
+Week 4 Winners,Brandon Smith,12,Florida,2.5,False,loss
+Week 4 Winners,Brandon Smith,13,Stanford,14.5,False,loss
+Week 4 Winners,Brandon Smith,14,Michigan State,15.5,True,win
+Week 4 Winners,Scott Zdanek,0,Texas Tech,3.5,True,win
+Week 4 Winners,Scott Zdanek,1,Syracuse,17.5,False,win
+Week 4 Winners,Scott Zdanek,2,Memphis,6.5,False,win
+Week 4 Winners,Scott Zdanek,3,Maryland,8.5,True,win
+Week 4 Winners,Scott Zdanek,4,Oregon,-34.5,False,loss
+Week 4 Winners,Scott Zdanek,5,Michigan,-3.5,False,loss
+Week 4 Winners,Scott Zdanek,6,Notre Dame,-26.5,True,loss
+Week 4 Winners,Scott Zdanek,7,Oklahoma,-5.5,False,win
+Week 4 Winners,Scott Zdanek,8,South Carolina,13.5,False,win
+Week 4 Winners,Scott Zdanek,9,Arizona State,2.5,False,win
+Week 4 Winners,Scott Zdanek,10,Washington,-20.5,False,win
+Week 4 Winners,Scott Zdanek,11,Illinois,4.5,True,loss
+Week 4 Winners,Scott Zdanek,12,Miami,-2.5,False,win
+Week 4 Winners,Scott Zdanek,13,Stanford,14.5,False,loss
+Week 4 Winners,Scott Zdanek,14,USC,-15.5,True,loss
+Week 4 Winners,Apollo Braganini,0,Texas Tech,3.5,False,win
+Week 4 Winners,Apollo Braganini,1,Clemson,-17.5,True,loss
+Week 4 Winners,Apollo Braganini,2,Arkansas,-6.5,False,loss
+Week 4 Winners,Apollo Braganini,3,Maryland,8.5,False,win
+Week 4 Winners,Apollo Braganini,4,Oregon,-34.5,False,loss
+Week 4 Winners,Apollo Braganini,5,Nebraska,3.5,True,win
+Week 4 Winners,Apollo Braganini,6,Notre Dame,-26.5,True,loss
+Week 4 Winners,Apollo Braganini,7,Oklahoma,-5.5,False,win
+Week 4 Winners,Apollo Braganini,8,Missouri,-13.5,True,loss
+Week 4 Winners,Apollo Braganini,9,Arizona State,2.5,False,win
+Week 4 Winners,Apollo Braganini,10,Washington,-20.5,False,win
+Week 4 Winners,Apollo Braganini,11,Illinois,4.5,False,loss
+Week 4 Winners,Apollo Braganini,12,Miami,-2.5,True,win
+Week 4 Winners,Apollo Braganini,13,Virginia,-14.5,False,win
+Week 4 Winners,Apollo Braganini,14,USC,-15.5,False,loss
+Week 4 Winners,Adam Huttenstine,0,Utah,-3.5,False,loss
+Week 4 Winners,Adam Huttenstine,1,Syracuse,17.5,False,win
+Week 4 Winners,Adam Huttenstine,2,Arkansas,-6.5,False,loss
+Week 4 Winners,Adam Huttenstine,3,Wisconsin,-8.5,False,loss
+Week 4 Winners,Adam Huttenstine,4,Oregon,-34.5,True,loss
+Week 4 Winners,Adam Huttenstine,5,Michigan,-3.5,True,loss
+Week 4 Winners,Adam Huttenstine,6,Purdue,26.5,False,win
+Week 4 Winners,Adam Huttenstine,7,Oklahoma,-5.5,False,win
+Week 4 Winners,Adam Huttenstine,8,Missouri,-13.5,False,loss
+Week 4 Winners,Adam Huttenstine,9,Arizona State,2.5,True,win
+Week 4 Winners,Adam Huttenstine,10,Washington,-20.5,False,win
+Week 4 Winners,Adam Huttenstine,11,Indiana,-4.5,False,win
+Week 4 Winners,Adam Huttenstine,12,Miami,-2.5,True,win
+Week 4 Winners,Adam Huttenstine,13,Stanford,14.5,True,loss
+Week 4 Winners,Adam Huttenstine,14,Michigan State,15.5,False,win
+Week 4 Winners,Verne Rambo,0,Utah,-3.5,False,loss
+Week 4 Winners,Verne Rambo,1,Syracuse,17.5,False,win
+Week 4 Winners,Verne Rambo,2,Memphis,6.5,False,win
+Week 4 Winners,Verne Rambo,3,Wisconsin,-8.5,True,loss
+Week 4 Winners,Verne Rambo,4,Oregon,-34.5,False,loss
+Week 4 Winners,Verne Rambo,5,Nebraska,3.5,True,win
+Week 4 Winners,Verne Rambo,6,Notre Dame,-26.5,False,loss
+Week 4 Winners,Verne Rambo,7,Auburn,5.5,True,loss
+Week 4 Winners,Verne Rambo,8,South Carolina,13.5,False,win
+Week 4 Winners,Verne Rambo,9,Baylor,-2.5,False,loss
+Week 4 Winners,Verne Rambo,10,Washington State,20.5,False,loss
+Week 4 Winners,Verne Rambo,11,Indiana,-4.5,False,win
+Week 4 Winners,Verne Rambo,12,Miami,-2.5,True,win
+Week 4 Winners,Verne Rambo,13,Stanford,14.5,False,loss
+Week 4 Winners,Verne Rambo,14,Michigan State,15.5,True,win
+Week 4 Winners,Ryan Smith,0,Utah,-3.5,True,loss
+Week 4 Winners,Ryan Smith,1,Syracuse,17.5,True,win
+Week 4 Winners,Ryan Smith,2,Arkansas,-6.5,False,loss
+Week 4 Winners,Ryan Smith,3,Wisconsin,-8.5,False,loss
+Week 4 Winners,Ryan Smith,4,Oregon State,34.5,False,win
+Week 4 Winners,Ryan Smith,5,Michigan,-3.5,True,loss
+Week 4 Winners,Ryan Smith,6,Notre Dame,-26.5,False,loss
+Week 4 Winners,Ryan Smith,7,Auburn,5.5,False,loss
+Week 4 Winners,Ryan Smith,8,South Carolina,13.5,False,win
+Week 4 Winners,Ryan Smith,9,Arizona State,2.5,False,win
+Week 4 Winners,Ryan Smith,10,Washington,-20.5,False,win
+Week 4 Winners,Ryan Smith,11,Illinois,4.5,False,loss
+Week 4 Winners,Ryan Smith,12,Miami,-2.5,True,win
+Week 4 Winners,Ryan Smith,13,Stanford,14.5,False,loss
+Week 4 Winners,Ryan Smith,14,Michigan State,15.5,True,win
+Week 4 Winners,David Zdanek,0,Texas Tech,3.5,False,win
+Week 4 Winners,David Zdanek,1,Syracuse,17.5,False,win
+Week 4 Winners,David Zdanek,2,Arkansas,-6.5,False,loss
+Week 4 Winners,David Zdanek,3,Maryland,8.5,False,win
+Week 4 Winners,David Zdanek,4,Oregon,-34.5,False,loss
+Week 4 Winners,David Zdanek,5,Nebraska,3.5,False,win
+Week 4 Winners,David Zdanek,6,Purdue,26.5,False,win
+Week 4 Winners,David Zdanek,7,Oklahoma,-5.5,False,win
+Week 4 Winners,David Zdanek,8,Missouri,-13.5,True,loss
+Week 4 Winners,David Zdanek,9,Baylor,-2.5,True,loss
+Week 4 Winners,David Zdanek,10,Washington State,20.5,False,loss
+Week 4 Winners,David Zdanek,11,Illinois,4.5,True,loss
+Week 4 Winners,David Zdanek,12,Miami,-2.5,True,win
+Week 4 Winners,David Zdanek,13,Virginia,-14.5,True,win
+Week 4 Winners,David Zdanek,14,USC,-15.5,False,loss
+Week 4 Winners,Erich Kirchner,0,Utah,-3.5,False,loss
+Week 4 Winners,Erich Kirchner,1,Syracuse,17.5,False,win
+Week 4 Winners,Erich Kirchner,2,Arkansas,-6.5,True,loss
+Week 4 Winners,Erich Kirchner,3,Wisconsin,-8.5,False,loss
+Week 4 Winners,Erich Kirchner,4,Oregon,-34.5,True,loss
+Week 4 Winners,Erich Kirchner,5,Michigan,-3.5,False,loss
+Week 4 Winners,Erich Kirchner,6,Purdue,26.5,True,win
+Week 4 Winners,Erich Kirchner,7,Oklahoma,-5.5,False,win
+Week 4 Winners,Erich Kirchner,8,South Carolina,13.5,False,win
+Week 4 Winners,Erich Kirchner,9,Arizona State,2.5,False,win
+Week 4 Winners,Erich Kirchner,10,Washington State,20.5,False,loss
+Week 4 Winners,Erich Kirchner,11,Illinois,4.5,True,loss
+Week 4 Winners,Erich Kirchner,12,Miami,-2.5,True,win
+Week 4 Winners,Erich Kirchner,13,Stanford,14.5,False,loss
+Week 4 Winners,Erich Kirchner,14,Michigan State,15.5,False,win
+Week 4 Winners,Kyle Totzke,0,Utah,-3.5,False,loss
+Week 4 Winners,Kyle Totzke,1,Syracuse,17.5,False,win
+Week 4 Winners,Kyle Totzke,2,Arkansas,-6.5,False,loss
+Week 4 Winners,Kyle Totzke,3,Wisconsin,-8.5,True,loss
+Week 4 Winners,Kyle Totzke,4,Oregon,-34.5,False,loss
+Week 4 Winners,Kyle Totzke,5,Nebraska,3.5,False,win
+Week 4 Winners,Kyle Totzke,6,Purdue,26.5,False,win
+Week 4 Winners,Kyle Totzke,7,Oklahoma,-5.5,True,win
+Week 4 Winners,Kyle Totzke,8,Missouri,-13.5,True,loss
+Week 4 Winners,Kyle Totzke,9,Baylor,-2.5,True,loss
+Week 4 Winners,Kyle Totzke,10,Washington,-20.5,False,win
+Week 4 Winners,Kyle Totzke,11,Illinois,4.5,False,loss
+Week 4 Winners,Kyle Totzke,12,Miami,-2.5,True,win
+Week 4 Winners,Kyle Totzke,13,Virginia,-14.5,False,win
+Week 4 Winners,Kyle Totzke,14,USC,-15.5,False,loss
+Week 4 Winners,Roger Mojsiejenko,0,Utah,-3.5,True,loss
+Week 4 Winners,Roger Mojsiejenko,1,Syracuse,17.5,False,win
+Week 4 Winners,Roger Mojsiejenko,2,Arkansas,-6.5,False,loss
+Week 4 Winners,Roger Mojsiejenko,3,Wisconsin,-8.5,False,loss
+Week 4 Winners,Roger Mojsiejenko,4,Oregon,-34.5,True,loss
+Week 4 Winners,Roger Mojsiejenko,5,Michigan,-3.5,False,loss
+Week 4 Winners,Roger Mojsiejenko,6,Notre Dame,-26.5,False,loss
+Week 4 Winners,Roger Mojsiejenko,7,Oklahoma,-5.5,True,win
+Week 4 Winners,Roger Mojsiejenko,8,Missouri,-13.5,False,loss
+Week 4 Winners,Roger Mojsiejenko,9,Baylor,-2.5,False,loss
+Week 4 Winners,Roger Mojsiejenko,10,Washington,-20.5,True,win
+Week 4 Winners,Roger Mojsiejenko,11,Illinois,4.5,False,loss
+Week 4 Winners,Roger Mojsiejenko,12,Miami,-2.5,True,win
+Week 4 Winners,Roger Mojsiejenko,13,Virginia,-14.5,False,win
+Week 4 Winners,Roger Mojsiejenko,14,USC,-15.5,False,loss
+Week 4 Winners,Nancie Oxley,0,Utah,-3.5,False,loss
+Week 4 Winners,Nancie Oxley,1,Clemson,-17.5,False,loss
+Week 4 Winners,Nancie Oxley,2,Arkansas,-6.5,False,loss
+Week 4 Winners,Nancie Oxley,3,Wisconsin,-8.5,True,loss
+Week 4 Winners,Nancie Oxley,4,Oregon,-34.5,False,loss
+Week 4 Winners,Nancie Oxley,5,Michigan,-3.5,False,loss
+Week 4 Winners,Nancie Oxley,6,Purdue,26.5,False,win
+Week 4 Winners,Nancie Oxley,7,Oklahoma,-5.5,True,win
+Week 4 Winners,Nancie Oxley,8,Missouri,-13.5,True,loss
+Week 4 Winners,Nancie Oxley,9,Baylor,-2.5,False,loss
+Week 4 Winners,Nancie Oxley,10,Washington State,20.5,False,loss
+Week 4 Winners,Nancie Oxley,11,Illinois,4.5,False,loss
+Week 4 Winners,Nancie Oxley,12,Miami,-2.5,True,win
+Week 4 Winners,Nancie Oxley,13,Virginia,-14.5,True,win
+Week 4 Winners,Nancie Oxley,14,USC,-15.5,False,loss
+Week 4 Winners,Danielle Mojsiejenko,0,Utah,-3.5,True,loss
+Week 4 Winners,Danielle Mojsiejenko,1,Clemson,-17.5,False,loss
+Week 4 Winners,Danielle Mojsiejenko,2,Arkansas,-6.5,False,loss
+Week 4 Winners,Danielle Mojsiejenko,3,Wisconsin,-8.5,False,loss
+Week 4 Winners,Danielle Mojsiejenko,4,Oregon,-34.5,False,loss
+Week 4 Winners,Danielle Mojsiejenko,5,Michigan,-3.5,True,loss
+Week 4 Winners,Danielle Mojsiejenko,6,Notre Dame,-26.5,False,loss
+Week 4 Winners,Danielle Mojsiejenko,7,Oklahoma,-5.5,True,win
+Week 4 Winners,Danielle Mojsiejenko,8,Missouri,-13.5,False,loss
+Week 4 Winners,Danielle Mojsiejenko,9,Baylor,-2.5,False,loss
+Week 4 Winners,Danielle Mojsiejenko,10,Washington,-20.5,False,win
+Week 4 Winners,Danielle Mojsiejenko,11,Illinois,4.5,True,loss
+Week 4 Winners,Danielle Mojsiejenko,12,Miami,-2.5,True,win
+Week 4 Winners,Danielle Mojsiejenko,13,Virginia,-14.5,False,win
+Week 4 Winners,Danielle Mojsiejenko,14,USC,-15.5,False,loss
+Week 4 Winners,Mary Mojsiejenko,0,Utah,-3.5,False,loss
+Week 4 Winners,Mary Mojsiejenko,1,Clemson,-17.5,False,loss
+Week 4 Winners,Mary Mojsiejenko,2,Arkansas,-6.5,False,loss
+Week 4 Winners,Mary Mojsiejenko,3,Wisconsin,-8.5,True,loss
+Week 4 Winners,Mary Mojsiejenko,4,Oregon,-34.5,True,loss
+Week 4 Winners,Mary Mojsiejenko,5,Michigan,-3.5,True,loss
+Week 4 Winners,Mary Mojsiejenko,6,Notre Dame,-26.5,False,loss
+Week 4 Winners,Mary Mojsiejenko,7,Oklahoma,-5.5,False,win
+Week 4 Winners,Mary Mojsiejenko,8,Missouri,-13.5,False,loss
+Week 4 Winners,Mary Mojsiejenko,9,Arizona State,2.5,False,win
+Week 4 Winners,Mary Mojsiejenko,10,Washington State,20.5,False,loss
+Week 4 Winners,Mary Mojsiejenko,11,Illinois,4.5,True,loss
+Week 4 Winners,Mary Mojsiejenko,12,Miami,-2.5,True,win
+Week 4 Winners,Mary Mojsiejenko,13,Stanford,14.5,False,loss
+Week 4 Winners,Mary Mojsiejenko,14,USC,-15.5,False,loss

@@ -1,0 +1,316 @@
+week_title,player,col_index,picked_team_full,line_value,is_key,result
+Week 6 Winners,chris cross,0,Illinois,-10.5,True,win
+Week 6 Winners,chris cross,1,Pittsburgh,-6.5,False,win
+Week 6 Winners,chris cross,2,Georgia,-20.5,False,win
+Week 6 Winners,chris cross,3,Navy,-10.5,True,loss
+Week 6 Winners,chris cross,4,Wisconsin,16.5,False,win
+Week 6 Winners,chris cross,5,Maryland,5.5,False,win
+Week 6 Winners,chris cross,6,Virginia,6.5,False,win
+Week 6 Winners,chris cross,7,Texas,-7.5,False,loss
+Week 6 Winners,chris cross,8,UCLA,25.5,False,win
+Week 6 Winners,chris cross,9,Alabama,-10.5,True,win
+Week 6 Winners,chris cross,10,Nebraska,-10.5,False,win
+Week 6 Winners,chris cross,11,Texas Tech,-12.5,True,win
+Week 6 Winners,chris cross,12,Miami,-4.5,False,win
+Week 6 Winners,chris cross,13,Ohio State,-23.5,True,win
+Week 6 Winners,chris cross,14,Texas A&M,-14.5,False,win
+Week 6 Winners,Erich Kirchner,0,Illinois,-10.5,True,win
+Week 6 Winners,Erich Kirchner,1,Pittsburgh,-6.5,True,win
+Week 6 Winners,Erich Kirchner,2,Georgia,-20.5,False,win
+Week 6 Winners,Erich Kirchner,3,Navy,-10.5,True,loss
+Week 6 Winners,Erich Kirchner,4,Michigan,-16.5,False,loss
+Week 6 Winners,Erich Kirchner,5,Washington,-5.5,False,loss
+Week 6 Winners,Erich Kirchner,6,Virginia,6.5,True,win
+Week 6 Winners,Erich Kirchner,7,Texas,-7.5,False,loss
+Week 6 Winners,Erich Kirchner,8,Penn State,-25.5,False,loss
+Week 6 Winners,Erich Kirchner,9,Alabama,-10.5,False,win
+Week 6 Winners,Erich Kirchner,10,Nebraska,-10.5,False,win
+Week 6 Winners,Erich Kirchner,11,Texas Tech,-12.5,False,win
+Week 6 Winners,Erich Kirchner,12,Miami,-4.5,True,win
+Week 6 Winners,Erich Kirchner,13,Ohio State,-23.5,False,win
+Week 6 Winners,Erich Kirchner,14,Mississippi State,14.5,False,loss
+Week 6 Winners,Danielle Mojsiejenko,0,Purdue,10.5,False,loss
+Week 6 Winners,Danielle Mojsiejenko,1,Pittsburgh,-6.5,True,win
+Week 6 Winners,Danielle Mojsiejenko,2,Georgia,-20.5,False,win
+Week 6 Winners,Danielle Mojsiejenko,3,Air Force,10.5,False,win
+Week 6 Winners,Danielle Mojsiejenko,4,Wisconsin,16.5,False,win
+Week 6 Winners,Danielle Mojsiejenko,5,Maryland,5.5,True,win
+Week 6 Winners,Danielle Mojsiejenko,6,Louisville,-6.5,False,loss
+Week 6 Winners,Danielle Mojsiejenko,7,Florida,7.5,False,win
+Week 6 Winners,Danielle Mojsiejenko,8,Penn State,-25.5,True,loss
+Week 6 Winners,Danielle Mojsiejenko,9,Alabama,-10.5,True,win
+Week 6 Winners,Danielle Mojsiejenko,10,Michigan State,10.5,False,loss
+Week 6 Winners,Danielle Mojsiejenko,11,Texas Tech,-12.5,False,win
+Week 6 Winners,Danielle Mojsiejenko,12,Miami,-4.5,True,win
+Week 6 Winners,Danielle Mojsiejenko,13,Minnesota,23.5,False,loss
+Week 6 Winners,Danielle Mojsiejenko,14,Mississippi State,14.5,False,loss
+Week 6 Winners,Ryan Fechner,0,Illinois,-10.5,True,win
+Week 6 Winners,Ryan Fechner,1,Boston College,6.5,False,loss
+Week 6 Winners,Ryan Fechner,2,Georgia,-20.5,False,win
+Week 6 Winners,Ryan Fechner,3,Navy,-10.5,False,loss
+Week 6 Winners,Ryan Fechner,4,Michigan,-16.5,True,loss
+Week 6 Winners,Ryan Fechner,5,Maryland,5.5,True,win
+Week 6 Winners,Ryan Fechner,6,Virginia,6.5,False,win
+Week 6 Winners,Ryan Fechner,7,Florida,7.5,True,win
+Week 6 Winners,Ryan Fechner,8,Penn State,-25.5,False,loss
+Week 6 Winners,Ryan Fechner,9,Vanderbilt,10.5,False,loss
+Week 6 Winners,Ryan Fechner,10,Nebraska,-10.5,False,win
+Week 6 Winners,Ryan Fechner,11,Texas Tech,-12.5,True,win
+Week 6 Winners,Ryan Fechner,12,Florida State,4.5,False,loss
+Week 6 Winners,Ryan Fechner,13,Ohio State,-23.5,False,win
+Week 6 Winners,Ryan Fechner,14,Mississippi State,14.5,False,loss
+Week 6 Winners,Jon Malm,0,Illinois,-10.5,True,win
+Week 6 Winners,Jon Malm,1,Pittsburgh,-6.5,True,win
+Week 6 Winners,Jon Malm,2,Kentucky,20.5,False,loss
+Week 6 Winners,Jon Malm,3,Navy,-10.5,True,loss
+Week 6 Winners,Jon Malm,4,Wisconsin,16.5,False,win
+Week 6 Winners,Jon Malm,5,Maryland,5.5,True,win
+Week 6 Winners,Jon Malm,6,Virginia,6.5,False,win
+Week 6 Winners,Jon Malm,7,Texas,-7.5,False,loss
+Week 6 Winners,Jon Malm,8,Penn State,-25.5,False,loss
+Week 6 Winners,Jon Malm,9,Alabama,-10.5,False,win
+Week 6 Winners,Jon Malm,10,Michigan State,10.5,False,loss
+Week 6 Winners,Jon Malm,11,Houston,12.5,False,loss
+Week 6 Winners,Jon Malm,12,Miami,-4.5,True,win
+Week 6 Winners,Jon Malm,13,Ohio State,-23.5,False,win
+Week 6 Winners,Jon Malm,14,Mississippi State,14.5,False,loss
+Week 6 Winners,Zac Nemitz,0,Purdue,10.5,False,loss
+Week 6 Winners,Zac Nemitz,1,Pittsburgh,-6.5,False,win
+Week 6 Winners,Zac Nemitz,2,Kentucky,20.5,True,loss
+Week 6 Winners,Zac Nemitz,3,Navy,-10.5,False,loss
+Week 6 Winners,Zac Nemitz,4,Wisconsin,16.5,True,win
+Week 6 Winners,Zac Nemitz,5,Maryland,5.5,False,win
+Week 6 Winners,Zac Nemitz,6,Louisville,-6.5,False,loss
+Week 6 Winners,Zac Nemitz,7,Florida,7.5,False,win
+Week 6 Winners,Zac Nemitz,8,Penn State,-25.5,False,loss
+Week 6 Winners,Zac Nemitz,9,Alabama,-10.5,True,win
+Week 6 Winners,Zac Nemitz,10,Michigan State,10.5,False,loss
+Week 6 Winners,Zac Nemitz,11,Texas Tech,-12.5,False,win
+Week 6 Winners,Zac Nemitz,12,Florida State,4.5,False,loss
+Week 6 Winners,Zac Nemitz,13,Ohio State,-23.5,True,win
+Week 6 Winners,Zac Nemitz,14,Texas A&M,-14.5,True,win
+Week 6 Winners,Apollo Braganini,0,Illinois,-10.5,False,win
+Week 6 Winners,Apollo Braganini,1,Pittsburgh,-6.5,False,win
+Week 6 Winners,Apollo Braganini,2,Georgia,-20.5,True,win
+Week 6 Winners,Apollo Braganini,3,Navy,-10.5,False,loss
+Week 6 Winners,Apollo Braganini,4,Michigan,-16.5,False,loss
+Week 6 Winners,Apollo Braganini,5,Washington,-5.5,False,loss
+Week 6 Winners,Apollo Braganini,6,Louisville,-6.5,False,loss
+Week 6 Winners,Apollo Braganini,7,Texas,-7.5,True,loss
+Week 6 Winners,Apollo Braganini,8,Penn State,-25.5,False,loss
+Week 6 Winners,Apollo Braganini,9,Alabama,-10.5,True,win
+Week 6 Winners,Apollo Braganini,10,Nebraska,-10.5,False,win
+Week 6 Winners,Apollo Braganini,11,Texas Tech,-12.5,False,win
+Week 6 Winners,Apollo Braganini,12,Miami,-4.5,True,win
+Week 6 Winners,Apollo Braganini,13,Ohio State,-23.5,False,win
+Week 6 Winners,Apollo Braganini,14,Mississippi State,14.5,True,loss
+Week 6 Winners,Brian Christoffersen,0,Illinois,-10.5,True,win
+Week 6 Winners,Brian Christoffersen,1,Boston College,6.5,True,loss
+Week 6 Winners,Brian Christoffersen,2,Georgia,-20.5,False,win
+Week 6 Winners,Brian Christoffersen,3,Navy,-10.5,False,loss
+Week 6 Winners,Brian Christoffersen,4,Wisconsin,16.5,False,win
+Week 6 Winners,Brian Christoffersen,5,Washington,-5.5,False,loss
+Week 6 Winners,Brian Christoffersen,6,Virginia,6.5,False,win
+Week 6 Winners,Brian Christoffersen,7,Texas,-7.5,False,loss
+Week 6 Winners,Brian Christoffersen,8,UCLA,25.5,False,win
+Week 6 Winners,Brian Christoffersen,9,Vanderbilt,10.5,True,loss
+Week 6 Winners,Brian Christoffersen,10,Michigan State,10.5,True,loss
+Week 6 Winners,Brian Christoffersen,11,Texas Tech,-12.5,False,win
+Week 6 Winners,Brian Christoffersen,12,Miami,-4.5,True,win
+Week 6 Winners,Brian Christoffersen,13,Ohio State,-23.5,False,win
+Week 6 Winners,Brian Christoffersen,14,Texas A&M,-14.5,False,win
+Week 6 Winners,Parker Mojsiejenko,0,Purdue,10.5,False,loss
+Week 6 Winners,Parker Mojsiejenko,1,Boston College,6.5,False,loss
+Week 6 Winners,Parker Mojsiejenko,2,Georgia,-20.5,False,win
+Week 6 Winners,Parker Mojsiejenko,3,Navy,-10.5,False,loss
+Week 6 Winners,Parker Mojsiejenko,4,Michigan,-16.5,True,loss
+Week 6 Winners,Parker Mojsiejenko,5,Maryland,5.5,True,win
+Week 6 Winners,Parker Mojsiejenko,6,Louisville,-6.5,False,loss
+Week 6 Winners,Parker Mojsiejenko,7,Florida,7.5,False,win
+Week 6 Winners,Parker Mojsiejenko,8,Penn State,-25.5,True,loss
+Week 6 Winners,Parker Mojsiejenko,9,Alabama,-10.5,True,win
+Week 6 Winners,Parker Mojsiejenko,10,Nebraska,-10.5,False,win
+Week 6 Winners,Parker Mojsiejenko,11,Texas Tech,-12.5,False,win
+Week 6 Winners,Parker Mojsiejenko,12,Miami,-4.5,False,win
+Week 6 Winners,Parker Mojsiejenko,13,Minnesota,23.5,False,loss
+Week 6 Winners,Parker Mojsiejenko,14,Texas A&M,-14.5,True,win
+Week 6 Winners,Roger Mojsiejenko,0,Purdue,10.5,False,loss
+Week 6 Winners,Roger Mojsiejenko,1,Pittsburgh,-6.5,True,win
+Week 6 Winners,Roger Mojsiejenko,2,Kentucky,20.5,False,loss
+Week 6 Winners,Roger Mojsiejenko,3,Navy,-10.5,False,loss
+Week 6 Winners,Roger Mojsiejenko,4,Michigan,-16.5,True,loss
+Week 6 Winners,Roger Mojsiejenko,5,Maryland,5.5,True,win
+Week 6 Winners,Roger Mojsiejenko,6,Virginia,6.5,False,win
+Week 6 Winners,Roger Mojsiejenko,7,Florida,7.5,False,win
+Week 6 Winners,Roger Mojsiejenko,8,Penn State,-25.5,False,loss
+Week 6 Winners,Roger Mojsiejenko,9,Vanderbilt,10.5,False,loss
+Week 6 Winners,Roger Mojsiejenko,10,Nebraska,-10.5,False,win
+Week 6 Winners,Roger Mojsiejenko,11,Texas Tech,-12.5,True,win
+Week 6 Winners,Roger Mojsiejenko,12,Miami,-4.5,False,win
+Week 6 Winners,Roger Mojsiejenko,13,Ohio State,-23.5,False,win
+Week 6 Winners,Roger Mojsiejenko,14,Mississippi State,14.5,True,loss
+Week 6 Winners,Nancie Oxley,0,Illinois,-10.5,False,win
+Week 6 Winners,Nancie Oxley,1,Boston College,6.5,False,loss
+Week 6 Winners,Nancie Oxley,2,Kentucky,20.5,False,loss
+Week 6 Winners,Nancie Oxley,3,Navy,-10.5,False,loss
+Week 6 Winners,Nancie Oxley,4,Wisconsin,16.5,True,win
+Week 6 Winners,Nancie Oxley,5,Maryland,5.5,True,win
+Week 6 Winners,Nancie Oxley,6,Louisville,-6.5,True,loss
+Week 6 Winners,Nancie Oxley,7,Texas,-7.5,True,loss
+Week 6 Winners,Nancie Oxley,8,UCLA,25.5,False,win
+Week 6 Winners,Nancie Oxley,9,Alabama,-10.5,True,win
+Week 6 Winners,Nancie Oxley,10,Nebraska,-10.5,False,win
+Week 6 Winners,Nancie Oxley,11,Houston,12.5,False,loss
+Week 6 Winners,Nancie Oxley,12,Miami,-4.5,False,win
+Week 6 Winners,Nancie Oxley,13,Minnesota,23.5,False,loss
+Week 6 Winners,Nancie Oxley,14,Texas A&M,-14.5,False,win
+Week 6 Winners,David Zdanek,0,Illinois,-10.5,False,win
+Week 6 Winners,David Zdanek,1,Boston College,6.5,False,loss
+Week 6 Winners,David Zdanek,2,Georgia,-20.5,False,win
+Week 6 Winners,David Zdanek,3,Navy,-10.5,True,loss
+Week 6 Winners,David Zdanek,4,Michigan,-16.5,False,loss
+Week 6 Winners,David Zdanek,5,Maryland,5.5,False,win
+Week 6 Winners,David Zdanek,6,Virginia,6.5,False,win
+Week 6 Winners,David Zdanek,7,Texas,-7.5,True,loss
+Week 6 Winners,David Zdanek,8,Penn State,-25.5,True,loss
+Week 6 Winners,David Zdanek,9,Alabama,-10.5,False,win
+Week 6 Winners,David Zdanek,10,Michigan State,10.5,False,loss
+Week 6 Winners,David Zdanek,11,Texas Tech,-12.5,False,win
+Week 6 Winners,David Zdanek,12,Miami,-4.5,True,win
+Week 6 Winners,David Zdanek,13,Ohio State,-23.5,True,win
+Week 6 Winners,David Zdanek,14,Texas A&M,-14.5,False,win
+Week 6 Winners,Scott Zdanek,0,Illinois,-10.5,True,win
+Week 6 Winners,Scott Zdanek,1,Pittsburgh,-6.5,True,win
+Week 6 Winners,Scott Zdanek,2,Georgia,-20.5,False,win
+Week 6 Winners,Scott Zdanek,3,Navy,-10.5,False,loss
+Week 6 Winners,Scott Zdanek,4,Michigan,-16.5,True,loss
+Week 6 Winners,Scott Zdanek,5,Washington,-5.5,False,loss
+Week 6 Winners,Scott Zdanek,6,Virginia,6.5,False,win
+Week 6 Winners,Scott Zdanek,7,Texas,-7.5,True,loss
+Week 6 Winners,Scott Zdanek,8,Penn State,-25.5,False,loss
+Week 6 Winners,Scott Zdanek,9,Alabama,-10.5,True,win
+Week 6 Winners,Scott Zdanek,10,Nebraska,-10.5,False,win
+Week 6 Winners,Scott Zdanek,11,Houston,12.5,False,loss
+Week 6 Winners,Scott Zdanek,12,Miami,-4.5,False,win
+Week 6 Winners,Scott Zdanek,13,Minnesota,23.5,False,loss
+Week 6 Winners,Scott Zdanek,14,Texas A&M,-14.5,False,win
+Week 6 Winners,Brandon Smith,0,Illinois,-10.5,True,win
+Week 6 Winners,Brandon Smith,1,Pittsburgh,-6.5,False,win
+Week 6 Winners,Brandon Smith,2,Georgia,-20.5,True,win
+Week 6 Winners,Brandon Smith,3,Navy,-10.5,True,loss
+Week 6 Winners,Brandon Smith,4,Michigan,-16.5,True,loss
+Week 6 Winners,Brandon Smith,5,Maryland,5.5,False,win
+Week 6 Winners,Brandon Smith,6,Virginia,6.5,False,win
+Week 6 Winners,Brandon Smith,7,Texas,-7.5,False,loss
+Week 6 Winners,Brandon Smith,8,UCLA,25.5,False,win
+Week 6 Winners,Brandon Smith,9,Alabama,-10.5,True,win
+Week 6 Winners,Brandon Smith,10,Michigan State,10.5,False,loss
+Week 6 Winners,Brandon Smith,11,Houston,12.5,False,loss
+Week 6 Winners,Brandon Smith,12,Florida State,4.5,False,loss
+Week 6 Winners,Brandon Smith,13,Minnesota,23.5,False,loss
+Week 6 Winners,Brandon Smith,14,Mississippi State,14.5,False,loss
+Week 6 Winners,Ryan Smith,0,Purdue,10.5,False,loss
+Week 6 Winners,Ryan Smith,1,Pittsburgh,-6.5,True,win
+Week 6 Winners,Ryan Smith,2,Kentucky,20.5,False,loss
+Week 6 Winners,Ryan Smith,3,Navy,-10.5,False,loss
+Week 6 Winners,Ryan Smith,4,Michigan,-16.5,False,loss
+Week 6 Winners,Ryan Smith,5,Maryland,5.5,True,win
+Week 6 Winners,Ryan Smith,6,Louisville,-6.5,False,loss
+Week 6 Winners,Ryan Smith,7,Florida,7.5,False,win
+Week 6 Winners,Ryan Smith,8,Penn State,-25.5,True,loss
+Week 6 Winners,Ryan Smith,9,Vanderbilt,10.5,True,loss
+Week 6 Winners,Ryan Smith,10,Michigan State,10.5,False,loss
+Week 6 Winners,Ryan Smith,11,Texas Tech,-12.5,False,win
+Week 6 Winners,Ryan Smith,12,Miami,-4.5,True,win
+Week 6 Winners,Ryan Smith,13,Ohio State,-23.5,False,win
+Week 6 Winners,Ryan Smith,14,Texas A&M,-14.5,False,win
+Week 6 Winners,Kyle Totzke,0,,,False,loss
+Week 6 Winners,Kyle Totzke,1,,,False,loss
+Week 6 Winners,Kyle Totzke,2,,,False,loss
+Week 6 Winners,Kyle Totzke,3,,,False,loss
+Week 6 Winners,Kyle Totzke,4,,,False,loss
+Week 6 Winners,Kyle Totzke,5,Washington,-5.5,True,loss
+Week 6 Winners,Kyle Totzke,6,Virginia,6.5,False,win
+Week 6 Winners,Kyle Totzke,7,Florida,7.5,True,win
+Week 6 Winners,Kyle Totzke,8,Penn State,-25.5,False,loss
+Week 6 Winners,Kyle Totzke,9,Alabama,-10.5,True,win
+Week 6 Winners,Kyle Totzke,10,Michigan State,10.5,True,loss
+Week 6 Winners,Kyle Totzke,11,Texas Tech,-12.5,False,win
+Week 6 Winners,Kyle Totzke,12,Miami,-4.5,True,win
+Week 6 Winners,Kyle Totzke,13,Ohio State,-23.5,False,win
+Week 6 Winners,Kyle Totzke,14,Texas A&M,-14.5,False,win
+Week 6 Winners,Mike Augustine,0,Illinois,-10.5,True,win
+Week 6 Winners,Mike Augustine,1,Pittsburgh,-6.5,True,win
+Week 6 Winners,Mike Augustine,2,Georgia,-20.5,False,win
+Week 6 Winners,Mike Augustine,3,Navy,-10.5,False,loss
+Week 6 Winners,Mike Augustine,4,Michigan,-16.5,True,loss
+Week 6 Winners,Mike Augustine,5,Maryland,5.5,True,win
+Week 6 Winners,Mike Augustine,6,Virginia,6.5,False,win
+Week 6 Winners,Mike Augustine,7,Texas,-7.5,False,loss
+Week 6 Winners,Mike Augustine,8,Penn State,-25.5,False,loss
+Week 6 Winners,Mike Augustine,9,Alabama,-10.5,False,win
+Week 6 Winners,Mike Augustine,10,Michigan State,10.5,False,loss
+Week 6 Winners,Mike Augustine,11,Houston,12.5,False,loss
+Week 6 Winners,Mike Augustine,12,Florida State,4.5,True,loss
+Week 6 Winners,Mike Augustine,13,Minnesota,23.5,False,loss
+Week 6 Winners,Mike Augustine,14,Mississippi State,14.5,False,loss
+Week 6 Winners,Mary Mojsiejenko,0,Illinois,-10.5,False,win
+Week 6 Winners,Mary Mojsiejenko,1,Pittsburgh,-6.5,False,win
+Week 6 Winners,Mary Mojsiejenko,2,Georgia,-20.5,False,win
+Week 6 Winners,Mary Mojsiejenko,3,Navy,-10.5,False,loss
+Week 6 Winners,Mary Mojsiejenko,4,Michigan,-16.5,True,loss
+Week 6 Winners,Mary Mojsiejenko,5,Maryland,5.5,False,win
+Week 6 Winners,Mary Mojsiejenko,6,Virginia,6.5,False,win
+Week 6 Winners,Mary Mojsiejenko,7,Texas,-7.5,True,loss
+Week 6 Winners,Mary Mojsiejenko,8,Penn State,-25.5,True,loss
+Week 6 Winners,Mary Mojsiejenko,9,Vanderbilt,10.5,True,loss
+Week 6 Winners,Mary Mojsiejenko,10,Michigan State,10.5,False,loss
+Week 6 Winners,Mary Mojsiejenko,11,Texas Tech,-12.5,False,win
+Week 6 Winners,Mary Mojsiejenko,12,Miami,-4.5,True,win
+Week 6 Winners,Mary Mojsiejenko,13,Ohio State,-23.5,False,win
+Week 6 Winners,Mary Mojsiejenko,14,Mississippi State,14.5,False,loss
+Week 6 Winners,Verne Rambo,0,Purdue,10.5,False,loss
+Week 6 Winners,Verne Rambo,1,Boston College,6.5,False,loss
+Week 6 Winners,Verne Rambo,2,Georgia,-20.5,False,win
+Week 6 Winners,Verne Rambo,3,Navy,-10.5,True,loss
+Week 6 Winners,Verne Rambo,4,Michigan,-16.5,False,loss
+Week 6 Winners,Verne Rambo,5,Maryland,5.5,False,win
+Week 6 Winners,Verne Rambo,6,Louisville,-6.5,False,loss
+Week 6 Winners,Verne Rambo,7,Texas,-7.5,True,loss
+Week 6 Winners,Verne Rambo,8,Penn State,-25.5,False,loss
+Week 6 Winners,Verne Rambo,9,Alabama,-10.5,True,win
+Week 6 Winners,Verne Rambo,10,Michigan State,10.5,True,loss
+Week 6 Winners,Verne Rambo,11,Texas Tech,-12.5,False,win
+Week 6 Winners,Verne Rambo,12,Miami,-4.5,True,win
+Week 6 Winners,Verne Rambo,13,Ohio State,-23.5,False,win
+Week 6 Winners,Verne Rambo,14,Texas A&M,-14.5,False,win
+Week 6 Winners,Ralf Mojsiejenko,0,Purdue,10.5,True,loss
+Week 6 Winners,Ralf Mojsiejenko,1,Boston College,6.5,True,loss
+Week 6 Winners,Ralf Mojsiejenko,2,Kentucky,20.5,False,loss
+Week 6 Winners,Ralf Mojsiejenko,3,Navy,-10.5,False,loss
+Week 6 Winners,Ralf Mojsiejenko,4,Wisconsin,16.5,False,win
+Week 6 Winners,Ralf Mojsiejenko,5,Washington,-5.5,False,loss
+Week 6 Winners,Ralf Mojsiejenko,6,Louisville,-6.5,True,loss
+Week 6 Winners,Ralf Mojsiejenko,7,Florida,7.5,False,win
+Week 6 Winners,Ralf Mojsiejenko,8,Penn State,-25.5,False,loss
+Week 6 Winners,Ralf Mojsiejenko,9,Alabama,-10.5,True,win
+Week 6 Winners,Ralf Mojsiejenko,10,Michigan State,10.5,False,loss
+Week 6 Winners,Ralf Mojsiejenko,11,Texas Tech,-12.5,False,win
+Week 6 Winners,Ralf Mojsiejenko,12,Miami,-4.5,False,win
+Week 6 Winners,Ralf Mojsiejenko,13,Minnesota,23.5,False,loss
+Week 6 Winners,Ralf Mojsiejenko,14,Mississippi State,14.5,True,loss
+Week 6 Winners,Adam Huttenstine,0,Purdue,10.5,False,loss
+Week 6 Winners,Adam Huttenstine,1,Pittsburgh,-6.5,True,win
+Week 6 Winners,Adam Huttenstine,2,Georgia,-20.5,False,win
+Week 6 Winners,Adam Huttenstine,3,Navy,-10.5,False,loss
+Week 6 Winners,Adam Huttenstine,4,Michigan,-16.5,True,loss
+Week 6 Winners,Adam Huttenstine,5,Maryland,5.5,False,win
+Week 6 Winners,Adam Huttenstine,6,Louisville,-6.5,False,loss
+Week 6 Winners,Adam Huttenstine,7,Texas,-7.5,True,loss
+Week 6 Winners,Adam Huttenstine,8,Penn State,-25.5,True,loss
+Week 6 Winners,Adam Huttenstine,9,Vanderbilt,10.5,False,loss
+Week 6 Winners,Adam Huttenstine,10,Michigan State,10.5,False,loss
+Week 6 Winners,Adam Huttenstine,11,Houston,12.5,False,loss
+Week 6 Winners,Adam Huttenstine,12,Florida State,4.5,True,loss
+Week 6 Winners,Adam Huttenstine,13,Ohio State,-23.5,False,win
+Week 6 Winners,Adam Huttenstine,14,Mississippi State,14.5,False,loss

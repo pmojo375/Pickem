@@ -1,0 +1,316 @@
+week_title,player,col_index,picked_team_full,line_value,is_key,result
+Week 3 Winners,chris cross,0,Oklahoma,-22.5,False,win
+Week 3 Winners,chris cross,1,Oregon,-27.5,False,loss
+Week 3 Winners,chris cross,2,Michigan,-27.5,True,win
+Week 3 Winners,chris cross,3,Wisconsin,20.5,False,loss
+Week 3 Winners,chris cross,4,Tennessee,3.5,False,win
+Week 3 Winners,chris cross,5,Pittsburgh,-6.5,True,loss
+Week 3 Winners,chris cross,6,Purdue,21.5,True,win
+Week 3 Winners,chris cross,7,Ole Miss,-8.5,False,loss
+Week 3 Winners,chris cross,8,Ohio,31.5,False,win
+Week 3 Winners,chris cross,9,Illinois,-27.5,True,win
+Week 3 Winners,chris cross,10,LSU,-5.5,False,win
+Week 3 Winners,chris cross,11,Iowa,-35.5,False,win
+Week 3 Winners,chris cross,12,Texas A&M,6.5,True,win
+Week 3 Winners,chris cross,13,Minnesota,-2.5,False,loss
+Week 3 Winners,chris cross,14,Stanford,11.5,False,win
+Week 3 Winners,Ryan Smith,0,Oklahoma,-22.5,False,win
+Week 3 Winners,Ryan Smith,1,Oregon,-27.5,True,loss
+Week 3 Winners,Ryan Smith,2,Central Michigan,27.5,True,loss
+Week 3 Winners,Ryan Smith,3,Wisconsin,20.5,False,loss
+Week 3 Winners,Ryan Smith,4,Tennessee,3.5,True,win
+Week 3 Winners,Ryan Smith,5,West Virginia,6.5,False,win
+Week 3 Winners,Ryan Smith,6,Purdue,21.5,False,win
+Week 3 Winners,Ryan Smith,7,Arkansas,8.5,False,win
+Week 3 Winners,Ryan Smith,8,Ohio,31.5,True,win
+Week 3 Winners,Ryan Smith,9,Illinois,-27.5,False,win
+Week 3 Winners,Ryan Smith,10,LSU,-5.5,True,win
+Week 3 Winners,Ryan Smith,11,Iowa,-35.5,False,win
+Week 3 Winners,Ryan Smith,12,Texas A&M,6.5,False,win
+Week 3 Winners,Ryan Smith,13,California,2.5,False,win
+Week 3 Winners,Ryan Smith,14,Boston College,-11.5,False,loss
+Week 3 Winners,Scott Zdanek,0,Oklahoma,-22.5,True,win
+Week 3 Winners,Scott Zdanek,1,Northwestern,27.5,False,win
+Week 3 Winners,Scott Zdanek,2,Michigan,-27.5,True,win
+Week 3 Winners,Scott Zdanek,3,Wisconsin,20.5,False,loss
+Week 3 Winners,Scott Zdanek,4,Tennessee,3.5,False,win
+Week 3 Winners,Scott Zdanek,5,Pittsburgh,-6.5,True,loss
+Week 3 Winners,Scott Zdanek,6,Purdue,21.5,False,win
+Week 3 Winners,Scott Zdanek,7,Arkansas,8.5,False,win
+Week 3 Winners,Scott Zdanek,8,Ohio State,-31.5,False,loss
+Week 3 Winners,Scott Zdanek,9,Illinois,-27.5,True,win
+Week 3 Winners,Scott Zdanek,10,LSU,-5.5,True,win
+Week 3 Winners,Scott Zdanek,11,Iowa,-35.5,False,win
+Week 3 Winners,Scott Zdanek,12,Notre Dame,-6.5,False,loss
+Week 3 Winners,Scott Zdanek,13,Minnesota,-2.5,False,loss
+Week 3 Winners,Scott Zdanek,14,Stanford,11.5,False,win
+Week 3 Winners,Roger Mojsiejenko,0,Oklahoma,-22.5,False,win
+Week 3 Winners,Roger Mojsiejenko,1,Northwestern,27.5,False,win
+Week 3 Winners,Roger Mojsiejenko,2,Michigan,-27.5,True,win
+Week 3 Winners,Roger Mojsiejenko,3,Alabama,-20.5,True,win
+Week 3 Winners,Roger Mojsiejenko,4,Georgia,-3.5,False,loss
+Week 3 Winners,Roger Mojsiejenko,5,Pittsburgh,-6.5,False,loss
+Week 3 Winners,Roger Mojsiejenko,6,Purdue,21.5,False,win
+Week 3 Winners,Roger Mojsiejenko,7,Ole Miss,-8.5,False,loss
+Week 3 Winners,Roger Mojsiejenko,8,Ohio,31.5,False,win
+Week 3 Winners,Roger Mojsiejenko,9,Illinois,-27.5,True,win
+Week 3 Winners,Roger Mojsiejenko,10,LSU,-5.5,False,win
+Week 3 Winners,Roger Mojsiejenko,11,Iowa,-35.5,True,win
+Week 3 Winners,Roger Mojsiejenko,12,Notre Dame,-6.5,True,loss
+Week 3 Winners,Roger Mojsiejenko,13,Minnesota,-2.5,False,loss
+Week 3 Winners,Roger Mojsiejenko,14,Boston College,-11.5,False,loss
+Week 3 Winners,Adam Huttenstine,0,Oklahoma,-22.5,False,win
+Week 3 Winners,Adam Huttenstine,1,Oregon,-27.5,True,loss
+Week 3 Winners,Adam Huttenstine,2,Michigan,-27.5,True,win
+Week 3 Winners,Adam Huttenstine,3,Wisconsin,20.5,False,loss
+Week 3 Winners,Adam Huttenstine,4,Tennessee,3.5,False,win
+Week 3 Winners,Adam Huttenstine,5,Pittsburgh,-6.5,False,loss
+Week 3 Winners,Adam Huttenstine,6,Purdue,21.5,False,win
+Week 3 Winners,Adam Huttenstine,7,Arkansas,8.5,False,win
+Week 3 Winners,Adam Huttenstine,8,Ohio State,-31.5,True,loss
+Week 3 Winners,Adam Huttenstine,9,Illinois,-27.5,True,win
+Week 3 Winners,Adam Huttenstine,10,LSU,-5.5,False,win
+Week 3 Winners,Adam Huttenstine,11,Iowa,-35.5,False,win
+Week 3 Winners,Adam Huttenstine,12,Texas A&M,6.5,False,win
+Week 3 Winners,Adam Huttenstine,13,California,2.5,False,win
+Week 3 Winners,Adam Huttenstine,14,Boston College,-11.5,True,loss
+Week 3 Winners,Apollo Braganini,0,Oklahoma,-22.5,False,win
+Week 3 Winners,Apollo Braganini,1,Oregon,-27.5,False,loss
+Week 3 Winners,Apollo Braganini,2,Michigan,-27.5,False,win
+Week 3 Winners,Apollo Braganini,3,Alabama,-20.5,False,win
+Week 3 Winners,Apollo Braganini,4,Georgia,-3.5,True,loss
+Week 3 Winners,Apollo Braganini,5,Pittsburgh,-6.5,False,loss
+Week 3 Winners,Apollo Braganini,6,Purdue,21.5,False,win
+Week 3 Winners,Apollo Braganini,7,Ole Miss,-8.5,True,loss
+Week 3 Winners,Apollo Braganini,8,Ohio State,-31.5,True,loss
+Week 3 Winners,Apollo Braganini,9,Illinois,-27.5,False,win
+Week 3 Winners,Apollo Braganini,10,LSU,-5.5,True,win
+Week 3 Winners,Apollo Braganini,11,Massachusetts,35.5,False,loss
+Week 3 Winners,Apollo Braganini,12,Texas A&M,6.5,True,win
+Week 3 Winners,Apollo Braganini,13,California,2.5,False,win
+Week 3 Winners,Apollo Braganini,14,Stanford,11.5,False,win
+Week 3 Winners,Brian Christoffersen,0,,,False,loss
+Week 3 Winners,Brian Christoffersen,1,,,False,loss
+Week 3 Winners,Brian Christoffersen,2,,,False,loss
+Week 3 Winners,Brian Christoffersen,3,,,False,loss
+Week 3 Winners,Brian Christoffersen,4,,,False,loss
+Week 3 Winners,Brian Christoffersen,5,,,False,loss
+Week 3 Winners,Brian Christoffersen,6,,,False,loss
+Week 3 Winners,Brian Christoffersen,7,Arkansas,8.5,False,win
+Week 3 Winners,Brian Christoffersen,8,Ohio State,-31.5,True,loss
+Week 3 Winners,Brian Christoffersen,9,Illinois,-27.5,True,win
+Week 3 Winners,Brian Christoffersen,10,LSU,-5.5,False,win
+Week 3 Winners,Brian Christoffersen,11,Iowa,-35.5,True,win
+Week 3 Winners,Brian Christoffersen,12,Texas A&M,6.5,True,win
+Week 3 Winners,Brian Christoffersen,13,Minnesota,-2.5,False,loss
+Week 3 Winners,Brian Christoffersen,14,Stanford,11.5,True,win
+Week 3 Winners,Parker Mojsiejenko,0,Temple,22.5,False,loss
+Week 3 Winners,Parker Mojsiejenko,1,Oregon,-27.5,True,loss
+Week 3 Winners,Parker Mojsiejenko,2,Michigan,-27.5,True,win
+Week 3 Winners,Parker Mojsiejenko,3,Wisconsin,20.5,False,loss
+Week 3 Winners,Parker Mojsiejenko,4,Tennessee,3.5,False,win
+Week 3 Winners,Parker Mojsiejenko,5,West Virginia,6.5,False,win
+Week 3 Winners,Parker Mojsiejenko,6,USC,-21.5,False,loss
+Week 3 Winners,Parker Mojsiejenko,7,Arkansas,8.5,False,win
+Week 3 Winners,Parker Mojsiejenko,8,Ohio State,-31.5,False,loss
+Week 3 Winners,Parker Mojsiejenko,9,Illinois,-27.5,True,win
+Week 3 Winners,Parker Mojsiejenko,10,LSU,-5.5,True,win
+Week 3 Winners,Parker Mojsiejenko,11,Massachusetts,35.5,False,loss
+Week 3 Winners,Parker Mojsiejenko,12,Notre Dame,-6.5,False,loss
+Week 3 Winners,Parker Mojsiejenko,13,California,2.5,False,win
+Week 3 Winners,Parker Mojsiejenko,14,Boston College,-11.5,True,loss
+Week 3 Winners,Brandon Smith,0,Oklahoma,-22.5,False,win
+Week 3 Winners,Brandon Smith,1,Northwestern,27.5,True,win
+Week 3 Winners,Brandon Smith,2,Michigan,-27.5,True,win
+Week 3 Winners,Brandon Smith,3,Wisconsin,20.5,True,loss
+Week 3 Winners,Brandon Smith,4,Georgia,-3.5,False,loss
+Week 3 Winners,Brandon Smith,5,Pittsburgh,-6.5,False,loss
+Week 3 Winners,Brandon Smith,6,Purdue,21.5,False,win
+Week 3 Winners,Brandon Smith,7,Arkansas,8.5,False,win
+Week 3 Winners,Brandon Smith,8,Ohio State,-31.5,False,loss
+Week 3 Winners,Brandon Smith,9,Illinois,-27.5,True,win
+Week 3 Winners,Brandon Smith,10,LSU,-5.5,False,win
+Week 3 Winners,Brandon Smith,11,Massachusetts,35.5,False,loss
+Week 3 Winners,Brandon Smith,12,Notre Dame,-6.5,True,loss
+Week 3 Winners,Brandon Smith,13,Minnesota,-2.5,False,loss
+Week 3 Winners,Brandon Smith,14,Boston College,-11.5,False,loss
+Week 3 Winners,Ryan Fechner,0,Oklahoma,-22.5,False,win
+Week 3 Winners,Ryan Fechner,1,Oregon,-27.5,True,loss
+Week 3 Winners,Ryan Fechner,2,Michigan,-27.5,False,win
+Week 3 Winners,Ryan Fechner,3,Alabama,-20.5,True,win
+Week 3 Winners,Ryan Fechner,4,Tennessee,3.5,False,win
+Week 3 Winners,Ryan Fechner,5,Pittsburgh,-6.5,True,loss
+Week 3 Winners,Ryan Fechner,6,USC,-21.5,False,loss
+Week 3 Winners,Ryan Fechner,7,Ole Miss,-8.5,False,loss
+Week 3 Winners,Ryan Fechner,8,Ohio State,-31.5,True,loss
+Week 3 Winners,Ryan Fechner,9,Illinois,-27.5,True,win
+Week 3 Winners,Ryan Fechner,10,LSU,-5.5,False,win
+Week 3 Winners,Ryan Fechner,11,Massachusetts,35.5,False,loss
+Week 3 Winners,Ryan Fechner,12,Texas A&M,6.5,False,win
+Week 3 Winners,Ryan Fechner,13,Minnesota,-2.5,False,loss
+Week 3 Winners,Ryan Fechner,14,Boston College,-11.5,False,loss
+Week 3 Winners,Mary Mojsiejenko,0,Oklahoma,-22.5,False,win
+Week 3 Winners,Mary Mojsiejenko,1,Oregon,-27.5,True,loss
+Week 3 Winners,Mary Mojsiejenko,2,Michigan,-27.5,True,win
+Week 3 Winners,Mary Mojsiejenko,3,Alabama,-20.5,False,win
+Week 3 Winners,Mary Mojsiejenko,4,Tennessee,3.5,False,win
+Week 3 Winners,Mary Mojsiejenko,5,Pittsburgh,-6.5,True,loss
+Week 3 Winners,Mary Mojsiejenko,6,USC,-21.5,False,loss
+Week 3 Winners,Mary Mojsiejenko,7,Ole Miss,-8.5,False,loss
+Week 3 Winners,Mary Mojsiejenko,8,Ohio State,-31.5,False,loss
+Week 3 Winners,Mary Mojsiejenko,9,Illinois,-27.5,False,win
+Week 3 Winners,Mary Mojsiejenko,10,LSU,-5.5,True,win
+Week 3 Winners,Mary Mojsiejenko,11,Iowa,-35.5,False,win
+Week 3 Winners,Mary Mojsiejenko,12,Notre Dame,-6.5,True,loss
+Week 3 Winners,Mary Mojsiejenko,13,Minnesota,-2.5,False,loss
+Week 3 Winners,Mary Mojsiejenko,14,Boston College,-11.5,False,loss
+Week 3 Winners,Ralf Mojsiejenko,0,Oklahoma,-22.5,False,win
+Week 3 Winners,Ralf Mojsiejenko,1,Northwestern,27.5,True,win
+Week 3 Winners,Ralf Mojsiejenko,2,Michigan,-27.5,True,win
+Week 3 Winners,Ralf Mojsiejenko,3,Wisconsin,20.5,True,loss
+Week 3 Winners,Ralf Mojsiejenko,4,Georgia,-3.5,False,loss
+Week 3 Winners,Ralf Mojsiejenko,5,West Virginia,6.5,True,win
+Week 3 Winners,Ralf Mojsiejenko,6,USC,-21.5,True,loss
+Week 3 Winners,Ralf Mojsiejenko,7,Ole Miss,-8.5,False,loss
+Week 3 Winners,Ralf Mojsiejenko,8,Ohio State,-31.5,False,loss
+Week 3 Winners,Ralf Mojsiejenko,9,Illinois,-27.5,False,win
+Week 3 Winners,Ralf Mojsiejenko,10,Florida,5.5,False,loss
+Week 3 Winners,Ralf Mojsiejenko,11,Massachusetts,35.5,False,loss
+Week 3 Winners,Ralf Mojsiejenko,12,Notre Dame,-6.5,False,loss
+Week 3 Winners,Ralf Mojsiejenko,13,Minnesota,-2.5,False,loss
+Week 3 Winners,Ralf Mojsiejenko,14,Stanford,11.5,False,win
+Week 3 Winners,Verne Rambo,0,Oklahoma,-22.5,False,win
+Week 3 Winners,Verne Rambo,1,Oregon,-27.5,True,loss
+Week 3 Winners,Verne Rambo,2,Michigan,-27.5,True,win
+Week 3 Winners,Verne Rambo,3,Alabama,-20.5,False,win
+Week 3 Winners,Verne Rambo,4,Georgia,-3.5,False,loss
+Week 3 Winners,Verne Rambo,5,West Virginia,6.5,False,win
+Week 3 Winners,Verne Rambo,6,USC,-21.5,True,loss
+Week 3 Winners,Verne Rambo,7,Ole Miss,-8.5,False,loss
+Week 3 Winners,Verne Rambo,8,Ohio State,-31.5,True,loss
+Week 3 Winners,Verne Rambo,9,Illinois,-27.5,False,win
+Week 3 Winners,Verne Rambo,10,LSU,-5.5,True,win
+Week 3 Winners,Verne Rambo,11,Massachusetts,35.5,False,loss
+Week 3 Winners,Verne Rambo,12,Notre Dame,-6.5,False,loss
+Week 3 Winners,Verne Rambo,13,California,2.5,False,win
+Week 3 Winners,Verne Rambo,14,Boston College,-11.5,False,loss
+Week 3 Winners,Kyle Totzke,0,Oklahoma,-22.5,True,win
+Week 3 Winners,Kyle Totzke,1,Oregon,-27.5,False,loss
+Week 3 Winners,Kyle Totzke,2,Michigan,-27.5,False,win
+Week 3 Winners,Kyle Totzke,3,Wisconsin,20.5,False,loss
+Week 3 Winners,Kyle Totzke,4,Georgia,-3.5,True,loss
+Week 3 Winners,Kyle Totzke,5,Pittsburgh,-6.5,False,loss
+Week 3 Winners,Kyle Totzke,6,Purdue,21.5,False,win
+Week 3 Winners,Kyle Totzke,7,Arkansas,8.5,False,win
+Week 3 Winners,Kyle Totzke,8,Ohio State,-31.5,True,loss
+Week 3 Winners,Kyle Totzke,9,Illinois,-27.5,False,win
+Week 3 Winners,Kyle Totzke,10,LSU,-5.5,True,win
+Week 3 Winners,Kyle Totzke,11,Iowa,-35.5,False,win
+Week 3 Winners,Kyle Totzke,12,Notre Dame,-6.5,False,loss
+Week 3 Winners,Kyle Totzke,13,Minnesota,-2.5,False,loss
+Week 3 Winners,Kyle Totzke,14,Boston College,-11.5,True,loss
+Week 3 Winners,Jon Malm,0,Oklahoma,-22.5,False,win
+Week 3 Winners,Jon Malm,1,Oregon,-27.5,False,loss
+Week 3 Winners,Jon Malm,2,Central Michigan,27.5,False,loss
+Week 3 Winners,Jon Malm,3,Alabama,-20.5,True,win
+Week 3 Winners,Jon Malm,4,Georgia,-3.5,True,loss
+Week 3 Winners,Jon Malm,5,Pittsburgh,-6.5,True,loss
+Week 3 Winners,Jon Malm,6,Purdue,21.5,False,win
+Week 3 Winners,Jon Malm,7,Ole Miss,-8.5,False,loss
+Week 3 Winners,Jon Malm,8,Ohio State,-31.5,False,loss
+Week 3 Winners,Jon Malm,9,Illinois,-27.5,False,win
+Week 3 Winners,Jon Malm,10,LSU,-5.5,True,win
+Week 3 Winners,Jon Malm,11,Iowa,-35.5,False,win
+Week 3 Winners,Jon Malm,12,Notre Dame,-6.5,False,loss
+Week 3 Winners,Jon Malm,13,Minnesota,-2.5,True,loss
+Week 3 Winners,Jon Malm,14,Boston College,-11.5,False,loss
+Week 3 Winners,Nancie Oxley,0,Oklahoma,-22.5,False,win
+Week 3 Winners,Nancie Oxley,1,Oregon,-27.5,False,loss
+Week 3 Winners,Nancie Oxley,2,Michigan,-27.5,False,win
+Week 3 Winners,Nancie Oxley,3,Alabama,-20.5,False,win
+Week 3 Winners,Nancie Oxley,4,Georgia,-3.5,True,loss
+Week 3 Winners,Nancie Oxley,5,Pittsburgh,-6.5,True,loss
+Week 3 Winners,Nancie Oxley,6,Purdue,21.5,False,win
+Week 3 Winners,Nancie Oxley,7,,,False,loss
+Week 3 Winners,Nancie Oxley,8,Ohio State,-31.5,False,loss
+Week 3 Winners,Nancie Oxley,9,Illinois,-27.5,False,win
+Week 3 Winners,Nancie Oxley,10,LSU,-5.5,True,win
+Week 3 Winners,Nancie Oxley,11,Iowa,-35.5,False,win
+Week 3 Winners,Nancie Oxley,12,Notre Dame,-6.5,True,loss
+Week 3 Winners,Nancie Oxley,13,Minnesota,-2.5,True,loss
+Week 3 Winners,Nancie Oxley,14,Boston College,-11.5,False,loss
+Week 3 Winners,Danielle Mojsiejenko,0,Oklahoma,-22.5,False,win
+Week 3 Winners,Danielle Mojsiejenko,1,Oregon,-27.5,False,loss
+Week 3 Winners,Danielle Mojsiejenko,2,Michigan,-27.5,False,win
+Week 3 Winners,Danielle Mojsiejenko,3,Alabama,-20.5,False,win
+Week 3 Winners,Danielle Mojsiejenko,4,Georgia,-3.5,True,loss
+Week 3 Winners,Danielle Mojsiejenko,5,Pittsburgh,-6.5,True,loss
+Week 3 Winners,Danielle Mojsiejenko,6,USC,-21.5,False,loss
+Week 3 Winners,Danielle Mojsiejenko,7,Ole Miss,-8.5,True,loss
+Week 3 Winners,Danielle Mojsiejenko,8,Ohio State,-31.5,False,loss
+Week 3 Winners,Danielle Mojsiejenko,9,Illinois,-27.5,False,win
+Week 3 Winners,Danielle Mojsiejenko,10,LSU,-5.5,True,win
+Week 3 Winners,Danielle Mojsiejenko,11,Iowa,-35.5,False,win
+Week 3 Winners,Danielle Mojsiejenko,12,Notre Dame,-6.5,True,loss
+Week 3 Winners,Danielle Mojsiejenko,13,Minnesota,-2.5,False,loss
+Week 3 Winners,Danielle Mojsiejenko,14,Boston College,-11.5,False,loss
+Week 3 Winners,Zac Nemitz,0,Temple,22.5,False,loss
+Week 3 Winners,Zac Nemitz,1,Oregon,-27.5,True,loss
+Week 3 Winners,Zac Nemitz,2,Michigan,-27.5,True,win
+Week 3 Winners,Zac Nemitz,3,Wisconsin,20.5,False,loss
+Week 3 Winners,Zac Nemitz,4,Georgia,-3.5,False,loss
+Week 3 Winners,Zac Nemitz,5,Pittsburgh,-6.5,True,loss
+Week 3 Winners,Zac Nemitz,6,Purdue,21.5,False,win
+Week 3 Winners,Zac Nemitz,7,Ole Miss,-8.5,True,loss
+Week 3 Winners,Zac Nemitz,8,Ohio,31.5,False,win
+Week 3 Winners,Zac Nemitz,9,Illinois,-27.5,False,win
+Week 3 Winners,Zac Nemitz,10,LSU,-5.5,False,win
+Week 3 Winners,Zac Nemitz,11,Massachusetts,35.5,True,loss
+Week 3 Winners,Zac Nemitz,12,Texas A&M,6.5,False,win
+Week 3 Winners,Zac Nemitz,13,Minnesota,-2.5,False,loss
+Week 3 Winners,Zac Nemitz,14,Boston College,-11.5,False,loss
+Week 3 Winners,David Zdanek,0,Oklahoma,-22.5,False,win
+Week 3 Winners,David Zdanek,1,Oregon,-27.5,True,loss
+Week 3 Winners,David Zdanek,2,Michigan,-27.5,False,win
+Week 3 Winners,David Zdanek,3,Wisconsin,20.5,True,loss
+Week 3 Winners,David Zdanek,4,Georgia,-3.5,False,loss
+Week 3 Winners,David Zdanek,5,Pittsburgh,-6.5,True,loss
+Week 3 Winners,David Zdanek,6,Purdue,21.5,False,win
+Week 3 Winners,David Zdanek,7,Ole Miss,-8.5,False,loss
+Week 3 Winners,David Zdanek,8,Ohio State,-31.5,True,loss
+Week 3 Winners,David Zdanek,9,Illinois,-27.5,False,win
+Week 3 Winners,David Zdanek,10,LSU,-5.5,True,win
+Week 3 Winners,David Zdanek,11,Massachusetts,35.5,False,loss
+Week 3 Winners,David Zdanek,12,Texas A&M,6.5,False,win
+Week 3 Winners,David Zdanek,13,Minnesota,-2.5,False,loss
+Week 3 Winners,David Zdanek,14,Boston College,-11.5,False,loss
+Week 3 Winners,Mike Augustine,0,Oklahoma,-22.5,False,win
+Week 3 Winners,Mike Augustine,1,Oregon,-27.5,False,loss
+Week 3 Winners,Mike Augustine,2,Central Michigan,27.5,True,loss
+Week 3 Winners,Mike Augustine,3,Wisconsin,20.5,True,loss
+Week 3 Winners,Mike Augustine,4,Georgia,-3.5,True,loss
+Week 3 Winners,Mike Augustine,5,Pittsburgh,-6.5,False,loss
+Week 3 Winners,Mike Augustine,6,USC,-21.5,True,loss
+Week 3 Winners,Mike Augustine,7,Arkansas,8.5,False,win
+Week 3 Winners,Mike Augustine,8,Ohio State,-31.5,False,loss
+Week 3 Winners,Mike Augustine,9,Illinois,-27.5,False,win
+Week 3 Winners,Mike Augustine,10,LSU,-5.5,False,win
+Week 3 Winners,Mike Augustine,11,Massachusetts,35.5,False,loss
+Week 3 Winners,Mike Augustine,12,Texas A&M,6.5,True,win
+Week 3 Winners,Mike Augustine,13,Minnesota,-2.5,False,loss
+Week 3 Winners,Mike Augustine,14,Boston College,-11.5,False,loss
+Week 3 Winners,Erich Kirchner,0,,,False,loss
+Week 3 Winners,Erich Kirchner,1,,,False,loss
+Week 3 Winners,Erich Kirchner,2,,,False,loss
+Week 3 Winners,Erich Kirchner,3,,,False,loss
+Week 3 Winners,Erich Kirchner,4,Georgia,-3.5,True,loss
+Week 3 Winners,Erich Kirchner,5,Pittsburgh,-6.5,True,loss
+Week 3 Winners,Erich Kirchner,6,USC,-21.5,True,loss
+Week 3 Winners,Erich Kirchner,7,Ole Miss,-8.5,False,loss
+Week 3 Winners,Erich Kirchner,8,Ohio State,-31.5,True,loss
+Week 3 Winners,Erich Kirchner,9,Illinois,-27.5,False,win
+Week 3 Winners,Erich Kirchner,10,LSU,-5.5,False,win
+Week 3 Winners,Erich Kirchner,11,Iowa,-35.5,False,win
+Week 3 Winners,Erich Kirchner,12,Notre Dame,-6.5,False,loss
+Week 3 Winners,Erich Kirchner,13,Minnesota,-2.5,True,loss
+Week 3 Winners,Erich Kirchner,14,Boston College,-11.5,False,loss

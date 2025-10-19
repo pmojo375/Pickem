@@ -1,0 +1,316 @@
+week_title,player,col_index,picked_team_full,line_value,is_key,result
+Week 1 Winners,Adam Huttenstine,0,Tennessee,-12.5,False,win
+Week 1 Winners,Adam Huttenstine,1,Maryland,-17.5,False,win
+Week 1 Winners,Adam Huttenstine,2,Ball State,16.5,True,loss
+Week 1 Winners,Adam Huttenstine,3,Tulane,-6.5,True,win
+Week 1 Winners,Adam Huttenstine,4,Ohio State,-2.5,False,win
+Week 1 Winners,Adam Huttenstine,5,Old Dominion,23.5,True,win
+Week 1 Winners,Adam Huttenstine,6,Alabama,-13.5,False,loss
+Week 1 Winners,Adam Huttenstine,7,Marshall,39.5,True,win
+Week 1 Winners,Adam Huttenstine,8,Nevada,45.5,False,win
+Week 1 Winners,Adam Huttenstine,9,Oklahoma,-35.5,True,loss
+Week 1 Winners,Adam Huttenstine,10,Texas A&M,-20.5,False,loss
+Week 1 Winners,Adam Huttenstine,11,New Mexico,34.5,False,win
+Week 1 Winners,Adam Huttenstine,12,LSU,2.5,False,win
+Week 1 Winners,Adam Huttenstine,13,Georgia State,36.5,False,loss
+Week 1 Winners,Adam Huttenstine,14,UCLA,4.5,False,loss
+Week 1 Winners,Brian Christoffersen,0,Syracuse,12.5,True,loss
+Week 1 Winners,Brian Christoffersen,1,Maryland,-17.5,False,win
+Week 1 Winners,Brian Christoffersen,2,Purdue,-16.5,False,win
+Week 1 Winners,Brian Christoffersen,3,Tulane,-6.5,False,win
+Week 1 Winners,Brian Christoffersen,4,Texas,2.5,False,loss
+Week 1 Winners,Brian Christoffersen,5,Indiana,-23.5,True,loss
+Week 1 Winners,Brian Christoffersen,6,Florida State,13.5,False,win
+Week 1 Winners,Brian Christoffersen,7,Georgia,-39.5,False,loss
+Week 1 Winners,Brian Christoffersen,8,Nevada,45.5,True,win
+Week 1 Winners,Brian Christoffersen,9,Illinois State,35.5,True,win
+Week 1 Winners,Brian Christoffersen,10,Texas A&M,-20.5,False,loss
+Week 1 Winners,Brian Christoffersen,11,Michigan,-34.5,True,loss
+Week 1 Winners,Brian Christoffersen,12,LSU,2.5,False,win
+Week 1 Winners,Brian Christoffersen,13,Ole Miss,-36.5,False,win
+Week 1 Winners,Brian Christoffersen,14,Utah,-4.5,False,win
+Week 1 Winners,Jon Malm,0,Tennessee,-12.5,True,win
+Week 1 Winners,Jon Malm,1,Maryland,-17.5,False,win
+Week 1 Winners,Jon Malm,2,Purdue,-16.5,False,win
+Week 1 Winners,Jon Malm,3,Northwestern,6.5,False,loss
+Week 1 Winners,Jon Malm,4,Texas,2.5,True,loss
+Week 1 Winners,Jon Malm,5,Indiana,-23.5,True,loss
+Week 1 Winners,Jon Malm,6,Alabama,-13.5,False,loss
+Week 1 Winners,Jon Malm,7,Georgia,-39.5,True,loss
+Week 1 Winners,Jon Malm,8,Nevada,45.5,False,win
+Week 1 Winners,Jon Malm,9,Illinois State,35.5,False,win
+Week 1 Winners,Jon Malm,10,Texas A&M,-20.5,False,loss
+Week 1 Winners,Jon Malm,11,New Mexico,34.5,False,win
+Week 1 Winners,Jon Malm,12,LSU,2.5,True,win
+Week 1 Winners,Jon Malm,13,Ole Miss,-36.5,False,win
+Week 1 Winners,Jon Malm,14,Utah,-4.5,False,win
+Week 1 Winners,David Zdanek,0,Tennessee,-12.5,False,win
+Week 1 Winners,David Zdanek,1,Maryland,-17.5,False,win
+Week 1 Winners,David Zdanek,2,Purdue,-16.5,False,win
+Week 1 Winners,David Zdanek,3,Tulane,-6.5,False,win
+Week 1 Winners,David Zdanek,4,Texas,2.5,True,loss
+Week 1 Winners,David Zdanek,5,Indiana,-23.5,False,loss
+Week 1 Winners,David Zdanek,6,Florida State,13.5,True,win
+Week 1 Winners,David Zdanek,7,Marshall,39.5,False,win
+Week 1 Winners,David Zdanek,8,Nevada,45.5,False,win
+Week 1 Winners,David Zdanek,9,Illinois State,35.5,False,win
+Week 1 Winners,David Zdanek,10,Texas A&M,-20.5,True,loss
+Week 1 Winners,David Zdanek,11,Michigan,-34.5,False,loss
+Week 1 Winners,David Zdanek,12,Clemson,-2.5,True,loss
+Week 1 Winners,David Zdanek,13,Ole Miss,-36.5,True,win
+Week 1 Winners,David Zdanek,14,UCLA,4.5,False,loss
+Week 1 Winners,Mike Augustine,0,Syracuse,12.5,False,loss
+Week 1 Winners,Mike Augustine,1,Florida Atlantic,17.5,False,loss
+Week 1 Winners,Mike Augustine,2,Purdue,-16.5,True,win
+Week 1 Winners,Mike Augustine,3,Northwestern,6.5,True,loss
+Week 1 Winners,Mike Augustine,4,Texas,2.5,True,loss
+Week 1 Winners,Mike Augustine,5,Old Dominion,23.5,False,win
+Week 1 Winners,Mike Augustine,6,Alabama,-13.5,False,loss
+Week 1 Winners,Mike Augustine,7,Marshall,39.5,False,win
+Week 1 Winners,Mike Augustine,8,Nevada,45.5,True,win
+Week 1 Winners,Mike Augustine,9,Illinois State,35.5,False,win
+Week 1 Winners,Mike Augustine,10,Texas A&M,-20.5,False,loss
+Week 1 Winners,Mike Augustine,11,New Mexico,34.5,True,win
+Week 1 Winners,Mike Augustine,12,Clemson,-2.5,False,loss
+Week 1 Winners,Mike Augustine,13,Georgia State,36.5,False,loss
+Week 1 Winners,Mike Augustine,14,Utah,-4.5,False,win
+Week 1 Winners,chris cross,0,Tennessee,-12.5,True,win
+Week 1 Winners,chris cross,1,Maryland,-17.5,True,win
+Week 1 Winners,chris cross,2,Ball State,16.5,False,loss
+Week 1 Winners,chris cross,3,Tulane,-6.5,False,win
+Week 1 Winners,chris cross,4,Texas,2.5,False,loss
+Week 1 Winners,chris cross,5,Old Dominion,23.5,True,win
+Week 1 Winners,chris cross,6,Florida State,13.5,False,win
+Week 1 Winners,chris cross,7,Marshall,39.5,False,win
+Week 1 Winners,chris cross,8,Penn State,-45.5,False,loss
+Week 1 Winners,chris cross,9,Oklahoma,-35.5,True,loss
+Week 1 Winners,chris cross,10,UTSA,20.5,False,win
+Week 1 Winners,chris cross,11,Michigan,-34.5,False,loss
+Week 1 Winners,chris cross,12,Clemson,-2.5,True,loss
+Week 1 Winners,chris cross,13,Georgia State,36.5,False,loss
+Week 1 Winners,chris cross,14,UCLA,4.5,False,loss
+Week 1 Winners,Mary Mojsiejenko,0,Tennessee,-12.5,False,win
+Week 1 Winners,Mary Mojsiejenko,1,Maryland,-17.5,False,win
+Week 1 Winners,Mary Mojsiejenko,2,Purdue,-16.5,False,win
+Week 1 Winners,Mary Mojsiejenko,3,Northwestern,6.5,False,loss
+Week 1 Winners,Mary Mojsiejenko,4,Ohio State,-2.5,True,win
+Week 1 Winners,Mary Mojsiejenko,5,Indiana,-23.5,True,loss
+Week 1 Winners,Mary Mojsiejenko,6,Alabama,-13.5,True,loss
+Week 1 Winners,Mary Mojsiejenko,7,Marshall,39.5,False,win
+Week 1 Winners,Mary Mojsiejenko,8,Nevada,45.5,False,win
+Week 1 Winners,Mary Mojsiejenko,9,Oklahoma,-35.5,False,loss
+Week 1 Winners,Mary Mojsiejenko,10,Texas A&M,-20.5,True,loss
+Week 1 Winners,Mary Mojsiejenko,11,Michigan,-34.5,False,loss
+Week 1 Winners,Mary Mojsiejenko,12,LSU,2.5,True,win
+Week 1 Winners,Mary Mojsiejenko,13,Georgia State,36.5,False,loss
+Week 1 Winners,Mary Mojsiejenko,14,Utah,-4.5,False,win
+Week 1 Winners,Brandon Smith,0,Tennessee,-12.5,False,win
+Week 1 Winners,Brandon Smith,1,Maryland,-17.5,True,win
+Week 1 Winners,Brandon Smith,2,Purdue,-16.5,True,win
+Week 1 Winners,Brandon Smith,3,Northwestern,6.5,False,loss
+Week 1 Winners,Brandon Smith,4,Ohio State,-2.5,False,win
+Week 1 Winners,Brandon Smith,5,Indiana,-23.5,True,loss
+Week 1 Winners,Brandon Smith,6,Alabama,-13.5,False,loss
+Week 1 Winners,Brandon Smith,7,Georgia,-39.5,False,loss
+Week 1 Winners,Brandon Smith,8,Nevada,45.5,False,win
+Week 1 Winners,Brandon Smith,9,Illinois State,35.5,False,win
+Week 1 Winners,Brandon Smith,10,Texas A&M,-20.5,False,loss
+Week 1 Winners,Brandon Smith,11,Michigan,-34.5,True,loss
+Week 1 Winners,Brandon Smith,12,Clemson,-2.5,False,loss
+Week 1 Winners,Brandon Smith,13,Georgia State,36.5,False,loss
+Week 1 Winners,Brandon Smith,14,Utah,-4.5,True,win
+Week 1 Winners,Ryan Smith,0,Syracuse,12.5,False,loss
+Week 1 Winners,Ryan Smith,1,Florida Atlantic,17.5,False,loss
+Week 1 Winners,Ryan Smith,2,Ball State,16.5,False,loss
+Week 1 Winners,Ryan Smith,3,Tulane,-6.5,False,win
+Week 1 Winners,Ryan Smith,4,Texas,2.5,False,loss
+Week 1 Winners,Ryan Smith,5,Indiana,-23.5,False,loss
+Week 1 Winners,Ryan Smith,6,Alabama,-13.5,True,loss
+Week 1 Winners,Ryan Smith,7,Marshall,39.5,True,win
+Week 1 Winners,Ryan Smith,8,Nevada,45.5,False,win
+Week 1 Winners,Ryan Smith,9,Illinois State,35.5,False,win
+Week 1 Winners,Ryan Smith,10,Texas A&M,-20.5,False,loss
+Week 1 Winners,Ryan Smith,11,New Mexico,34.5,True,win
+Week 1 Winners,Ryan Smith,12,Clemson,-2.5,True,loss
+Week 1 Winners,Ryan Smith,13,Ole Miss,-36.5,False,win
+Week 1 Winners,Ryan Smith,14,Utah,-4.5,True,win
+Week 1 Winners,Erich Kirchner,0,Syracuse,12.5,False,loss
+Week 1 Winners,Erich Kirchner,1,Maryland,-17.5,False,win
+Week 1 Winners,Erich Kirchner,2,Purdue,-16.5,True,win
+Week 1 Winners,Erich Kirchner,3,Tulane,-6.5,False,win
+Week 1 Winners,Erich Kirchner,4,Ohio State,-2.5,True,win
+Week 1 Winners,Erich Kirchner,5,Indiana,-23.5,False,loss
+Week 1 Winners,Erich Kirchner,6,Alabama,-13.5,True,loss
+Week 1 Winners,Erich Kirchner,7,Georgia,-39.5,False,loss
+Week 1 Winners,Erich Kirchner,8,Penn State,-45.5,False,loss
+Week 1 Winners,Erich Kirchner,9,Oklahoma,-35.5,False,loss
+Week 1 Winners,Erich Kirchner,10,Texas A&M,-20.5,False,loss
+Week 1 Winners,Erich Kirchner,11,Michigan,-34.5,False,loss
+Week 1 Winners,Erich Kirchner,12,Clemson,-2.5,True,loss
+Week 1 Winners,Erich Kirchner,13,Ole Miss,-36.5,False,win
+Week 1 Winners,Erich Kirchner,14,Utah,-4.5,True,win
+Week 1 Winners,Ralf Mojsiejenko,0,Syracuse,12.5,False,loss
+Week 1 Winners,Ralf Mojsiejenko,1,Maryland,-17.5,False,win
+Week 1 Winners,Ralf Mojsiejenko,2,Ball State,16.5,False,loss
+Week 1 Winners,Ralf Mojsiejenko,3,Northwestern,6.5,True,loss
+Week 1 Winners,Ralf Mojsiejenko,4,Ohio State,-2.5,True,win
+Week 1 Winners,Ralf Mojsiejenko,5,Old Dominion,23.5,True,win
+Week 1 Winners,Ralf Mojsiejenko,6,Alabama,-13.5,False,loss
+Week 1 Winners,Ralf Mojsiejenko,7,Marshall,39.5,False,win
+Week 1 Winners,Ralf Mojsiejenko,8,Nevada,45.5,True,win
+Week 1 Winners,Ralf Mojsiejenko,9,Illinois State,35.5,False,win
+Week 1 Winners,Ralf Mojsiejenko,10,Texas A&M,-20.5,False,loss
+Week 1 Winners,Ralf Mojsiejenko,11,Michigan,-34.5,True,loss
+Week 1 Winners,Ralf Mojsiejenko,12,Clemson,-2.5,False,loss
+Week 1 Winners,Ralf Mojsiejenko,13,Georgia State,36.5,False,loss
+Week 1 Winners,Ralf Mojsiejenko,14,UCLA,4.5,False,loss
+Week 1 Winners,Zac Nemitz,0,Tennessee,-12.5,True,win
+Week 1 Winners,Zac Nemitz,1,Florida Atlantic,17.5,False,loss
+Week 1 Winners,Zac Nemitz,2,Ball State,16.5,False,loss
+Week 1 Winners,Zac Nemitz,3,Tulane,-6.5,False,win
+Week 1 Winners,Zac Nemitz,4,Texas,2.5,False,loss
+Week 1 Winners,Zac Nemitz,5,Indiana,-23.5,False,loss
+Week 1 Winners,Zac Nemitz,6,Alabama,-13.5,True,loss
+Week 1 Winners,Zac Nemitz,7,Georgia,-39.5,False,loss
+Week 1 Winners,Zac Nemitz,8,Nevada,45.5,True,win
+Week 1 Winners,Zac Nemitz,9,Oklahoma,-35.5,False,loss
+Week 1 Winners,Zac Nemitz,10,Texas A&M,-20.5,False,loss
+Week 1 Winners,Zac Nemitz,11,New Mexico,34.5,False,win
+Week 1 Winners,Zac Nemitz,12,LSU,2.5,False,win
+Week 1 Winners,Zac Nemitz,13,Georgia State,36.5,True,loss
+Week 1 Winners,Zac Nemitz,14,Utah,-4.5,True,win
+Week 1 Winners,Apollo Braganini,0,Tennessee,-12.5,True,win
+Week 1 Winners,Apollo Braganini,1,Maryland,-17.5,False,win
+Week 1 Winners,Apollo Braganini,2,Ball State,16.5,False,loss
+Week 1 Winners,Apollo Braganini,3,Tulane,-6.5,False,win
+Week 1 Winners,Apollo Braganini,4,Texas,2.5,True,loss
+Week 1 Winners,Apollo Braganini,5,Indiana,-23.5,False,loss
+Week 1 Winners,Apollo Braganini,6,Alabama,-13.5,True,loss
+Week 1 Winners,Apollo Braganini,7,Georgia,-39.5,False,loss
+Week 1 Winners,Apollo Braganini,8,Nevada,45.5,False,win
+Week 1 Winners,Apollo Braganini,9,Oklahoma,-35.5,False,loss
+Week 1 Winners,Apollo Braganini,10,Texas A&M,-20.5,True,loss
+Week 1 Winners,Apollo Braganini,11,Michigan,-34.5,False,loss
+Week 1 Winners,Apollo Braganini,12,LSU,2.5,True,win
+Week 1 Winners,Apollo Braganini,13,Ole Miss,-36.5,False,win
+Week 1 Winners,Apollo Braganini,14,UCLA,4.5,False,loss
+Week 1 Winners,Ryan Fechner,0,Tennessee,-12.5,True,win
+Week 1 Winners,Ryan Fechner,1,Maryland,-17.5,False,win
+Week 1 Winners,Ryan Fechner,2,Purdue,-16.5,False,win
+Week 1 Winners,Ryan Fechner,3,Northwestern,6.5,False,loss
+Week 1 Winners,Ryan Fechner,4,Texas,2.5,True,loss
+Week 1 Winners,Ryan Fechner,5,Indiana,-23.5,False,loss
+Week 1 Winners,Ryan Fechner,6,Alabama,-13.5,True,loss
+Week 1 Winners,Ryan Fechner,7,Georgia,-39.5,False,loss
+Week 1 Winners,Ryan Fechner,8,Penn State,-45.5,False,loss
+Week 1 Winners,Ryan Fechner,9,Illinois State,35.5,False,win
+Week 1 Winners,Ryan Fechner,10,Texas A&M,-20.5,False,loss
+Week 1 Winners,Ryan Fechner,11,Michigan,-34.5,True,loss
+Week 1 Winners,Ryan Fechner,12,Clemson,-2.5,False,loss
+Week 1 Winners,Ryan Fechner,13,Ole Miss,-36.5,True,win
+Week 1 Winners,Ryan Fechner,14,Utah,-4.5,False,win
+Week 1 Winners,Nancie Oxley,0,Tennessee,-12.5,False,win
+Week 1 Winners,Nancie Oxley,1,Maryland,-17.5,False,win
+Week 1 Winners,Nancie Oxley,2,Purdue,-16.5,False,win
+Week 1 Winners,Nancie Oxley,3,Tulane,-6.5,True,win
+Week 1 Winners,Nancie Oxley,4,Ohio State,-2.5,False,win
+Week 1 Winners,Nancie Oxley,5,Indiana,-23.5,True,loss
+Week 1 Winners,Nancie Oxley,6,Alabama,-13.5,True,loss
+Week 1 Winners,Nancie Oxley,7,Georgia,-39.5,False,loss
+Week 1 Winners,Nancie Oxley,8,Penn State,-45.5,True,loss
+Week 1 Winners,Nancie Oxley,9,Oklahoma,-35.5,False,loss
+Week 1 Winners,Nancie Oxley,10,Texas A&M,-20.5,True,loss
+Week 1 Winners,Nancie Oxley,11,Michigan,-34.5,False,loss
+Week 1 Winners,Nancie Oxley,12,Clemson,-2.5,False,loss
+Week 1 Winners,Nancie Oxley,13,Ole Miss,-36.5,False,win
+Week 1 Winners,Nancie Oxley,14,Utah,-4.5,False,win
+Week 1 Winners,Roger Mojsiejenko,0,Tennessee,-12.5,True,win
+Week 1 Winners,Roger Mojsiejenko,1,Maryland,-17.5,False,win
+Week 1 Winners,Roger Mojsiejenko,2,Ball State,16.5,False,loss
+Week 1 Winners,Roger Mojsiejenko,3,Northwestern,6.5,True,loss
+Week 1 Winners,Roger Mojsiejenko,4,Texas,2.5,False,loss
+Week 1 Winners,Roger Mojsiejenko,5,Indiana,-23.5,False,loss
+Week 1 Winners,Roger Mojsiejenko,6,Alabama,-13.5,True,loss
+Week 1 Winners,Roger Mojsiejenko,7,Marshall,39.5,False,win
+Week 1 Winners,Roger Mojsiejenko,8,Penn State,-45.5,False,loss
+Week 1 Winners,Roger Mojsiejenko,9,Oklahoma,-35.5,False,loss
+Week 1 Winners,Roger Mojsiejenko,10,UTSA,20.5,False,win
+Week 1 Winners,Roger Mojsiejenko,11,Michigan,-34.5,False,loss
+Week 1 Winners,Roger Mojsiejenko,12,Clemson,-2.5,True,loss
+Week 1 Winners,Roger Mojsiejenko,13,Georgia State,36.5,False,loss
+Week 1 Winners,Roger Mojsiejenko,14,Utah,-4.5,True,win
+Week 1 Winners,Verne Rambo,0,Tennessee,-12.5,True,win
+Week 1 Winners,Verne Rambo,1,Florida Atlantic,17.5,False,loss
+Week 1 Winners,Verne Rambo,2,Ball State,16.5,False,loss
+Week 1 Winners,Verne Rambo,3,Northwestern,6.5,True,loss
+Week 1 Winners,Verne Rambo,4,Ohio State,-2.5,False,win
+Week 1 Winners,Verne Rambo,5,Indiana,-23.5,False,loss
+Week 1 Winners,Verne Rambo,6,Alabama,-13.5,True,loss
+Week 1 Winners,Verne Rambo,7,Georgia,-39.5,True,loss
+Week 1 Winners,Verne Rambo,8,Penn State,-45.5,False,loss
+Week 1 Winners,Verne Rambo,9,Oklahoma,-35.5,False,loss
+Week 1 Winners,Verne Rambo,10,Texas A&M,-20.5,True,loss
+Week 1 Winners,Verne Rambo,11,New Mexico,34.5,False,win
+Week 1 Winners,Verne Rambo,12,LSU,2.5,False,win
+Week 1 Winners,Verne Rambo,13,Ole Miss,-36.5,False,win
+Week 1 Winners,Verne Rambo,14,Utah,-4.5,False,win
+Week 1 Winners,Kyle Totzke,0,Tennessee,-12.5,True,win
+Week 1 Winners,Kyle Totzke,1,Florida Atlantic,17.5,False,loss
+Week 1 Winners,Kyle Totzke,2,Purdue,-16.5,False,win
+Week 1 Winners,Kyle Totzke,3,Northwestern,6.5,False,loss
+Week 1 Winners,Kyle Totzke,4,Ohio State,-2.5,False,win
+Week 1 Winners,Kyle Totzke,5,Indiana,-23.5,False,loss
+Week 1 Winners,Kyle Totzke,6,Alabama,-13.5,True,loss
+Week 1 Winners,Kyle Totzke,7,Georgia,-39.5,True,loss
+Week 1 Winners,Kyle Totzke,8,Nevada,45.5,False,win
+Week 1 Winners,Kyle Totzke,9,Oklahoma,-35.5,False,loss
+Week 1 Winners,Kyle Totzke,10,Texas A&M,-20.5,False,loss
+Week 1 Winners,Kyle Totzke,11,Michigan,-34.5,True,loss
+Week 1 Winners,Kyle Totzke,12,Clemson,-2.5,False,loss
+Week 1 Winners,Kyle Totzke,13,Georgia State,36.5,False,loss
+Week 1 Winners,Kyle Totzke,14,Utah,-4.5,True,win
+Week 1 Winners,Danielle Mojsiejenko,0,Tennessee,-12.5,True,win
+Week 1 Winners,Danielle Mojsiejenko,1,Florida Atlantic,17.5,True,loss
+Week 1 Winners,Danielle Mojsiejenko,2,Purdue,-16.5,False,win
+Week 1 Winners,Danielle Mojsiejenko,3,Northwestern,6.5,False,loss
+Week 1 Winners,Danielle Mojsiejenko,4,Texas,2.5,False,loss
+Week 1 Winners,Danielle Mojsiejenko,5,Indiana,-23.5,False,loss
+Week 1 Winners,Danielle Mojsiejenko,6,Florida State,13.5,True,win
+Week 1 Winners,Danielle Mojsiejenko,7,Georgia,-39.5,False,loss
+Week 1 Winners,Danielle Mojsiejenko,8,Nevada,45.5,False,win
+Week 1 Winners,Danielle Mojsiejenko,9,Oklahoma,-35.5,True,loss
+Week 1 Winners,Danielle Mojsiejenko,10,Texas A&M,-20.5,True,loss
+Week 1 Winners,Danielle Mojsiejenko,11,Michigan,-34.5,False,loss
+Week 1 Winners,Danielle Mojsiejenko,12,Clemson,-2.5,False,loss
+Week 1 Winners,Danielle Mojsiejenko,13,Georgia State,36.5,False,loss
+Week 1 Winners,Danielle Mojsiejenko,14,UCLA,4.5,False,loss
+Week 1 Winners,Parker Mojsiejenko,0,Tennessee,-12.5,False,win
+Week 1 Winners,Parker Mojsiejenko,1,Florida Atlantic,17.5,True,loss
+Week 1 Winners,Parker Mojsiejenko,2,Ball State,16.5,False,loss
+Week 1 Winners,Parker Mojsiejenko,3,Northwestern,6.5,False,loss
+Week 1 Winners,Parker Mojsiejenko,4,Ohio State,-2.5,True,win
+Week 1 Winners,Parker Mojsiejenko,5,Indiana,-23.5,False,loss
+Week 1 Winners,Parker Mojsiejenko,6,Alabama,-13.5,True,loss
+Week 1 Winners,Parker Mojsiejenko,7,Georgia,-39.5,False,loss
+Week 1 Winners,Parker Mojsiejenko,8,Nevada,45.5,True,win
+Week 1 Winners,Parker Mojsiejenko,9,Oklahoma,-35.5,False,loss
+Week 1 Winners,Parker Mojsiejenko,10,Texas A&M,-20.5,False,loss
+Week 1 Winners,Parker Mojsiejenko,11,Michigan,-34.5,True,loss
+Week 1 Winners,Parker Mojsiejenko,12,Clemson,-2.5,False,loss
+Week 1 Winners,Parker Mojsiejenko,13,Georgia State,36.5,False,loss
+Week 1 Winners,Parker Mojsiejenko,14,Utah,-4.5,False,win
+Week 1 Winners,Scott Zdanek,0,Syracuse,12.5,False,loss
+Week 1 Winners,Scott Zdanek,1,Florida Atlantic,17.5,False,loss
+Week 1 Winners,Scott Zdanek,2,Purdue,-16.5,False,win
+Week 1 Winners,Scott Zdanek,3,Northwestern,6.5,True,loss
+Week 1 Winners,Scott Zdanek,4,Texas,2.5,True,loss
+Week 1 Winners,Scott Zdanek,5,Indiana,-23.5,True,loss
+Week 1 Winners,Scott Zdanek,6,Alabama,-13.5,True,loss
+Week 1 Winners,Scott Zdanek,7,Marshall,39.5,False,win
+Week 1 Winners,Scott Zdanek,8,Penn State,-45.5,False,loss
+Week 1 Winners,Scott Zdanek,9,Oklahoma,-35.5,False,loss
+Week 1 Winners,Scott Zdanek,10,Texas A&M,-20.5,False,loss
+Week 1 Winners,Scott Zdanek,11,Michigan,-34.5,False,loss
+Week 1 Winners,Scott Zdanek,12,LSU,2.5,False,win
+Week 1 Winners,Scott Zdanek,13,Ole Miss,-36.5,True,win
+Week 1 Winners,Scott Zdanek,14,Utah,-4.5,False,win
