@@ -380,3 +380,49 @@ class Pick(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user} -> {self.picked_team} in {self.league.name} ({self.game})"
+
+
+class MemberWeek(models.Model):
+    league = models.ForeignKey(League, on_delete=models.CASCADE, related_name="member_weeks")
+    week = models.ForeignKey(Week, on_delete=models.CASCADE, related_name="member_weeks")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="member_weeks")
+
+    picks_made = models.PositiveIntegerField(default=0)
+    correct = models.PositiveIntegerField(default=0)
+    incorrect = models.PositiveIntegerField(default=0)
+    ties = models.PositiveIntegerField(default=0)
+    correct_key = models.PositiveIntegerField(default=0)
+    points = models.IntegerField(default=0)
+
+    # Optional total-points tiebreak cache (if you use it)
+    points_guess = models.IntegerField(null=True, blank=True)
+    points_actual = models.IntegerField(null=True, blank=True)
+    tiebreak_abs_diff = models.IntegerField(null=True, blank=True)
+
+    rank = models.PositiveIntegerField(null=True, blank=True)  # snapshot rank for the week
+    scored_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("league", "week", "user")
+        indexes = [models.Index(fields=["league", "week"]), models.Index(fields=["league", "points"])]
+        
+
+class MemberSeason(models.Model):
+    league = models.ForeignKey(League, on_delete=models.CASCADE, related_name="season_standings")
+    season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="season_standings")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="season_standings")
+
+    through_week = models.PositiveIntegerField(default=0)
+    picks_made = models.PositiveIntegerField(default=0)
+    correct = models.PositiveIntegerField(default=0)
+    incorrect = models.PositiveIntegerField(default=0)
+    ties = models.PositiveIntegerField(default=0)
+    correct_key = models.PositiveIntegerField(default=0)
+    points = models.IntegerField(default=0)
+
+    rank = models.PositiveIntegerField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("league", "season", "user")
+        indexes = [models.Index(fields=["league", "season"]), models.Index(fields=["league", "points"])]

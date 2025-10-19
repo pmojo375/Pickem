@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Season, Team, Game, GameSpread, Pick, League, LeagueMembership, LeagueGame, LeagueRules, Location, Week, Ranking
+from .models import Season, Team, Game, GameSpread, Pick, League, LeagueMembership, LeagueGame, LeagueRules, Location, Week, Ranking, MemberWeek, MemberSeason
 
 
 @admin.register(Season)
@@ -189,4 +189,52 @@ class RankingAdmin(admin.ModelAdmin):
     list_filter = ("season", "week", "poll")
     search_fields = ("season__year", "week__number", "team__name", "poll")
     autocomplete_fields = ("season", "week", "team")
+
+
+@admin.register(MemberWeek)
+class MemberWeekAdmin(admin.ModelAdmin):
+    list_display = ("league", "week", "user", "picks_made", "correct", "incorrect", "ties", "correct_key", "points", "rank", "scored_at")
+    list_filter = ("league", "week__season", "scored_at")
+    search_fields = ("league__name", "user__username", "week__season__year")
+    autocomplete_fields = ("league", "week", "user")
+    readonly_fields = ("scored_at",)
+    
+    fieldsets = (
+        ("Member & Week", {
+            "fields": ("league", "week", "user")
+        }),
+        ("Statistics", {
+            "fields": ("picks_made", "correct", "incorrect", "ties", "correct_key", "points", "rank")
+        }),
+        ("Tiebreaker Data (Total Points Game)", {
+            "fields": ("points_guess", "points_actual", "tiebreak_abs_diff"),
+            "classes": ("collapse",)
+        }),
+        ("Timestamps", {
+            "fields": ("scored_at",),
+            "classes": ("collapse",)
+        }),
+    )
+
+
+@admin.register(MemberSeason)
+class MemberSeasonAdmin(admin.ModelAdmin):
+    list_display = ("league", "season", "user", "through_week", "picks_made", "correct", "incorrect", "ties", "correct_key", "points", "rank", "updated_at")
+    list_filter = ("league", "season", "updated_at")
+    search_fields = ("league__name", "season__year", "user__username")
+    autocomplete_fields = ("league", "season", "user")
+    readonly_fields = ("updated_at",)
+    
+    fieldsets = (
+        ("Member & Season", {
+            "fields": ("league", "season", "user")
+        }),
+        ("Statistics", {
+            "fields": ("through_week", "picks_made", "correct", "incorrect", "ties", "correct_key", "points", "rank")
+        }),
+        ("Timestamps", {
+            "fields": ("updated_at",),
+            "classes": ("collapse",)
+        }),
+    )
 
