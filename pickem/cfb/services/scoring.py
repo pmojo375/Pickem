@@ -350,6 +350,7 @@ def update_member_week_for_game(game: Game) -> int:
 def update_member_season_for_league(league: League, season) -> int:
     """
     Update all MemberSeason records for a league/season by aggregating MemberWeek data.
+    Implements drop_weeks logic to exclude worst performing weeks from season standings.
     
     Returns the number of MemberSeason records updated.
     """
@@ -357,7 +358,7 @@ def update_member_season_for_league(league: League, season) -> int:
     
     # Get all members of this league
     from django.contrib.auth.models import User
-    from ..models import LeagueMembership
+    from ..models import LeagueMembership, LeagueGame
     
     try:
         league_rules = LeagueRules.objects.get(league=league, season=season)
@@ -367,6 +368,16 @@ def update_member_season_for_league(league: League, season) -> int:
     
     members = LeagueMembership.objects.filter(league=league).values_list('user_id', flat=True)
     
+    # Get weeks that have finalized games for this league
+    weeks_with_finalized_games = set(
+        LeagueGame.objects.filter(
+            league=league,
+            game__season=season,
+            game__is_final=True,
+            is_active=True
+        ).values_list('game__week_id', flat=True).distinct()
+    )
+    
     for user_id in members:
         member_season, created = MemberSeason.objects.get_or_create(
             league=league,
@@ -374,15 +385,20 @@ def update_member_season_for_league(league: League, season) -> int:
             user_id=user_id
         )
         
-        # Aggregate stats from all MemberWeek records
-        member_weeks = MemberWeek.objects.filter(
+        # Get all MemberWeek records for this user in this league/season
+        all_member_weeks = MemberWeek.objects.filter(
             league=league,
             week__season=season,
             user_id=user_id
+        ).select_related('week').order_by('week__number')
+        
+        # Filter to only include weeks that have finalized games
+        member_weeks_with_finals = all_member_weeks.filter(
+            week_id__in=weeks_with_finalized_games
         )
         
-        if not member_weeks.exists():
-            # Reset if no weeks
+        if not member_weeks_with_finals.exists():
+            # Reset if no weeks with finalized games
             member_season.through_week = 0
             member_season.picks_made = 0
             member_season.correct = 0
@@ -391,8 +407,30 @@ def update_member_season_for_league(league: League, season) -> int:
             member_season.correct_key = 0
             member_season.points = 0
         else:
-            # Aggregate the stats
-            stats = member_weeks.aggregate(
+            # Apply drop_weeks logic if enabled
+            if league_rules.drop_weeks > 0 and len(member_weeks_with_finals) > league_rules.drop_weeks:
+                # Convert to list for sorting
+                weeks_list = list(member_weeks_with_finals)
+                
+                # Sort weeks by points (ascending) to identify worst weeks
+                # Then by correct picks (ascending) as secondary sort
+                weeks_list.sort(key=lambda x: (x.points, x.correct))
+                
+                # Drop the worst performing weeks
+                weeks_to_include = weeks_list[league_rules.drop_weeks:]
+                
+                # Create queryset from the weeks to include
+                from django.db.models import Q
+                week_ids_to_include = [week.week_id for week in weeks_to_include]
+                member_weeks_to_aggregate = member_weeks_with_finals.filter(
+                    week_id__in=week_ids_to_include
+                )
+            else:
+                # No dropping or not enough weeks to drop
+                member_weeks_to_aggregate = member_weeks_with_finals
+            
+            # Aggregate stats from the selected weeks only
+            stats = member_weeks_to_aggregate.aggregate(
                 max_week=Max('week__number'),
                 total_picks=Sum('picks_made'),
                 total_correct=Sum('correct'),
@@ -571,15 +609,53 @@ def recalculate_all_member_stats(season) -> dict:
                     points=0
                 )
                 
-                # Aggregate from member weeks
-                member_weeks = MemberWeek.objects.filter(
+                # Get weeks that have finalized games for this league
+                from ..models import LeagueGame
+                weeks_with_finalized_games = set(
+                    LeagueGame.objects.filter(
+                        league=league,
+                        game__season=season,
+                        game__is_final=True,
+                        is_active=True
+                    ).values_list('game__week_id', flat=True).distinct()
+                )
+                
+                # Get all MemberWeek records for this user in this league/season
+                all_member_weeks = MemberWeek.objects.filter(
                     league=league,
                     week__season=season,
                     user=member.user
+                ).select_related('week').order_by('week__number')
+                
+                # Filter to only include weeks that have finalized games
+                member_weeks_with_finals = all_member_weeks.filter(
+                    week_id__in=weeks_with_finalized_games
                 )
                 
-                if member_weeks.exists():
-                    agg_stats = member_weeks.aggregate(
+                if member_weeks_with_finals.exists():
+                    # Apply drop_weeks logic if enabled
+                    if league_rules.drop_weeks > 0 and len(member_weeks_with_finals) > league_rules.drop_weeks:
+                        # Convert to list for sorting
+                        weeks_list = list(member_weeks_with_finals)
+                        
+                        # Sort weeks by points (ascending) to identify worst weeks
+                        # Then by correct picks (ascending) as secondary sort
+                        weeks_list.sort(key=lambda x: (x.points, x.correct))
+                        
+                        # Drop the worst performing weeks
+                        weeks_to_include = weeks_list[league_rules.drop_weeks:]
+                        
+                        # Create queryset from the weeks to include
+                        week_ids_to_include = [week.week_id for week in weeks_to_include]
+                        member_weeks_to_aggregate = member_weeks_with_finals.filter(
+                            week_id__in=week_ids_to_include
+                        )
+                    else:
+                        # No dropping or not enough weeks to drop
+                        member_weeks_to_aggregate = member_weeks_with_finals
+                    
+                    # Aggregate stats from the selected weeks only
+                    agg_stats = member_weeks_to_aggregate.aggregate(
                         max_week=Max('week__number'),
                         total_picks=Sum('picks_made'),
                         total_correct=Sum('correct'),
