@@ -497,8 +497,16 @@ def update_member_season_for_league(league: League, season) -> int:
                 weeks_list = list(member_weeks_with_finals)
                 
                 # Sort weeks by points (ascending) to identify worst weeks
-                # Then by correct picks (ascending) as secondary sort
-                weeks_list.sort(key=lambda x: (x.points, x.correct))
+                # Then by tiebreaker (ascending) as secondary sort based on league rules
+                def get_week_tiebreaker_key(week):
+                    if league_rules.tiebreaker == 1:  # Correct Key Picks
+                        return (week.points, week.correct_key)
+                    elif league_rules.tiebreaker == 3:  # Correct Picks
+                        return (week.points, week.correct)
+                    else:  # Default to correct picks
+                        return (week.points, week.correct)
+                
+                weeks_list.sort(key=get_week_tiebreaker_key)
                 
                 # Get the weeks to drop (worst performing)
                 weeks_to_drop = weeks_list[:league_rules.drop_weeks]
@@ -739,8 +747,16 @@ def recalculate_all_member_stats(season) -> dict:
                         weeks_list = list(member_weeks_with_finals)
                         
                         # Sort weeks by points (ascending) to identify worst weeks
-                        # Then by correct picks (ascending) as secondary sort
-                        weeks_list.sort(key=lambda x: (x.points, x.correct))
+                        # Then by tiebreaker (ascending) as secondary sort based on league rules
+                        def get_week_tiebreaker_key(week):
+                            if league_rules.tiebreaker == 1:  # Correct Key Picks
+                                return (week.points, week.correct_key)
+                            elif league_rules.tiebreaker == 3:  # Correct Picks
+                                return (week.points, week.correct)
+                            else:  # Default to correct picks
+                                return (week.points, week.correct)
+                        
+                        weeks_list.sort(key=get_week_tiebreaker_key)
                         
                         # Get the weeks to drop (worst performing)
                         weeks_to_drop = weeks_list[:league_rules.drop_weeks]
