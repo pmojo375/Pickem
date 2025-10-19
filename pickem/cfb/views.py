@@ -5,7 +5,7 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.core.exceptions import ValidationError
-from .models import Game, Pick, Team, League, LeagueMembership, LeagueGame, LeagueRules, Season, Ranking, Week
+from .models import Game, Pick, Team, League, LeagueMembership, LeagueGame, LeagueRules, Season, Ranking, Week, MemberSeason
 from django.utils import timezone
 from . import services
 from django.conf import settings
@@ -521,57 +521,135 @@ def standings_view(request):
         membership = LeagueMembership.objects.filter(user=request.user).first()
         league = membership.league if membership else None
     
+    # Check if user wants to see full standings (not adjusted for dropped weeks)
+    show_full_standings = request.GET.get('full', 'false').lower() == 'true'
+    
     context = {
         'current_league': league,
         'user_leagues': user_leagues,
         'standings': [],
+        'show_full_standings': show_full_standings,
     }
     
     if league:
-        # Get standings for this league
-        from django.db.models import Count, Q, Sum, Case, When, IntegerField
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
+        # Get active season
+        active_season = Season.objects.filter(is_active=True).first()
         
-        # Get all members of the league
-        members = User.objects.filter(league_memberships__league=league).distinct()
-        
-        standings = []
-        for member in members:
-            picks = Pick.objects.filter(user=member, league=league, is_correct__isnull=False)
-            total = picks.count()
-            wins = picks.filter(is_correct=True).count()
-            losses = total - wins
-            win_pct = round((wins / total * 100) if total > 0 else 0, 1)
+        if active_season:
+            # Get league rules to check drop_weeks setting
+            try:
+                league_rules = LeagueRules.objects.get(league=league, season=active_season)
+            except LeagueRules.DoesNotExist:
+                league_rules = None
             
-            # Calculate points (1 for correct, 2 for key pick correct)
-            points = Pick.objects.filter(
-                user=member, 
-                league=league, 
-                is_correct=True
-            ).aggregate(
-                total_points=Sum(
-                    Case(
-                        When(is_key_pick=True, then=2),
-                        default=1,
-                        output_field=IntegerField()
+            # Get all member seasons for this league/season
+            member_seasons = MemberSeason.objects.filter(
+                league=league,
+                season=active_season
+            ).select_related('user')
+            
+            standings = []
+            for member_season in member_seasons:
+                if show_full_standings:
+                    # Show full season stats (not adjusted)
+                    points = member_season.points
+                    correct = member_season.correct
+                    correct_key = member_season.correct_key
+                    incorrect = member_season.incorrect
+                    total = correct + incorrect + member_season.ties
+                    display_rank = member_season.rank or 999
+                else:
+                    # Show adjusted stats (default - with dropped weeks)
+                    points = member_season.points - member_season.points_dropped
+                    correct = member_season.correct - member_season.correct_dropped
+                    correct_key = member_season.correct_key - member_season.correct_key_dropped
+                    incorrect = member_season.incorrect - member_season.incorrect_dropped
+                    total = correct + incorrect + (member_season.ties - member_season.ties_dropped)
+                    # Use rank_with_drops if available and drop_weeks > 0, otherwise use regular rank
+                    if league_rules and league_rules.drop_weeks > 0 and member_season.rank_with_drops:
+                        display_rank = member_season.rank_with_drops
+                    else:
+                        display_rank = member_season.rank or 999
+                
+                win_pct = round((correct / total * 100) if total > 0 else 0, 1)
+                
+                standings.append({
+                    'user': member_season.user,
+                    'wins': correct,
+                    'losses': incorrect,
+                    'total': total,
+                    'win_pct': win_pct,
+                    'points': points,
+                    'correct_key': correct_key,
+                    'display_rank': display_rank,
+                })
+            
+            # Sort standings by display rank (ascending)
+            standings.sort(key=lambda x: x['display_rank'])
+            
+            context['standings'] = standings
+            context['league_rules'] = league_rules
+        else:
+            # Fallback to old method if no active season or member seasons
+            from django.db.models import Count, Q, Sum, Case, When, IntegerField
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            
+            # Get all members of the league
+            members = User.objects.filter(league_memberships__league=league).distinct()
+            
+            standings = []
+            for member in members:
+                picks = Pick.objects.filter(user=member, league=league, is_correct__isnull=False)
+                total = picks.count()
+                wins = picks.filter(is_correct=True).count()
+                losses = total - wins
+                win_pct = round((wins / total * 100) if total > 0 else 0, 1)
+                
+                # Calculate points (1 for correct, 2 for key pick correct)
+                points = Pick.objects.filter(
+                    user=member, 
+                    league=league, 
+                    is_correct=True
+                ).aggregate(
+                    total_points=Sum(
+                        Case(
+                            When(is_key_pick=True, then=2),
+                            default=1,
+                            output_field=IntegerField()
+                        )
                     )
-                )
-            )['total_points'] or 0
+                )['total_points'] or 0
+                
+                standings.append({
+                    'user': member,
+                    'wins': wins,
+                    'losses': losses,
+                    'total': total,
+                    'win_pct': win_pct,
+                    'points': points,
+                })
             
-            standings.append({
-                'user': member,
-                'wins': wins,
-                'losses': losses,
-                'total': total,
-                'win_pct': win_pct,
-                'points': points,
-            })
-        
-        # Sort by points (descending), then by win_pct
-        standings.sort(key=lambda x: (-x['points'], -x['win_pct']))
-        
-        context['standings'] = standings
+            # Sort by points (descending), then by win_pct
+            standings.sort(key=lambda x: (-x['points'], -x['win_pct']))
+            
+            # Assign ranks for fallback case
+            current_rank = 1
+            for i, standing in enumerate(standings):
+                if i > 0 and standings[i-1]['points'] != standing['points']:
+                    current_rank = i + 1
+                standing['display_rank'] = current_rank
+            
+            context['standings'] = standings
+            
+            # Try to get league rules for consistency
+            if active_season:
+                try:
+                    context['league_rules'] = LeagueRules.objects.get(league=league, season=active_season)
+                except LeagueRules.DoesNotExist:
+                    context['league_rules'] = None
+            else:
+                context['league_rules'] = None
     
     return render(request, "cfb/standings.html", context)
 

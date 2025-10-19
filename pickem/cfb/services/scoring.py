@@ -167,18 +167,18 @@ def assign_ranks_for_week(member_weeks: List[MemberWeek], league_rules: LeagueRu
     return rank_map
 
 
-def assign_ranks_for_season(member_seasons: List[MemberSeason], league_rules: LeagueRules) -> Dict[int, int]:
+def assign_ranks_for_season(member_seasons: List[MemberSeason], league_rules: LeagueRules) -> Dict[int, Dict[str, int]]:
     """
     Assign ranks to member seasons with proper tiebreaker handling.
+    Calculates both full season ranks and adjusted ranks (with drops).
     If members have the same rank, the next rank is skipped.
-    Uses adjusted stats (full season minus dropped weeks) for ranking.
     
     Args:
         member_seasons: List of MemberSeason objects for a league/season
         league_rules: The LeagueRules to determine tiebreaker method
     
     Returns:
-        Dict mapping member_season.id to rank
+        Dict mapping member_season.id to {'rank': full_rank, 'rank_with_drops': adjusted_rank}
     """
     if not member_seasons:
         return {}
@@ -190,47 +190,77 @@ def assign_ranks_for_season(member_seasons: List[MemberSeason], league_rules: Le
         adjusted_correct_key = member_season.correct_key - member_season.correct_key_dropped
         return adjusted_points, adjusted_correct, adjusted_correct_key
     
-    # Sort by adjusted points (descending) and then by adjusted tiebreaker
-    def sort_key(member_season):
-        adjusted_points, adjusted_correct, adjusted_correct_key = get_adjusted_stats(member_season)
+    # Helper function to get tiebreaker value
+    def get_tiebreaker_value(points, correct, correct_key, league_rules):
         if league_rules.tiebreaker == 1:  # Correct Key Picks
-            return (adjusted_points, adjusted_correct_key)
+            return correct_key
         elif league_rules.tiebreaker == 3:  # Correct Picks
-            return (adjusted_points, adjusted_correct)
+            return correct
         else:  # None or Total Points
-            return (adjusted_points, adjusted_correct)
+            return correct
     
-    sorted_seasons = sorted(
-        member_seasons,
-        key=sort_key,
-        reverse=True
-    )
-    
-    rank_map = {}
-    current_rank = 1
-    previous_adjusted_points = None
-    previous_adjusted_tiebreaker = None
-    
-    for member_season in sorted_seasons:
-        adjusted_points, adjusted_correct, adjusted_correct_key = get_adjusted_stats(member_season)
+    def calculate_ranks_for_stats(member_seasons_list, use_full_stats=True):
+        """Calculate ranks for either full stats or adjusted stats"""
+        if use_full_stats:
+            # Sort by full season stats
+            def sort_key(member_season):
+                correct = member_season.correct
+                correct_key = member_season.correct_key
+                tiebreaker = get_tiebreaker_value(member_season.points, correct, correct_key, league_rules)
+                return (member_season.points, tiebreaker)
+        else:
+            # Sort by adjusted stats
+            def sort_key(member_season):
+                adjusted_points, adjusted_correct, adjusted_correct_key = get_adjusted_stats(member_season)
+                tiebreaker = get_tiebreaker_value(adjusted_points, adjusted_correct, adjusted_correct_key, league_rules)
+                return (adjusted_points, tiebreaker)
         
-        # Get adjusted tiebreaker value
-        if league_rules.tiebreaker == 1:  # Correct Key Picks
-            adjusted_tiebreaker_value = adjusted_correct_key
-        elif league_rules.tiebreaker == 3:  # Correct Picks
-            adjusted_tiebreaker_value = adjusted_correct
-        else:  # None or Total Points
-            adjusted_tiebreaker_value = adjusted_points
+        sorted_seasons = sorted(member_seasons_list, key=sort_key, reverse=True)
         
-        # If adjusted points or tiebreaker differ, assign next rank
-        if previous_adjusted_points is not None and (adjusted_points != previous_adjusted_points or adjusted_tiebreaker_value != previous_adjusted_tiebreaker):
-            current_rank += 1
+        rank_map = {}
+        current_rank = 1
+        previous_points = None
+        previous_tiebreaker = None
         
-        rank_map[member_season.id] = current_rank
-        previous_adjusted_points = adjusted_points
-        previous_adjusted_tiebreaker = adjusted_tiebreaker_value
+        for member_season in sorted_seasons:
+            if use_full_stats:
+                points = member_season.points
+                correct = member_season.correct
+                correct_key = member_season.correct_key
+            else:
+                points, correct, correct_key = get_adjusted_stats(member_season)
+            
+            tiebreaker = get_tiebreaker_value(points, correct, correct_key, league_rules)
+            
+            # If points or tiebreaker differ, assign next rank
+            if previous_points is not None and (points != previous_points or tiebreaker != previous_tiebreaker):
+                current_rank += 1
+            
+            rank_map[member_season.id] = current_rank
+            previous_points = points
+            previous_tiebreaker = tiebreaker
+        
+        return rank_map
     
-    return rank_map
+    # Calculate both types of ranks
+    full_rank_map = calculate_ranks_for_stats(member_seasons, use_full_stats=True)
+    
+    # For adjusted ranks, check if drops are enabled
+    if league_rules and league_rules.drop_weeks > 0:
+        adjusted_rank_map = calculate_ranks_for_stats(member_seasons, use_full_stats=False)
+    else:
+        # No drops, so adjusted ranks should be 0 or same as full ranks
+        adjusted_rank_map = {ms.id: 0 for ms in member_seasons}
+    
+    # Combine the results
+    result = {}
+    for member_season in member_seasons:
+        result[member_season.id] = {
+            'rank': full_rank_map.get(member_season.id, 0),
+            'rank_with_drops': adjusted_rank_map.get(member_season.id, 0)
+        }
+    
+    return result
 
 
 @transaction.atomic
@@ -501,8 +531,10 @@ def update_member_season_for_league(league: League, season) -> int:
         rank_map = assign_ranks_for_season(list(season_member_seasons), league_rules)
         for member_season in season_member_seasons:
             if member_season.id in rank_map:
-                member_season.rank = rank_map[member_season.id]
-                member_season.save(update_fields=['rank'])
+                ranks = rank_map[member_season.id]
+                member_season.rank = ranks['rank']
+                member_season.rank_with_drops = ranks['rank_with_drops']
+                member_season.save(update_fields=['rank', 'rank_with_drops'])
     
     logger.info(f"Updated {updated_count} MemberSeason records for league {league.id} season {season.id}")
     return updated_count
@@ -757,8 +789,10 @@ def recalculate_all_member_stats(season) -> dict:
                 rank_map = assign_ranks_for_season(list(season_member_seasons), league_rules)
                 for member_season in season_member_seasons:
                     if member_season.id in rank_map:
-                        member_season.rank = rank_map[member_season.id]
-                        member_season.save(update_fields=['rank'])
+                        ranks = rank_map[member_season.id]
+                        member_season.rank = ranks['rank']
+                        member_season.rank_with_drops = ranks['rank_with_drops']
+                        member_season.save(update_fields=['rank', 'rank_with_drops'])
         
         except Exception as e:
             logger.error(f"Error processing league {league.id}: {e}", exc_info=True)

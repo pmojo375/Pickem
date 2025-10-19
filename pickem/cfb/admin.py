@@ -220,7 +220,7 @@ class MemberWeekAdmin(admin.ModelAdmin):
 
 @admin.register(MemberSeason)
 class MemberSeasonAdmin(admin.ModelAdmin):
-    list_display = ("league", "season", "user", "through_week", "picks_made", "correct", "incorrect", "ties", "correct_key", "points", "points_dropped", "adjusted_points", "rank", "updated_at")
+    list_display = ("league", "season", "user", "through_week", "picks_made", "correct", "incorrect", "ties", "correct_key", "points", "points_dropped", "adjusted_points", "rank", "rank_with_drops", "updated_at")
     list_filter = ("league", "season", "updated_at")
     search_fields = ("league__name", "season__year", "user__username")
     autocomplete_fields = ("league", "season", "user")
@@ -260,7 +260,8 @@ class MemberSeasonAdmin(admin.ModelAdmin):
             "description": "Final statistics used for standings (Full Season - Dropped Weeks)"
         }),
         ("Ranking", {
-            "fields": ("rank",)
+            "fields": ("rank", "rank_with_drops"),
+            "description": "rank: full season ranking, rank_with_drops: ranking after dropping worst weeks"
         }),
         ("Timestamps", {
             "fields": ("updated_at",),

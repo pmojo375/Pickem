@@ -429,6 +429,7 @@ class MemberSeason(models.Model):
     correct_key_dropped = models.PositiveIntegerField(default=0)
 
     rank = models.PositiveIntegerField(null=True, blank=True)
+    rank_with_drops = models.PositiveIntegerField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

@@ -36,10 +36,40 @@
 <!-- Leaderboard -->
 <div class="card bg-base-100 shadow-xl">
     <div class="card-body">
-        <h2 class="card-title mb-4">
-            <i class="fas fa-medal text-warning mr-2"></i>
-            {{ current_league.name }} Leaderboard
-        </h2>
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+            <h2 class="card-title">
+                <i class="fas fa-medal text-warning mr-2"></i>
+                {{ current_league.name }} Leaderboard
+            </h2>
+            
+            <!-- Standings Toggle -->
+            {% if league_rules and league_rules.drop_weeks > 0 %}
+            <div class="flex items-center gap-3">
+                <span class="text-sm text-base-content/70">
+                    {% if show_full_standings %}
+                        Showing full season standings
+                    {% else %}
+                        Showing standings with {{ league_rules.drop_weeks }} worst week{{ league_rules.drop_weeks|pluralize }} dropped
+                    {% endif %}
+                </span>
+                <div class="form-control">
+                    <label class="label cursor-pointer gap-3">
+                        <span class="label-text text-sm font-medium">
+                            {% if show_full_standings %}
+                                Full Season
+                            {% else %}
+                                Adjusted (Dropped Weeks)
+                            {% endif %}
+                        </span>
+                        <input type="checkbox" 
+                               class="toggle toggle-primary" 
+                               {% if show_full_standings %}checked{% endif %}
+                               onchange="toggleStandings(this.checked)" />
+                    </label>
+                </div>
+            </div>
+            {% endif %}
+        </div>
         <div class="overflow-x-auto">
             <table class="table table-zebra w-full">
                 <thead>
@@ -57,14 +87,14 @@
                     <tr class="hover {% if standing.user == request.user %}bg-primary/10{% endif %}">
                         <td>
                             <div class="flex items-center gap-2">
-                                {% if forloop.counter == 1 %}
+                                {% if standing.display_rank == 1 %}
                                     <i class="fas fa-crown text-yellow-400"></i>
-                                {% elif forloop.counter == 2 %}
+                                {% elif standing.display_rank == 2 %}
                                     <i class="fas fa-medal text-gray-400"></i>
-                                {% elif forloop.counter == 3 %}
+                                {% elif standing.display_rank == 3 %}
                                     <i class="fas fa-medal text-amber-600"></i>
                                 {% endif %}
-                                <span class="font-bold">{{ forloop.counter }}</span>
+                                <span class="font-bold">{{ standing.display_rank }}</span>
                             </div>
                         </td>
                         <td>
@@ -194,4 +224,19 @@
         </table>
     </div>
 </div>
+
+<script>
+function toggleStandings(showFull) {
+    const url = new URL(window.location);
+    
+    // Preserve existing query parameters (like league_id)
+    if (showFull) {
+        url.searchParams.set('full', 'true');
+    } else {
+        url.searchParams.delete('full');
+    }
+    
+    window.location.href = url.toString();
+}
+</script>
 {% endblock %}
