@@ -556,7 +556,9 @@ def standings_view(request):
                     correct = member_season.correct
                     correct_key = member_season.correct_key
                     incorrect = member_season.incorrect
-                    total = correct + incorrect + member_season.ties
+                    ties = member_season.ties
+                    picks_made = member_season.picks_made
+                    total = correct + incorrect + ties
                     display_rank = member_season.rank or 999
                 else:
                     # Show adjusted stats (default - with dropped weeks)
@@ -564,7 +566,9 @@ def standings_view(request):
                     correct = member_season.correct - member_season.correct_dropped
                     correct_key = member_season.correct_key - member_season.correct_key_dropped
                     incorrect = member_season.incorrect - member_season.incorrect_dropped
-                    total = correct + incorrect + (member_season.ties - member_season.ties_dropped)
+                    ties = member_season.ties - member_season.ties_dropped
+                    picks_made = member_season.picks_made - member_season.picks_made_dropped
+                    total = correct + incorrect + ties
                     # Use rank_with_drops if available and drop_weeks > 0, otherwise use regular rank
                     if league_rules and league_rules.drop_weeks > 0 and member_season.rank_with_drops:
                         display_rank = member_season.rank_with_drops
@@ -572,15 +576,19 @@ def standings_view(request):
                         display_rank = member_season.rank or 999
                 
                 win_pct = round((correct / total * 100) if total > 0 else 0, 1)
+                key_pick_pct = round((correct_key / picks_made * 100) if picks_made > 0 else 0, 1)
                 
                 standings.append({
                     'user': member_season.user,
                     'wins': correct,
                     'losses': incorrect,
+                    'ties': ties,
                     'total': total,
+                    'picks_made': picks_made,
                     'win_pct': win_pct,
                     'points': points,
                     'correct_key': correct_key,
+                    'key_pick_pct': key_pick_pct,
                     'display_rank': display_rank,
                 })
             
@@ -600,11 +608,24 @@ def standings_view(request):
             
             standings = []
             for member in members:
+                all_picks = Pick.objects.filter(user=member, league=league)
                 picks = Pick.objects.filter(user=member, league=league, is_correct__isnull=False)
                 total = picks.count()
                 wins = picks.filter(is_correct=True).count()
-                losses = total - wins
+                losses = picks.filter(is_correct=False).count()
+                ties = picks.filter(is_correct=None).count() if picks.filter(is_correct=None).exists() else 0
+                picks_made = all_picks.count()
+                
+                # Calculate key picks
+                correct_key = Pick.objects.filter(
+                    user=member, 
+                    league=league, 
+                    is_correct=True,
+                    is_key_pick=True
+                ).count()
+                
                 win_pct = round((wins / total * 100) if total > 0 else 0, 1)
+                key_pick_pct = round((correct_key / picks_made * 100) if picks_made > 0 else 0, 1)
                 
                 # Calculate points (1 for correct, 2 for key pick correct)
                 points = Pick.objects.filter(
@@ -625,9 +646,13 @@ def standings_view(request):
                     'user': member,
                     'wins': wins,
                     'losses': losses,
+                    'ties': ties,
                     'total': total,
+                    'picks_made': picks_made,
                     'win_pct': win_pct,
                     'points': points,
+                    'correct_key': correct_key,
+                    'key_pick_pct': key_pick_pct,
                 })
             
             # Sort by points (descending), then by win_pct
