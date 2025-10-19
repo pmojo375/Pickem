@@ -470,12 +470,26 @@ def live_view(request):
     if active_season:
         league_rules = LeagueRules.objects.filter(league=league, season=active_season).first()
     
+    # Get AP poll rankings for teams (current week)
+    team_rankings = {}
+    if active_season and current_week:
+        # Fetch AP poll rankings for current week
+        rankings = Ranking.objects.filter(
+            season=active_season,
+            week=current_week,
+            poll='AP Top 25'
+        ).select_related('team')
+        
+        # Create a dict mapping team_id to rank
+        team_rankings = {r.team_id: r.rank for r in rankings}
+    
     context = {
         "picks_with_league_game": picks_with_league_game,  # Keep for backward compatibility
         "picks_with_sections": picks_with_sections,  # New organized structure
         "current_league": league,
         "user_leagues": user_leagues,
         "league_rules": league_rules,
+        "team_rankings": team_rankings,
     }
     return render(request, "cfb/live.html", context)
 

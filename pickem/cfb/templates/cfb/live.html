@@ -100,6 +100,9 @@
                         {% endif %}
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-1 mb-1">
+                                {% if team_rankings and p.game.away_team.id in team_rankings %}
+                                    <span class="badge badge-warning badge-xs font-bold mr-1">#{{ team_rankings|get_item:p.game.away_team.id }}</span>
+                                {% endif %}
                                 <span class="font-bold text-xs md:text-sm leading-tight">{{ p.game.away_team.name }}</span>
                                 {% if p.game.away_team|team_won_game:p.game %}
                                     <i class="fas fa-trophy text-success text-xs" title="Winner"></i>
@@ -178,6 +181,9 @@
                         {% endif %}
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-1 mb-1">
+                                {% if team_rankings and p.game.home_team.id in team_rankings %}
+                                    <span class="badge badge-warning badge-xs font-bold mr-1">#{{ team_rankings|get_item:p.game.home_team.id }}</span>
+                                {% endif %}
                                 <span class="font-bold text-xs md:text-sm leading-tight">{{ p.game.home_team.name }}</span>
                                 {% if p.game.home_team|team_won_game:p.game %}
                                     <i class="fas fa-trophy text-success text-xs" title="Winner"></i>
