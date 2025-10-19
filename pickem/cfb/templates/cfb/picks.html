@@ -113,7 +113,12 @@
                                      class="w-10 h-10 md:w-12 md:h-12 object-contain transition-transform flex-shrink-0" />
                                 {% endif %}
                                 <div class="flex-1 min-w-0">
-                                    <span class="font-bold text-sm md:text-base leading-tight block">{{ lg.game.away_team.name }}</span>
+                                    <div class="flex items-center gap-1">
+                                        {% if team_rankings and lg.game.away_team.id in team_rankings %}
+                                            <span class="badge badge-warning badge-xs font-bold">#{{ team_rankings|get_item:lg.game.away_team.id }}</span>
+                                        {% endif %}
+                                        <span class="font-bold text-sm md:text-base leading-tight">{{ lg.game.away_team.name }}</span>
+                                    </div>
                                     <div class="badge badge-ghost badge-xs md:badge-sm mt-1">Away</div>
                                 </div>
                             </div>
@@ -134,7 +139,12 @@
                                      class="w-10 h-10 md:w-12 md:h-12 object-contain transition-transform flex-shrink-0" />
                                 {% endif %}
                                 <div class="flex-1 min-w-0">
-                                    <span class="font-bold text-sm md:text-base leading-tight block">{{ lg.game.home_team.name }}</span>
+                                    <div class="flex items-center gap-1">
+                                        {% if team_rankings and lg.game.home_team.id in team_rankings %}
+                                            <span class="badge badge-warning badge-xs font-bold">#{{ team_rankings|get_item:lg.game.home_team.id }}</span>
+                                        {% endif %}
+                                        <span class="font-bold text-sm md:text-base leading-tight">{{ lg.game.home_team.name }}</span>
+                                    </div>
                                     <div class="badge badge-ghost badge-xs md:badge-sm mt-1">Home</div>
                                 </div>
                             </div>

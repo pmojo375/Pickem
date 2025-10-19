@@ -349,6 +349,19 @@ def picks_view(request):
                 game=total_points_game
             ).first()
     
+    # Get AP poll rankings for teams (current week)
+    team_rankings = {}
+    if active_season and current_week:
+        # Fetch AP poll rankings for current week
+        rankings = Ranking.objects.filter(
+            season=active_season,
+            week=current_week,
+            poll='AP Top 25'
+        ).select_related('team')
+        
+        # Create a dict mapping team_id to rank
+        team_rankings = {r.team_id: r.rank for r in rankings}
+    
     context = {
         "games_with_picks": games_with_picks,
         "current_league": league,
@@ -357,6 +370,7 @@ def picks_view(request):
         "current_key_picks_count": current_key_picks_count,
         "total_points_game": total_points_game,
         "total_points_pick": total_points_pick,
+        "team_rankings": team_rankings,
     }
     return render(request, "cfb/picks.html", context)
 
