@@ -171,6 +171,7 @@ def assign_ranks_for_season(member_seasons: List[MemberSeason], league_rules: Le
     """
     Assign ranks to member seasons with proper tiebreaker handling.
     If members have the same rank, the next rank is skipped.
+    Uses adjusted stats (full season minus dropped weeks) for ranking.
     
     Args:
         member_seasons: List of MemberSeason objects for a league/season
@@ -182,34 +183,52 @@ def assign_ranks_for_season(member_seasons: List[MemberSeason], league_rules: Le
     if not member_seasons:
         return {}
     
-    # Sort by points (descending) and then by tiebreaker
+    # Helper function to get adjusted stats (full season minus dropped weeks)
+    def get_adjusted_stats(member_season):
+        adjusted_points = member_season.points - member_season.points_dropped
+        adjusted_correct = member_season.correct - member_season.correct_dropped
+        adjusted_correct_key = member_season.correct_key - member_season.correct_key_dropped
+        return adjusted_points, adjusted_correct, adjusted_correct_key
+    
+    # Sort by adjusted points (descending) and then by adjusted tiebreaker
+    def sort_key(member_season):
+        adjusted_points, adjusted_correct, adjusted_correct_key = get_adjusted_stats(member_season)
+        if league_rules.tiebreaker == 1:  # Correct Key Picks
+            return (adjusted_points, adjusted_correct_key)
+        elif league_rules.tiebreaker == 3:  # Correct Picks
+            return (adjusted_points, adjusted_correct)
+        else:  # None or Total Points
+            return (adjusted_points, adjusted_correct)
+    
     sorted_seasons = sorted(
         member_seasons,
-        key=lambda x: (x.points, x.correct_key if league_rules.tiebreaker == 1 else x.correct),
+        key=sort_key,
         reverse=True
     )
     
     rank_map = {}
     current_rank = 1
-    previous_points = None
-    previous_tiebreaker = None
+    previous_adjusted_points = None
+    previous_adjusted_tiebreaker = None
     
     for member_season in sorted_seasons:
-        # Get tiebreaker value
-        if league_rules.tiebreaker == 1:  # Correct Key Picks
-            tiebreaker_value = member_season.correct_key
-        elif league_rules.tiebreaker == 3:  # Correct Picks
-            tiebreaker_value = member_season.correct
-        else:  # None or Total Points
-            tiebreaker_value = member_season.points
+        adjusted_points, adjusted_correct, adjusted_correct_key = get_adjusted_stats(member_season)
         
-        # If points or tiebreaker differ, assign next rank
-        if previous_points is not None and (member_season.points != previous_points or tiebreaker_value != previous_tiebreaker):
+        # Get adjusted tiebreaker value
+        if league_rules.tiebreaker == 1:  # Correct Key Picks
+            adjusted_tiebreaker_value = adjusted_correct_key
+        elif league_rules.tiebreaker == 3:  # Correct Picks
+            adjusted_tiebreaker_value = adjusted_correct
+        else:  # None or Total Points
+            adjusted_tiebreaker_value = adjusted_points
+        
+        # If adjusted points or tiebreaker differ, assign next rank
+        if previous_adjusted_points is not None and (adjusted_points != previous_adjusted_points or adjusted_tiebreaker_value != previous_adjusted_tiebreaker):
             current_rank += 1
         
         rank_map[member_season.id] = current_rank
-        previous_points = member_season.points
-        previous_tiebreaker = tiebreaker_value
+        previous_adjusted_points = adjusted_points
+        previous_adjusted_tiebreaker = adjusted_tiebreaker_value
     
     return rank_map
 
@@ -406,31 +425,16 @@ def update_member_season_for_league(league: League, season) -> int:
             member_season.ties = 0
             member_season.correct_key = 0
             member_season.points = 0
+            # Reset dropped week stats
+            member_season.points_dropped = 0
+            member_season.picks_made_dropped = 0
+            member_season.correct_dropped = 0
+            member_season.incorrect_dropped = 0
+            member_season.ties_dropped = 0
+            member_season.correct_key_dropped = 0
         else:
-            # Apply drop_weeks logic if enabled
-            if league_rules.drop_weeks > 0 and len(member_weeks_with_finals) > league_rules.drop_weeks:
-                # Convert to list for sorting
-                weeks_list = list(member_weeks_with_finals)
-                
-                # Sort weeks by points (ascending) to identify worst weeks
-                # Then by correct picks (ascending) as secondary sort
-                weeks_list.sort(key=lambda x: (x.points, x.correct))
-                
-                # Drop the worst performing weeks
-                weeks_to_include = weeks_list[league_rules.drop_weeks:]
-                
-                # Create queryset from the weeks to include
-                from django.db.models import Q
-                week_ids_to_include = [week.week_id for week in weeks_to_include]
-                member_weeks_to_aggregate = member_weeks_with_finals.filter(
-                    week_id__in=week_ids_to_include
-                )
-            else:
-                # No dropping or not enough weeks to drop
-                member_weeks_to_aggregate = member_weeks_with_finals
-            
-            # Aggregate stats from the selected weeks only
-            stats = member_weeks_to_aggregate.aggregate(
+            # First, calculate full season stats from all weeks with finalized games
+            full_season_stats = member_weeks_with_finals.aggregate(
                 max_week=Max('week__number'),
                 total_picks=Sum('picks_made'),
                 total_correct=Sum('correct'),
@@ -440,13 +444,49 @@ def update_member_season_for_league(league: League, season) -> int:
                 total_points=Sum('points')
             )
             
-            member_season.through_week = stats['max_week'] or 0
-            member_season.picks_made = stats['total_picks'] or 0
-            member_season.correct = stats['total_correct'] or 0
-            member_season.incorrect = stats['total_incorrect'] or 0
-            member_season.ties = stats['total_ties'] or 0
-            member_season.correct_key = stats['total_correct_key'] or 0
-            member_season.points = stats['total_points'] or 0
+            # Store full season stats in original fields
+            member_season.through_week = full_season_stats['max_week'] or 0
+            member_season.picks_made = full_season_stats['total_picks'] or 0
+            member_season.correct = full_season_stats['total_correct'] or 0
+            member_season.incorrect = full_season_stats['total_incorrect'] or 0
+            member_season.ties = full_season_stats['total_ties'] or 0
+            member_season.correct_key = full_season_stats['total_correct_key'] or 0
+            member_season.points = full_season_stats['total_points'] or 0
+            
+            # Initialize dropped stats to 0
+            member_season.points_dropped = 0
+            member_season.picks_made_dropped = 0
+            member_season.correct_dropped = 0
+            member_season.incorrect_dropped = 0
+            member_season.ties_dropped = 0
+            member_season.correct_key_dropped = 0
+            
+            # Apply drop_weeks logic if enabled
+            if league_rules.drop_weeks > 0 and len(member_weeks_with_finals) > league_rules.drop_weeks:
+                # Convert to list for sorting
+                weeks_list = list(member_weeks_with_finals)
+                
+                # Sort weeks by points (ascending) to identify worst weeks
+                # Then by correct picks (ascending) as secondary sort
+                weeks_list.sort(key=lambda x: (x.points, x.correct))
+                
+                # Get the weeks to drop (worst performing)
+                weeks_to_drop = weeks_list[:league_rules.drop_weeks]
+                
+                # Calculate dropped stats from the worst weeks
+                dropped_stats = sum((week.picks_made for week in weeks_to_drop), 0), \
+                               sum((week.correct for week in weeks_to_drop), 0), \
+                               sum((week.incorrect for week in weeks_to_drop), 0), \
+                               sum((week.ties for week in weeks_to_drop), 0), \
+                               sum((week.correct_key for week in weeks_to_drop), 0), \
+                               sum((week.points for week in weeks_to_drop), 0)
+                
+                member_season.picks_made_dropped = dropped_stats[0]
+                member_season.correct_dropped = dropped_stats[1]
+                member_season.incorrect_dropped = dropped_stats[2]
+                member_season.ties_dropped = dropped_stats[3]
+                member_season.correct_key_dropped = dropped_stats[4]
+                member_season.points_dropped = dropped_stats[5]
         
         member_season.save()
         updated_count += 1
@@ -633,6 +673,34 @@ def recalculate_all_member_stats(season) -> dict:
                 )
                 
                 if member_weeks_with_finals.exists():
+                    # First, calculate full season stats from all weeks with finalized games
+                    full_season_stats = member_weeks_with_finals.aggregate(
+                        max_week=Max('week__number'),
+                        total_picks=Sum('picks_made'),
+                        total_correct=Sum('correct'),
+                        total_incorrect=Sum('incorrect'),
+                        total_ties=Sum('ties'),
+                        total_correct_key=Sum('correct_key'),
+                        total_points=Sum('points')
+                    )
+                    
+                    # Store full season stats in original fields
+                    member_season.through_week = full_season_stats['max_week'] or 0
+                    member_season.picks_made = full_season_stats['total_picks'] or 0
+                    member_season.correct = full_season_stats['total_correct'] or 0
+                    member_season.incorrect = full_season_stats['total_incorrect'] or 0
+                    member_season.ties = full_season_stats['total_ties'] or 0
+                    member_season.correct_key = full_season_stats['total_correct_key'] or 0
+                    member_season.points = full_season_stats['total_points'] or 0
+                    
+                    # Initialize dropped stats to 0
+                    member_season.points_dropped = 0
+                    member_season.picks_made_dropped = 0
+                    member_season.correct_dropped = 0
+                    member_season.incorrect_dropped = 0
+                    member_season.ties_dropped = 0
+                    member_season.correct_key_dropped = 0
+                    
                     # Apply drop_weeks logic if enabled
                     if league_rules.drop_weeks > 0 and len(member_weeks_with_finals) > league_rules.drop_weeks:
                         # Convert to list for sorting
@@ -642,38 +710,42 @@ def recalculate_all_member_stats(season) -> dict:
                         # Then by correct picks (ascending) as secondary sort
                         weeks_list.sort(key=lambda x: (x.points, x.correct))
                         
-                        # Drop the worst performing weeks
-                        weeks_to_include = weeks_list[league_rules.drop_weeks:]
+                        # Get the weeks to drop (worst performing)
+                        weeks_to_drop = weeks_list[:league_rules.drop_weeks]
                         
-                        # Create queryset from the weeks to include
-                        week_ids_to_include = [week.week_id for week in weeks_to_include]
-                        member_weeks_to_aggregate = member_weeks_with_finals.filter(
-                            week_id__in=week_ids_to_include
-                        )
-                    else:
-                        # No dropping or not enough weeks to drop
-                        member_weeks_to_aggregate = member_weeks_with_finals
+                        # Calculate dropped stats from the worst weeks
+                        dropped_stats = sum((week.picks_made for week in weeks_to_drop), 0), \
+                                       sum((week.correct for week in weeks_to_drop), 0), \
+                                       sum((week.incorrect for week in weeks_to_drop), 0), \
+                                       sum((week.ties for week in weeks_to_drop), 0), \
+                                       sum((week.correct_key for week in weeks_to_drop), 0), \
+                                       sum((week.points for week in weeks_to_drop), 0)
+                        
+                        member_season.picks_made_dropped = dropped_stats[0]
+                        member_season.correct_dropped = dropped_stats[1]
+                        member_season.incorrect_dropped = dropped_stats[2]
+                        member_season.ties_dropped = dropped_stats[3]
+                        member_season.correct_key_dropped = dropped_stats[4]
+                        member_season.points_dropped = dropped_stats[5]
                     
-                    # Aggregate stats from the selected weeks only
-                    agg_stats = member_weeks_to_aggregate.aggregate(
-                        max_week=Max('week__number'),
-                        total_picks=Sum('picks_made'),
-                        total_correct=Sum('correct'),
-                        total_incorrect=Sum('incorrect'),
-                        total_ties=Sum('ties'),
-                        total_key_correct=Sum('correct_key'),
-                        total_points=Sum('points')
-                    )
-                    
-                    member_season.through_week = agg_stats['max_week'] or 0
-                    member_season.picks_made = agg_stats['total_picks'] or 0
-                    member_season.correct = agg_stats['total_correct'] or 0
-                    member_season.incorrect = agg_stats['total_incorrect'] or 0
-                    member_season.ties = agg_stats['total_ties'] or 0
-                    member_season.correct_key = agg_stats['total_key_correct'] or 0
-                    member_season.points = agg_stats['total_points'] or 0
                     member_season.save()
-                    
+                    stats['member_seasons_updated'] += 1
+                else:
+                    # No weeks with finalized games - reset all stats
+                    member_season.through_week = 0
+                    member_season.picks_made = 0
+                    member_season.correct = 0
+                    member_season.incorrect = 0
+                    member_season.ties = 0
+                    member_season.correct_key = 0
+                    member_season.points = 0
+                    member_season.points_dropped = 0
+                    member_season.picks_made_dropped = 0
+                    member_season.correct_dropped = 0
+                    member_season.incorrect_dropped = 0
+                    member_season.ties_dropped = 0
+                    member_season.correct_key_dropped = 0
+                    member_season.save()
                     stats['member_seasons_updated'] += 1
             
             # Calculate and assign season ranks

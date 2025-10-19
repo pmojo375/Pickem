@@ -420,6 +420,13 @@ class MemberSeason(models.Model):
     ties = models.PositiveIntegerField(default=0)
     correct_key = models.PositiveIntegerField(default=0)
     points = models.IntegerField(default=0)
+    points_dropped = models.IntegerField(default=0)
+    
+    picks_made_dropped = models.PositiveIntegerField(default=0)
+    correct_dropped = models.PositiveIntegerField(default=0)
+    incorrect_dropped = models.PositiveIntegerField(default=0)
+    ties_dropped = models.PositiveIntegerField(default=0)
+    correct_key_dropped = models.PositiveIntegerField(default=0)
 
     rank = models.PositiveIntegerField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
