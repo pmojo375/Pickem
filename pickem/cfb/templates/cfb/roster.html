@@ -41,12 +41,26 @@
             <div class="flex items-center gap-4 mb-4">
                 <div class="avatar placeholder">
                     <div class="bg-primary text-primary-content rounded-full w-16">
-                        <span class="text-2xl">{{ player.user.username|slice:":1"|upper }}</span>
+                        <span class="text-2xl">
+                            {% if player.user.first_name %}
+                                {{ player.user.first_name|slice:":1"|upper }}
+                            {% else %}
+                                {{ player.user.username|slice:":1"|upper }}
+                            {% endif %}
+                        </span>
                     </div>
                 </div>
                 <div class="flex-1">
                     <h3 class="card-title text-lg">
-                        {{ player.user.username }}
+                        {% if player.user.first_name and player.user.last_name %}
+                            {{ player.user.first_name }} {{ player.user.last_name }}
+                        {% elif player.user.first_name %}
+                            {{ player.user.first_name }}
+                        {% elif player.user.last_name %}
+                            {{ player.user.last_name }}
+                        {% else %}
+                            {{ player.user.username }}
+                        {% endif %}
                         {% if player.user == request.user %}
                         <span class="text-xs text-primary">(You)</span>
                         {% endif %}
