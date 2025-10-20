@@ -89,6 +89,18 @@
                                     {% endif %}
                                 {% endwith %}
                             </div>
+                            {% elif lg.game.current_home_spread is not None %}
+                            <div class="badge badge-info badge-sm md:badge-md whitespace-nowrap">
+                                {% with display_spread=lg.game.current_home_spread|apply_hooks:league_rules.force_hooks %}
+                                    {% if display_spread < 0 %}
+                                        {{ lg.game.home_team.abbreviation|default:lg.game.home_team.name }} {{ display_spread|floatformat:1 }}
+                                    {% elif display_spread > 0 %}
+                                        {{ lg.game.away_team.abbreviation|default:lg.game.away_team.name }} -{{ display_spread|floatformat:1 }}
+                                    {% else %}
+                                        Pick 'Em
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
                             {% endif %}
                         </div>
                     </div>
