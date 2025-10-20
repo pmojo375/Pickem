@@ -26,12 +26,20 @@ def get_current_week(season: Optional[Season] = None, now: Optional[datetime] = 
     # Convert now to date for comparison
     current_date = now.date()
     
-    # Find the week where current_date falls between start_date and end_date
+    # First, try to find a week where the current date matches the start_date
+    # This handles the case where end_date of previous week matches start_date of current week
     week = Week.objects.filter(
         season=season,
-        start_date__lte=current_date,
-        end_date__gte=current_date
+        start_date=current_date
     ).first()
+    
+    # If no week found with matching start_date, find where current_date falls between start_date and end_date
+    if not week:
+        week = Week.objects.filter(
+            season=season,
+            start_date__lte=current_date,
+            end_date__gte=current_date
+        ).exclude(start_date=current_date).first()
     
     return week
 
