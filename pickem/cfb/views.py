@@ -536,6 +536,7 @@ def standings_view(request):
         'selected_week': selected_week,
         'available_weeks': [],
         'show_week_standings': False,  # Will be set later based on logic
+        'key_picks_enabled': False,  # Will be set based on league rules
     }
     
     if league:
@@ -610,10 +611,18 @@ def standings_view(request):
                     ).select_related('user', 'week')
                     
                     standings = []
+                    # Calculate maximum possible key picks for this week
+                    max_key_picks_per_week = league_rules.number_of_key_picks if league_rules and league_rules.key_picks_enabled else 0
+                    
                     for member_week in member_weeks:
                         total = member_week.correct + member_week.incorrect + member_week.ties
                         win_pct = round((member_week.correct / total * 100) if total > 0 else 0, 1)
-                        key_pick_pct = round((member_week.correct_key / member_week.picks_made * 100) if member_week.picks_made > 0 else 0, 1)
+                        
+                        # Calculate key pick percentage based on max allowed key picks for this week
+                        key_pick_pct = 0
+                        if max_key_picks_per_week > 0:
+                            # Use the league rule maximum for this week, not actual picks made
+                            key_pick_pct = round((member_week.correct_key / max_key_picks_per_week * 100), 1)
                         
                         standings.append({
                             'user': member_week.user,
@@ -632,6 +641,7 @@ def standings_view(request):
                     # Sort by rank (ascending)
                     standings.sort(key=lambda x: x['display_rank'])
                     context['standings'] = standings
+                    context['key_picks_enabled'] = league_rules and league_rules.key_picks_enabled
                     
                 except Week.DoesNotExist:
                     context['show_week_standings'] = False
@@ -646,6 +656,19 @@ def standings_view(request):
                 ).select_related('user')
                 
                 standings = []
+                # Calculate total possible key picks for the season
+                max_key_picks_per_week = league_rules.number_of_key_picks if league_rules and league_rules.key_picks_enabled else 0
+                
+                # Get weeks that have actually had games for this league to calculate max possible key picks
+                weeks_with_games = set(
+                    Game.objects.filter(
+                        season=active_season,
+                        league_selections__league=league,
+                        league_selections__is_active=True
+                    ).values_list('week_id', flat=True).distinct()
+                )
+                max_total_key_picks = max_key_picks_per_week * len(weeks_with_games) if max_key_picks_per_week > 0 else 0
+                
                 for member_season in member_seasons:
                     if show_full_standings:
                         # Show full season stats (not adjusted)
@@ -673,7 +696,12 @@ def standings_view(request):
                             display_rank = member_season.rank or 999
                     
                     win_pct = round((correct / total * 100) if total > 0 else 0, 1)
-                    key_pick_pct = round((correct_key / picks_made * 100) if picks_made > 0 else 0, 1)
+                    
+                    # Calculate key pick percentage based on max possible key picks for the season
+                    key_pick_pct = 0
+                    if max_total_key_picks > 0:
+                        # Use the maximum possible key picks according to league rules
+                        key_pick_pct = round((correct_key / max_total_key_picks * 100), 1)
                     
                     standings.append({
                         'user': member_season.user,
@@ -694,14 +722,37 @@ def standings_view(request):
                 context['standings'] = standings
             
             context['league_rules'] = league_rules
+            context['key_picks_enabled'] = league_rules and league_rules.key_picks_enabled
         else:
             # Fallback to old method if no active season or member seasons
             from django.db.models import Count, Q, Sum, Case, When, IntegerField
             from django.contrib.auth import get_user_model
             User = get_user_model()
             
+            # Try to get league rules for fallback case
+            fallback_league_rules = None
+            if active_season:
+                try:
+                    fallback_league_rules = LeagueRules.objects.get(league=league, season=active_season)
+                except LeagueRules.DoesNotExist:
+                    pass
+            
             # Get all members of the league
             members = User.objects.filter(league_memberships__league=league).distinct()
+            
+            # Calculate max possible key picks for fallback case
+            max_total_key_picks_fallback = 0
+            if fallback_league_rules and fallback_league_rules.key_picks_enabled and active_season:
+                # Get weeks that have actually had games for this league
+                weeks_with_games_fallback = set(
+                    Game.objects.filter(
+                        season=active_season,
+                        league_selections__league=league,
+                        league_selections__is_active=True
+                    ).values_list('week_id', flat=True).distinct()
+                )
+                max_key_picks_per_week_fallback = fallback_league_rules.number_of_key_picks
+                max_total_key_picks_fallback = max_key_picks_per_week_fallback * len(weeks_with_games_fallback)
             
             standings = []
             for member in members:
@@ -722,7 +773,12 @@ def standings_view(request):
                 ).count()
                 
                 win_pct = round((wins / total * 100) if total > 0 else 0, 1)
-                key_pick_pct = round((correct_key / picks_made * 100) if picks_made > 0 else 0, 1)
+                
+                # Calculate key pick percentage based on max possible key picks
+                key_pick_pct = 0
+                if max_total_key_picks_fallback > 0:
+                    # Use the maximum possible key picks according to league rules
+                    key_pick_pct = round((correct_key / max_total_key_picks_fallback * 100), 1)
                 
                 # Calculate points (1 for correct, 2 for key pick correct)
                 points = Pick.objects.filter(
@@ -764,14 +820,9 @@ def standings_view(request):
             
             context['standings'] = standings
             
-            # Try to get league rules for consistency
-            if active_season:
-                try:
-                    context['league_rules'] = LeagueRules.objects.get(league=league, season=active_season)
-                except LeagueRules.DoesNotExist:
-                    context['league_rules'] = None
-            else:
-                context['league_rules'] = None
+            # Use the fallback league rules we got earlier
+            context['league_rules'] = fallback_league_rules
+            context['key_picks_enabled'] = fallback_league_rules and fallback_league_rules.key_picks_enabled
     
     return render(request, "cfb/standings.html", context)
 

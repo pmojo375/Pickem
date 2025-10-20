@@ -129,7 +129,9 @@
                         <th class="bg-base-200">Losses</th>
                         <th class="bg-base-200">Ties</th>
                         <th class="bg-base-200">Win %</th>
+                        {% if key_picks_enabled %}
                         <th class="bg-base-200">Key Picks</th>
+                        {% endif %}
                         <th class="bg-base-200">Total Picks</th>
                     </tr>
                 </thead>
@@ -190,11 +192,12 @@
                             <span class="badge badge-ghost">-</span>
                             {% endif %}
                         </td>
+                        {% if key_picks_enabled %}
                         <td>
                             {% if standing.correct_key > 0 %}
                             <div class="flex flex-col">
                                 <span class="font-medium">{{ standing.correct_key }}</span>
-                                {% if standing.picks_made > 0 %}
+                                {% if standing.key_pick_pct > 0 %}
                                 <span class="text-xs text-base-content/70">{{ standing.key_pick_pct }}%</span>
                                 {% endif %}
                             </div>
@@ -202,6 +205,7 @@
                             <span class="text-base-content/50">0</span>
                             {% endif %}
                         </td>
+                        {% endif %}
                         <td>
                             <span class="font-medium">{{ standing.picks_made|default:0 }}</span>
                             {% if standing.total != standing.picks_made and standing.picks_made > 0 %}
