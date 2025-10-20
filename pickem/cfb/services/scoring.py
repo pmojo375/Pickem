@@ -127,7 +127,13 @@ def calculate_tiebreaker_value(member_week: MemberWeek, league_rules: LeagueRule
 def assign_ranks_for_week(member_weeks: List[MemberWeek], league_rules: LeagueRules) -> Dict[int, int]:
     """
     Assign ranks to member weeks with proper tiebreaker handling.
-    If members have the same rank, the next rank is skipped.
+    
+    Ranking rules:
+    1. Primary sort: Points (higher is better)
+    2. Secondary sort: Tiebreaker value from league rules (if points tie)
+    3. If tiebreaker also matches, assign same rank
+    4. When multiple members share a rank, the next rank is skipped accordingly
+       (e.g., if two members tie for 2nd place, the next is 4th, not 3rd)
     
     Args:
         member_weeks: List of MemberWeek objects for a league/week
@@ -139,29 +145,33 @@ def assign_ranks_for_week(member_weeks: List[MemberWeek], league_rules: LeagueRu
     if not member_weeks:
         return {}
     
-    # Sort by points (descending) and then by tiebreaker
+    # Sort by points (descending) and then by tiebreaker value (descending)
     sorted_weeks = sorted(
         member_weeks,
-        key=lambda x: (calculate_tiebreaker_value(x, league_rules)),
+        key=lambda x: (x.points, calculate_tiebreaker_value(x, league_rules)),
         reverse=True
     )
     
     rank_map = {}
     current_rank = 1
+    previous_points = None
     previous_tiebreaker = None
     
-    for member_week in sorted_weeks:
+    for index, member_week in enumerate(sorted_weeks):
+        current_points = member_week.points
         current_tiebreaker = calculate_tiebreaker_value(member_week, league_rules)
         
-        # If tiebreaker values differ, assign the next rank
-        if previous_tiebreaker is not None and current_tiebreaker != previous_tiebreaker:
-            # Count how many were assigned the same rank to skip properly
-            same_rank_count = len([id for id, r in rank_map.items() if r == current_rank - 1])
-            if same_rank_count > 1:
-                current_rank += same_rank_count - 1
-            current_rank += 1
+        # Determine if this is a new ranking position
+        # A new rank happens when either points OR tiebreaker value changes
+        if previous_points is not None and (
+            current_points != previous_points or 
+            current_tiebreaker != previous_tiebreaker
+        ):
+            # Assign the next available rank (which accounts for skipped ranks from ties)
+            current_rank = index + 1
         
         rank_map[member_week.id] = current_rank
+        previous_points = current_points
         previous_tiebreaker = current_tiebreaker
     
     return rank_map
@@ -222,7 +232,7 @@ def assign_ranks_for_season(member_seasons: List[MemberSeason], league_rules: Le
         previous_points = None
         previous_tiebreaker = None
         
-        for member_season in sorted_seasons:
+        for index, member_season in enumerate(sorted_seasons):
             if use_full_stats:
                 points = member_season.points
                 correct = member_season.correct
@@ -232,9 +242,11 @@ def assign_ranks_for_season(member_seasons: List[MemberSeason], league_rules: Le
             
             tiebreaker = get_tiebreaker_value(points, correct, correct_key, league_rules)
             
-            # If points or tiebreaker differ, assign next rank
+            # Determine if this is a new ranking position
+            # A new rank happens when either points OR tiebreaker value changes
             if previous_points is not None and (points != previous_points or tiebreaker != previous_tiebreaker):
-                current_rank += 1
+                # Assign the next available rank (which accounts for skipped ranks from ties)
+                current_rank = index + 1
             
             rank_map[member_season.id] = current_rank
             previous_points = points
@@ -662,19 +674,6 @@ def recalculate_all_member_stats(season) -> dict:
                         
                         stats['member_weeks_updated'] += 1
                 
-                # Calculate and assign week ranks
-                week_member_weeks = MemberWeek.objects.filter(
-                    league=league,
-                    week__season=season,
-                    user=member.user
-                )
-                if week_member_weeks.exists():
-                    rank_map = assign_ranks_for_week(list(week_member_weeks), league_rules)
-                    for member_week in week_member_weeks:
-                        if member_week.id in rank_map:
-                            member_week.rank = rank_map[member_week.id]
-                            member_week.save(update_fields=['rank'])
-                
                 # Create/update MemberSeason
                 member_season = MemberSeason.objects.create(
                     league=league,
@@ -796,7 +795,21 @@ def recalculate_all_member_stats(season) -> dict:
                     member_season.save()
                     stats['member_seasons_updated'] += 1
             
-            # Calculate and assign season ranks
+            # After all members have their stats calculated, calculate ranks for each week
+            for week in weeks:
+                # Calculate and assign week ranks for this week across all members
+                week_member_weeks = MemberWeek.objects.filter(
+                    league=league,
+                    week=week
+                )
+                if week_member_weeks.exists():
+                    rank_map = assign_ranks_for_week(list(week_member_weeks), league_rules)
+                    for member_week in week_member_weeks:
+                        if member_week.id in rank_map:
+                            member_week.rank = rank_map[member_week.id]
+                            member_week.save(update_fields=['rank'])
+            
+            # Calculate and assign season ranks across all members
             season_member_seasons = MemberSeason.objects.filter(
                 league=league,
                 season=season
