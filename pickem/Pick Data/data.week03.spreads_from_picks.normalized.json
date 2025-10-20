@@ -111,10 +111,11 @@
     "col_index": 9,
     "team1_name": "Illinois",
     "team1_spread": -27.5,
-    "team2_name": null,
-    "team2_spread": null,
+    "team2_name": "Western Michigan",
+    "team2_spread": 27.5,
     "teams_seen": [
-      "Illinois"
+      "Illinois",
+      "Western Michigan"
     ],
     "sample_line_used": -27.5
   },
