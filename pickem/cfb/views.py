@@ -131,10 +131,12 @@ def picks_view(request):
     
     if not league:
         # No league - show message instead of redirecting
+        current_week = services.schedule.get_current_week()
         context = {
             "games_with_picks": [],
             "current_league": None,
             "user_leagues": user_leagues,
+            "current_week": current_week,
         }
         return render(request, "cfb/picks.html", context)
     
@@ -287,24 +289,31 @@ def picks_view(request):
         
         return redirect(f"/picks/?league_id={league.id}")
 
-    # Get league games for this league
-    league_games = LeagueGame.objects.filter(
-        league=league, 
-        is_active=True
-    ).select_related("game__home_team", "game__away_team").order_by("game__kickoff")
-    
-    # Get existing picks for this user in this league
-    existing_picks_by_game_id = {
-        p.game_id: p 
-        for p in Pick.objects.filter(user=request.user, league=league, game__in=[lg.game for lg in league_games])
-    }
-    
     # Get league rules for key pick limits
     from django.utils import timezone
     from datetime import timedelta
     
     # Get current week and its date range
     current_week = services.schedule.get_current_week()
+    
+    # Get league games for this league - filter by current week only
+    league_games = LeagueGame.objects.filter(
+        league=league, 
+        is_active=True
+    ).select_related("game__home_team", "game__away_team")
+    
+    # Filter to only show games from the current week
+    if current_week:
+        start, end = services.schedule.get_week_datetime_range(current_week)
+        league_games = league_games.filter(game__kickoff__range=(start, end))
+    
+    league_games = league_games.order_by("game__kickoff")
+    
+    # Get existing picks for this user in this league
+    existing_picks_by_game_id = {
+        p.game_id: p 
+        for p in Pick.objects.filter(user=request.user, league=league, game__in=[lg.game for lg in league_games])
+    }
     
     # Get active season and league rules
     active_season = Season.objects.filter(is_active=True).first()
@@ -329,15 +338,17 @@ def picks_view(request):
     # Combine league_games with picks
     games_with_picks = [(lg, existing_picks_by_game_id.get(lg.game.id)) for lg in league_games]
     
-    # Get total points game if tiebreaker is enabled
+    # Get total points game if tiebreaker is enabled - only if it's in the current week
     total_points_game = None
     total_points_pick = None
-    if league_rules and league_rules.tiebreaker == 2:
-        # Find the game marked as total points game for this league
+    if league_rules and league_rules.tiebreaker == 2 and current_week:
+        start, end = services.schedule.get_week_datetime_range(current_week)
+        # Find the game marked as total points game for this league in the current week
         total_points_league_game = LeagueGame.objects.filter(
             league=league,
             is_total_points_game=True,
-            is_active=True
+            is_active=True,
+            game__kickoff__range=(start, end)
         ).select_related('game__home_team', 'game__away_team').first()
         
         if total_points_league_game:
@@ -371,6 +382,7 @@ def picks_view(request):
         "total_points_game": total_points_game,
         "total_points_pick": total_points_pick,
         "team_rankings": team_rankings,
+        "current_week": current_week,
     }
     return render(request, "cfb/picks.html", context)
 
