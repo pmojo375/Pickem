@@ -5,7 +5,7 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.core.exceptions import ValidationError
-from .models import Game, Pick, Team, League, LeagueMembership, LeagueGame, LeagueRules, Season, Ranking, Week, MemberSeason
+from .models import Game, Pick, Team, League, LeagueMembership, LeagueGame, LeagueRules, Season, Ranking, Week, MemberSeason, MemberWeek
 from django.utils import timezone
 from . import services
 from django.conf import settings
@@ -524,11 +524,18 @@ def standings_view(request):
     # Check if user wants to see full standings (not adjusted for dropped weeks)
     show_full_standings = request.GET.get('full', 'false').lower() == 'true'
     
+    # Check if user wants to see week standings
+    week_id = request.GET.get('week')
+    selected_week = None
+    
     context = {
         'current_league': league,
         'user_leagues': user_leagues,
         'standings': [],
         'show_full_standings': show_full_standings,
+        'selected_week': selected_week,
+        'available_weeks': [],
+        'show_week_standings': False,  # Will be set later based on logic
     }
     
     if league:
@@ -542,60 +549,150 @@ def standings_view(request):
             except LeagueRules.DoesNotExist:
                 league_rules = None
             
-            # Get all member seasons for this league/season
-            member_seasons = MemberSeason.objects.filter(
-                league=league,
-                season=active_season
-            ).select_related('user')
+            # Get available weeks (weeks with live games or all games completed)
+            available_weeks = []
+            all_weeks = Week.objects.filter(season=active_season).order_by('number')
             
-            standings = []
-            for member_season in member_seasons:
-                if show_full_standings:
-                    # Show full season stats (not adjusted)
-                    points = member_season.points
-                    correct = member_season.correct
-                    correct_key = member_season.correct_key
-                    incorrect = member_season.incorrect
-                    ties = member_season.ties
-                    picks_made = member_season.picks_made
-                    total = correct + incorrect + ties
-                    display_rank = member_season.rank or 999
-                else:
-                    # Show adjusted stats (default - with dropped weeks)
-                    points = member_season.points - member_season.points_dropped
-                    correct = member_season.correct - member_season.correct_dropped
-                    correct_key = member_season.correct_key - member_season.correct_key_dropped
-                    incorrect = member_season.incorrect - member_season.incorrect_dropped
-                    ties = member_season.ties - member_season.ties_dropped
-                    picks_made = member_season.picks_made - member_season.picks_made_dropped
-                    total = correct + incorrect + ties
-                    # Use rank_with_drops if available and drop_weeks > 0, otherwise use regular rank
-                    if league_rules and league_rules.drop_weeks > 0 and member_season.rank_with_drops:
-                        display_rank = member_season.rank_with_drops
-                    else:
+            for week in all_weeks:
+                # Check if this week has games in this league
+                week_games = Game.objects.filter(
+                    week=week,
+                    league_selections__league=league,
+                    league_selections__is_active=True
+                )
+                
+                if week_games.exists():
+                    # Check game status
+                    live_games = week_games.filter(is_final=False, home_score__isnull=False)
+                    all_final = not week_games.exclude(is_final=True).exists()
+                    has_live_or_final = live_games.exists() or all_final
+                    
+                    if has_live_or_final:
+                        available_weeks.append({
+                            'week': week,
+                            'has_live_games': live_games.exists(),
+                            'all_games_final': all_final,
+                            'game_count': week_games.count()
+                        })
+            
+            context['available_weeks'] = available_weeks
+            
+            # Handle 'latest' week parameter or validate week exists
+            if week_id == 'latest' and available_weeks:
+                # Use the latest available week
+                latest_week_data = available_weeks[-1]
+                week_id = latest_week_data['week'].id
+            elif week_id and available_weeks:
+                # Validate that the requested week exists and is available
+                try:
+                    week_exists = any(w['week'].id == int(week_id) for w in available_weeks)
+                    if not week_exists:
+                        # Week doesn't exist or not available, default to latest
+                        latest_week_data = available_weeks[-1]
+                        week_id = latest_week_data['week'].id
+                except (ValueError, TypeError):
+                    # Invalid week_id, default to latest
+                    latest_week_data = available_weeks[-1]
+                    week_id = latest_week_data['week'].id
+            
+            # Handle week standings vs season standings
+            if week_id:
+                # Get week standings
+                try:
+                    selected_week = Week.objects.get(id=week_id, season=active_season)
+                    context['selected_week'] = selected_week
+                    context['show_week_standings'] = True
+                    
+                    # Get member weeks for this week
+                    member_weeks = MemberWeek.objects.filter(
+                        league=league,
+                        week=selected_week
+                    ).select_related('user', 'week')
+                    
+                    standings = []
+                    for member_week in member_weeks:
+                        total = member_week.correct + member_week.incorrect + member_week.ties
+                        win_pct = round((member_week.correct / total * 100) if total > 0 else 0, 1)
+                        key_pick_pct = round((member_week.correct_key / member_week.picks_made * 100) if member_week.picks_made > 0 else 0, 1)
+                        
+                        standings.append({
+                            'user': member_week.user,
+                            'wins': member_week.correct,
+                            'losses': member_week.incorrect,
+                            'ties': member_week.ties,
+                            'total': total,
+                            'picks_made': member_week.picks_made,
+                            'win_pct': win_pct,
+                            'points': member_week.points,
+                            'correct_key': member_week.correct_key,
+                            'key_pick_pct': key_pick_pct,
+                            'display_rank': member_week.rank or 999,
+                        })
+                    
+                    # Sort by rank (ascending)
+                    standings.sort(key=lambda x: x['display_rank'])
+                    context['standings'] = standings
+                    
+                except Week.DoesNotExist:
+                    context['show_week_standings'] = False
+                    context['selected_week'] = None
+            
+            # Default to season standings if no week selected
+            if not week_id:
+                # Get all member seasons for this league/season
+                member_seasons = MemberSeason.objects.filter(
+                    league=league,
+                    season=active_season
+                ).select_related('user')
+                
+                standings = []
+                for member_season in member_seasons:
+                    if show_full_standings:
+                        # Show full season stats (not adjusted)
+                        points = member_season.points
+                        correct = member_season.correct
+                        correct_key = member_season.correct_key
+                        incorrect = member_season.incorrect
+                        ties = member_season.ties
+                        picks_made = member_season.picks_made
+                        total = correct + incorrect + ties
                         display_rank = member_season.rank or 999
+                    else:
+                        # Show adjusted stats (default - with dropped weeks)
+                        points = member_season.points - member_season.points_dropped
+                        correct = member_season.correct - member_season.correct_dropped
+                        correct_key = member_season.correct_key - member_season.correct_key_dropped
+                        incorrect = member_season.incorrect - member_season.incorrect_dropped
+                        ties = member_season.ties - member_season.ties_dropped
+                        picks_made = member_season.picks_made - member_season.picks_made_dropped
+                        total = correct + incorrect + ties
+                        # Use rank_with_drops if available and drop_weeks > 0, otherwise use regular rank
+                        if league_rules and league_rules.drop_weeks > 0 and member_season.rank_with_drops:
+                            display_rank = member_season.rank_with_drops
+                        else:
+                            display_rank = member_season.rank or 999
+                    
+                    win_pct = round((correct / total * 100) if total > 0 else 0, 1)
+                    key_pick_pct = round((correct_key / picks_made * 100) if picks_made > 0 else 0, 1)
+                    
+                    standings.append({
+                        'user': member_season.user,
+                        'wins': correct,
+                        'losses': incorrect,
+                        'ties': ties,
+                        'total': total,
+                        'picks_made': picks_made,
+                        'win_pct': win_pct,
+                        'points': points,
+                        'correct_key': correct_key,
+                        'key_pick_pct': key_pick_pct,
+                        'display_rank': display_rank,
+                    })
                 
-                win_pct = round((correct / total * 100) if total > 0 else 0, 1)
-                key_pick_pct = round((correct_key / picks_made * 100) if picks_made > 0 else 0, 1)
-                
-                standings.append({
-                    'user': member_season.user,
-                    'wins': correct,
-                    'losses': incorrect,
-                    'ties': ties,
-                    'total': total,
-                    'picks_made': picks_made,
-                    'win_pct': win_pct,
-                    'points': points,
-                    'correct_key': correct_key,
-                    'key_pick_pct': key_pick_pct,
-                    'display_rank': display_rank,
-                })
+                # Sort standings by display rank (ascending)
+                standings.sort(key=lambda x: x['display_rank'])
+                context['standings'] = standings
             
-            # Sort standings by display rank (ascending)
-            standings.sort(key=lambda x: x['display_rank'])
-            
-            context['standings'] = standings
             context['league_rules'] = league_rules
         else:
             # Fallback to old method if no active season or member seasons

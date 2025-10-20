@@ -33,17 +33,65 @@
 </div>
 
 {% if current_league and standings %}
+
+<!-- Week/Season Selection Tabs -->
+{% if available_weeks %}
+<div class="mb-6">
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body py-4">
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                <!-- Tab Selection -->
+                <div class="tabs tabs-boxed">
+                    <a class="tab {% if not show_week_standings %}tab-active{% endif %}" onclick="switchToSeasonStandings()">
+                        <i class="fas fa-calendar-alt mr-2"></i>
+                        Season
+                    </a>
+                    <a class="tab {% if show_week_standings %}tab-active{% endif %}" onclick="switchToWeekStandings()">
+                        <i class="fas fa-calendar-week mr-2"></i>
+                        Week
+                    </a>
+                </div>
+                
+                <!-- Week Selector (shown when week tab is active) -->
+                {% if available_weeks and show_week_standings %}
+                <div class="form-control w-full lg:w-auto">
+                    <select class="select select-bordered select-primary" onchange="changeWeek(this.value)">
+                        {% for week_data in available_weeks %}
+                        <option value="{{ week_data.week.id }}" 
+                                {% if selected_week and selected_week.id == week_data.week.id %}selected{% endif %}>
+                            Week {{ week_data.week.number }}
+                            {% if week_data.has_live_games %}
+                                (Live)
+                            {% elif week_data.all_games_final %}
+                                (Final)
+                            {% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Leaderboard -->
 <div class="card bg-base-100 shadow-xl">
     <div class="card-body">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
             <h2 class="card-title">
                 <i class="fas fa-medal text-warning mr-2"></i>
-                {{ current_league.name }} Leaderboard
+                {{ current_league.name }}
+                {% if show_week_standings and selected_week %}
+                    - Week {{ selected_week.number }}
+                {% else %}
+                    Leaderboard
+                {% endif %}
             </h2>
             
-            <!-- Standings Toggle -->
-            {% if league_rules and league_rules.drop_weeks > 0 %}
+            <!-- Standings Toggle (only show for season standings) -->
+            {% if not show_week_standings and league_rules and league_rules.drop_weeks > 0 %}
             <div class="flex items-center gap-3">
                 <span class="text-sm text-base-content/70">
                     {% if show_full_standings %}
@@ -267,12 +315,47 @@
 function toggleStandings(showFull) {
     const url = new URL(window.location);
     
-    // Preserve existing query parameters (like league_id)
+    // Preserve existing query parameters (like league_id and week)
     if (showFull) {
         url.searchParams.set('full', 'true');
     } else {
         url.searchParams.delete('full');
     }
+    
+    window.location.href = url.toString();
+}
+
+function switchToSeasonStandings() {
+    const url = new URL(window.location);
+    url.searchParams.delete('week');
+    url.searchParams.delete('full');
+    window.location.href = url.toString();
+}
+
+function switchToWeekStandings() {
+    const url = new URL(window.location);
+    
+    // Remove full parameter when switching to week view
+    url.searchParams.delete('full');
+    
+    // Add a week parameter to trigger week view, even if empty
+    // Backend will handle setting the default week
+    url.searchParams.set('week', 'latest');
+    
+    window.location.href = url.toString();
+}
+
+function changeWeek(weekId) {
+    const url = new URL(window.location);
+    
+    if (weekId) {
+        url.searchParams.set('week', weekId);
+    } else {
+        url.searchParams.delete('week');
+    }
+    
+    // Remove full parameter when switching weeks
+    url.searchParams.delete('full');
     
     window.location.href = url.toString();
 }
