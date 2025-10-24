@@ -533,6 +533,27 @@ def live_view(request):
         # Create a dict mapping team_id to rank
         team_rankings = {r.team_id: r.rank for r in rankings}
     
+    # Get team records for all teams in the games
+    team_records = {}
+    if active_season:
+        # Get all unique teams from the picks
+        game_teams = set()
+        for pick in picks:
+            game_teams.add(pick.game.home_team_id)
+            game_teams.add(pick.game.away_team_id)
+        
+        # Get team records for these teams
+        teams_with_records = Team.objects.filter(
+            season=active_season,
+            id__in=game_teams
+        )
+        
+        # Create a dict mapping team_id to (wins, losses) tuple
+        team_records = {
+            team.id: (team.record_wins, team.record_losses)
+            for team in teams_with_records
+        }
+    
     context = {
         "picks_with_league_game": picks_with_league_game,  # Keep for backward compatibility
         "picks_with_sections": picks_with_sections,  # New organized structure
@@ -540,6 +561,7 @@ def live_view(request):
         "user_leagues": user_leagues,
         "league_rules": league_rules,
         "team_rankings": team_rankings,
+        "team_records": team_records,
     }
     return render(request, "cfb/live.html", context)
 
@@ -1207,6 +1229,27 @@ def settings_view(request):
         # Create a dict mapping team_id to rank
         team_rankings = {r.team_id: r.rank for r in rankings}
     
+    # Get team records for all teams in the games
+    team_records = {}
+    if active_season:
+        # Get all unique teams from the games
+        game_teams = set()
+        for game, _ in games_with_selection:
+            game_teams.add(game.home_team_id)
+            game_teams.add(game.away_team_id)
+        
+        # Get team records for these teams
+        teams_with_records = Team.objects.filter(
+            season=active_season,
+            id__in=game_teams
+        )
+        
+        # Create a dict mapping team_id to (wins, losses) tuple
+        team_records = {
+            team.id: (team.record_wins, team.record_losses)
+            for team in teams_with_records
+        }
+    
     context = {
         "games_with_selection": games_with_selection,
         "current_league": league,
@@ -1217,6 +1260,7 @@ def settings_view(request):
         "start": start,
         "end": end,
         "team_rankings": team_rankings,
+        "team_records": team_records,
         "cfbd_enabled": bool(settings.CFBD_API_KEY)
     }
     return render(request, "cfb/settings.html", context)

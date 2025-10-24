@@ -109,6 +109,7 @@
                                 {% endif %}
                             </div>
                             <div class="flex items-center gap-1">
+                                {% team_record_display team_records p.game.away_team.id %}
                                 <div class="badge badge-ghost badge-xs">Away</div>
                                 {% if away_covered %}
                                     <div class="badge badge-success badge-xs" title="Covered the spread">
@@ -190,6 +191,7 @@
                                 {% endif %}
                             </div>
                             <div class="flex items-center gap-1">
+                                {% team_record_display team_records p.game.home_team.id %}
                                 <div class="badge badge-ghost badge-xs">Home</div>
                                 {% if home_covered %}
                                     <div class="badge badge-success badge-xs" title="Covered the spread">

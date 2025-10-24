@@ -384,6 +384,7 @@
                                 {% endif %}
                                 <span class="font-semibold text-sm md:text-base">{{ g.away_team.name }}</span>
                             </div>
+                            {% team_record_display team_records g.away_team.id %}
                         </div>
                         
                         <!-- @ Symbol -->
@@ -405,6 +406,7 @@
                                     {% endif %}
                                     <span class="font-semibold text-sm md:text-base">{{ g.home_team.name }}</span>
                                 </div>
+                                {% team_record_display team_records g.home_team.id %}
                                 {% if lg and lg.locked_home_spread is not None %}
                                 <span class="badge badge-warning badge-sm gap-1">
                                     <i class="fas fa-lock text-xs"></i>
