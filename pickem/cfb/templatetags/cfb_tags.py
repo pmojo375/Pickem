@@ -244,30 +244,64 @@ def apply_hooks(spread, force_hooks=False):
 def format_spread_display(spread, force_hooks=False):
     """
     Format a spread value for display, applying hooks if needed.
-    
+
     Args:
         spread: The spread value
         force_hooks: Whether to force hooks
-    
+
     Returns:
         Formatted string like "-7", "-7.5", etc.
     """
     if spread is None:
         return ""
-    
+
     # Apply hooks if needed
     spread_val = apply_hooks(spread, force_hooks)
-    
+
     try:
         spread_float = float(spread_val)
     except (ValueError, TypeError):
         return str(spread)
-    
+
     if spread_float == 0:
         return "0"
-    
+
     # Format with one decimal place if not whole number
     if spread_float == int(spread_float):
         return f"{int(spread_float)}"
     else:
         return f"{spread_float:.1f}"
+
+
+@register.simple_tag
+def team_record_display(team_records, team_id, show_zero=True):
+    """
+    Display team record in a nice format (e.g., "8-2" or "0-0").
+
+    Args:
+        team_records: Dictionary mapping team_id to (wins, losses) tuples
+        team_id: The team ID to get record for
+        show_zero: Whether to show "0-0" for teams with no games or hide it
+
+    Returns:
+        HTML string with formatted record or empty string
+    """
+    if not team_records or team_id not in team_records:
+        return ""
+
+    try:
+        wins, losses = team_records[team_id]
+
+        # Ensure wins and losses are valid numbers
+        if not isinstance(wins, int) or not isinstance(losses, int):
+            return ""
+
+        # Don't show record if both are zero and show_zero is False
+        if not show_zero and wins == 0 and losses == 0:
+            return ""
+
+        return mark_safe(f'<span class="text-xs text-base-content/60">{wins}-{losses}</span>')
+
+    except (ValueError, TypeError, IndexError):
+        # Handle any unexpected data format issues
+        return ""

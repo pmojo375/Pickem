@@ -370,10 +370,32 @@ def picks_view(request):
             week=current_week,
             poll='AP Top 25'
         ).select_related('team')
-        
+
         # Create a dict mapping team_id to rank
         team_rankings = {r.team_id: r.rank for r in rankings}
-    
+
+    # Get team records for all teams in the games
+    team_records = {}
+    if active_season:
+        # Get all unique teams from the league games
+        game_teams = set()
+        for lg, _ in games_with_picks:
+            game_teams.add(lg.game.home_team_id)
+            game_teams.add(lg.game.away_team_id)
+
+        if game_teams:
+            # Fetch records for all teams in the current season
+            teams_with_records = Team.objects.filter(
+                season=active_season,
+                id__in=game_teams
+            )
+
+            # Create a dict mapping team_id to (wins, losses) tuple
+            team_records = {
+                team.id: (team.record_wins, team.record_losses)
+                for team in teams_with_records
+            }
+
     context = {
         "games_with_picks": games_with_picks,
         "current_league": league,
@@ -383,6 +405,7 @@ def picks_view(request):
         "total_points_game": total_points_game,
         "total_points_pick": total_points_pick,
         "team_rankings": team_rankings,
+        "team_records": team_records,
         "current_week": current_week,
     }
     return render(request, "cfb/picks.html", context)

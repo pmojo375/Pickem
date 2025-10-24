@@ -131,6 +131,7 @@
                                         {% endif %}
                                         <span class="font-bold text-sm md:text-base leading-tight">{{ lg.game.away_team.name }}</span>
                                     </div>
+                                    {% team_record_display team_records lg.game.away_team.id %}
                                     <div class="badge badge-ghost badge-xs md:badge-sm mt-1">Away</div>
                                 </div>
                             </div>
@@ -157,6 +158,7 @@
                                         {% endif %}
                                         <span class="font-bold text-sm md:text-base leading-tight">{{ lg.game.home_team.name }}</span>
                                     </div>
+                                    {% team_record_display team_records lg.game.home_team.id %}
                                     <div class="badge badge-ghost badge-xs md:badge-sm mt-1">Home</div>
                                 </div>
                             </div>
