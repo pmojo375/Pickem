@@ -1044,3 +1044,40 @@ def initialize_season(season_year: int, force: bool = False):
     
     except Exception as e:
         logger.error(f"Error initializing season {season_year}: {e}", exc_info=True)
+
+
+@shared_task(name='cfb.tasks.update_team_records_async')
+def update_team_records_async(season_year: int):
+    """
+    Asynchronously update team records for a given season.
+    This task is called when games become final to keep team records up to date.
+    
+    Args:
+        season_year (int): The year of the season to update records for
+    """
+    try:
+        from cfb.services.records import update_team_records
+        
+        logger.info(f"Starting team records update for season {season_year}")
+        result = update_team_records(season_year)
+        
+        logger.info(
+            f"Team records update complete for season {season_year}: "
+            f"{result['games_processed']} games processed, "
+            f"{result['teams_updated']} teams updated"
+        )
+        
+        return {
+            'success': True,
+            'season_year': season_year,
+            'games_processed': result['games_processed'],
+            'teams_updated': result['teams_updated']
+        }
+        
+    except Exception as e:
+        logger.error(f"Error updating team records for season {season_year}: {e}", exc_info=True)
+        return {
+            'success': False,
+            'season_year': season_year,
+            'error': str(e)
+        }

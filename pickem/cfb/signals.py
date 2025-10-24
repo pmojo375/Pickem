@@ -29,3 +29,11 @@ def game_finalized(sender, instance, created, update_fields, **kwargs):
             update_member_week_for_game(instance)
         except Exception as e:
             logger.error(f"Error updating member statistics for game {instance.id}: {e}", exc_info=True)
+        
+        # Also update team records for the season
+        try:
+            from cfb.tasks import update_team_records_async
+            update_team_records_async.delay(instance.season.year)
+            logger.info(f"Queued team records update for season {instance.season.year} after game {instance.id} became final")
+        except Exception as e:
+            logger.error(f"Error queuing team records update for game {instance.id}: {e}", exc_info=True)
