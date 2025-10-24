@@ -5,6 +5,7 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from .models import Game, Pick, Team, League, LeagueMembership, LeagueGame, LeagueRules, Season, Ranking, Week, MemberSeason, MemberWeek
 from django.utils import timezone
 from . import services
@@ -1132,7 +1133,11 @@ def settings_view(request):
     
     if current_week:
         start, end = services.schedule.get_week_datetime_range(current_week)
-        games = Game.objects.filter(kickoff__range=(start, end)).select_related("home_team", "away_team").order_by("kickoff")
+        games = Game.objects.filter(
+            kickoff__range=(start, end)
+        ).filter(
+            Q(home_team__classification='fbs') | Q(away_team__classification='fbs')
+        ).select_related("home_team", "away_team").order_by("kickoff")
     
     # Get existing league games for this league that were created within the current week window
     # This ensures we don't show games from previous weeks that might have been selected before
