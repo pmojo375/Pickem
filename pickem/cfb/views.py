@@ -582,8 +582,10 @@ def standings_view(request):
     # Check if user wants to see full standings (not adjusted for dropped weeks)
     show_full_standings = request.GET.get('full', 'false').lower() == 'true'
     
-    # Check if user wants to see week standings
+    # Check if user wants to see week standings or league picks
     week_id = request.GET.get('week')
+    show_league_picks = request.GET.get('league_picks', 'false').lower() == 'true'
+    show_unstarted_picks = request.GET.get('show_unstarted', 'false').lower() == 'true'
     selected_week = None
     
     context = {
@@ -594,6 +596,10 @@ def standings_view(request):
         'selected_week': selected_week,
         'available_weeks': [],
         'show_week_standings': False,  # Will be set later based on logic
+        'show_league_picks': show_league_picks,
+        'show_unstarted_picks': show_unstarted_picks,
+        'league_picks_data': None,  # Will be set if showing league picks
+        'is_league_manager': False,  # Will be set based on user role
         'key_picks_enabled': False,  # Will be set based on league rules
     }
     
@@ -654,52 +660,68 @@ def standings_view(request):
                     latest_week_data = available_weeks[-1]
                     week_id = latest_week_data['week'].id
             
-            # Handle week standings vs season standings
+            # Handle week standings vs season standings vs league picks
             if week_id:
                 # Get week standings
                 try:
                     selected_week = Week.objects.get(id=week_id, season=active_season)
                     context['selected_week'] = selected_week
-                    context['show_week_standings'] = True
                     
-                    # Get member weeks for this week
-                    member_weeks = MemberWeek.objects.filter(
-                        league=league,
-                        week=selected_week
-                    ).select_related('user', 'week')
-                    
-                    standings = []
-                    # Calculate maximum possible key picks for this week
-                    max_key_picks_per_week = league_rules.number_of_key_picks if league_rules and league_rules.key_picks_enabled else 0
-                    
-                    for member_week in member_weeks:
-                        total = member_week.correct + member_week.incorrect + member_week.ties
-                        win_pct = round((member_week.correct / total * 100) if total > 0 else 0, 1)
+                    if show_league_picks:
+                        # Check if user is a league manager (owner or admin)
+                        is_manager = False
+                        try:
+                            membership = LeagueMembership.objects.get(league=league, user=request.user)
+                            is_manager = membership.role in ['owner', 'admin']
+                        except LeagueMembership.DoesNotExist:
+                            pass
                         
-                        # Calculate key pick percentage based on max allowed key picks for this week
-                        key_pick_pct = 0
-                        if max_key_picks_per_week > 0:
-                            # Use the league rule maximum for this week, not actual picks made
-                            key_pick_pct = round((member_week.correct_key / max_key_picks_per_week * 100), 1)
+                        # Show league picks for this week
+                        context['show_league_picks'] = True
+                        context['is_league_manager'] = is_manager
+                        context['league_picks_data'] = get_league_picks_data(league, selected_week, show_unstarted_picks)
+                    else:
+                        # Show week standings
+                        context['show_week_standings'] = True
                         
-                        standings.append({
-                            'user': member_week.user,
-                            'wins': member_week.correct,
-                            'losses': member_week.incorrect,
-                            'ties': member_week.ties,
-                            'total': total,
-                            'picks_made': member_week.picks_made,
-                            'win_pct': win_pct,
-                            'points': member_week.points,
-                            'correct_key': member_week.correct_key,
-                            'key_pick_pct': key_pick_pct,
-                            'display_rank': member_week.rank or 999,
-                        })
-                    
-                    # Sort by rank (ascending)
-                    standings.sort(key=lambda x: x['display_rank'])
-                    context['standings'] = standings
-                    context['key_picks_enabled'] = league_rules and league_rules.key_picks_enabled
+                        # Get member weeks for this week
+                        member_weeks = MemberWeek.objects.filter(
+                            league=league,
+                            week=selected_week
+                        ).select_related('user', 'week')
+                        
+                        standings = []
+                        # Calculate maximum possible key picks for this week
+                        max_key_picks_per_week = league_rules.number_of_key_picks if league_rules and league_rules.key_picks_enabled else 0
+                        
+                        for member_week in member_weeks:
+                            total = member_week.correct + member_week.incorrect + member_week.ties
+                            win_pct = round((member_week.correct / total * 100) if total > 0 else 0, 1)
+                            
+                            # Calculate key pick percentage based on max allowed key picks for this week
+                            key_pick_pct = 0
+                            if max_key_picks_per_week > 0:
+                                # Use the league rule maximum for this week, not actual picks made
+                                key_pick_pct = round((member_week.correct_key / max_key_picks_per_week * 100), 1)
+                            
+                            standings.append({
+                                'user': member_week.user,
+                                'wins': member_week.correct,
+                                'losses': member_week.incorrect,
+                                'ties': member_week.ties,
+                                'total': total,
+                                'picks_made': member_week.picks_made,
+                                'win_pct': win_pct,
+                                'points': member_week.points,
+                                'correct_key': member_week.correct_key,
+                                'key_pick_pct': key_pick_pct,
+                                'display_rank': member_week.rank or 999,
+                            })
+                        
+                        # Sort by rank (ascending)
+                        standings.sort(key=lambda x: x['display_rank'])
+                        context['standings'] = standings
+                        context['key_picks_enabled'] = league_rules and league_rules.key_picks_enabled
                     
                 except Week.DoesNotExist:
                     context['show_week_standings'] = False
@@ -1320,6 +1342,58 @@ def roster_view(request):
 
 def picked_team_id_not_in_game(picked_team_id: int, game: Game) -> bool:
     return picked_team_id not in (game.home_team_id, game.away_team_id)
+
+
+def get_league_picks_data(league, week, show_unstarted_picks=False):
+    """
+    Get league picks data for a specific week.
+    Returns data structure for the league picks table.
+    """
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    
+    # Get all league members
+    members = User.objects.filter(league_memberships__league=league).distinct()
+    
+    # Get games for this week that are selected for this league
+    start, end = services.schedule.get_week_datetime_range(week)
+    league_games = LeagueGame.objects.filter(
+        league=league,
+        is_active=True,
+        game__week=week,
+        game__kickoff__range=(start, end)
+    ).select_related('game__home_team', 'game__away_team').order_by('game__kickoff')
+    
+    # Get all games (not just started/finished ones)
+    games = [lg.game for lg in league_games]
+    
+    # Get all picks for this week and league
+    picks = Pick.objects.filter(
+        league=league,
+        game__in=games
+    ).select_related('user', 'picked_team', 'game').order_by('user__username', 'game__kickoff')
+    
+    # Organize picks by user
+    picks_by_user = {}
+    for pick in picks:
+        if pick.user_id not in picks_by_user:
+            picks_by_user[pick.user_id] = []
+        picks_by_user[pick.user_id].append(pick)
+    
+    # Create member data structure
+    members_data = []
+    for member in members:
+        member_picks = picks_by_user.get(member.id, [])
+        members_data.append({
+            'user': member,
+            'picks': member_picks
+        })
+    
+    return {
+        'games': games,
+        'members': members_data,
+        'show_unstarted_picks': show_unstarted_picks
+    }
 
 
 @user_passes_test(lambda u: u.is_staff)

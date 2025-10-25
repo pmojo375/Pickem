@@ -1,4 +1,6 @@
 {% extends 'cfb/base.html' %}
+{% load static %}
+{% load cfb_tags %}
 
 {% block title %}Standings - CFB Pick'em{% endblock %}
 
@@ -32,28 +34,30 @@
     </div>
 </div>
 
-{% if current_league and standings %}
-
 <!-- Week/Season Selection Tabs -->
-{% if available_weeks %}
+{% if current_league and available_weeks %}
 <div class="mb-6">
     <div class="card bg-base-100 shadow-xl">
         <div class="card-body py-4">
             <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                 <!-- Tab Selection -->
                 <div class="tabs tabs-boxed">
-                    <a class="tab {% if not show_week_standings %}tab-active{% endif %}" onclick="switchToSeasonStandings()">
+                    <a class="tab {% if not show_week_standings and not show_league_picks %}tab-active{% endif %}" onclick="switchToSeasonStandings()">
                         <i class="fas fa-calendar-alt mr-2"></i>
                         Season
                     </a>
-                    <a class="tab {% if show_week_standings %}tab-active{% endif %}" onclick="switchToWeekStandings()">
+                    <a class="tab {% if show_week_standings and not show_league_picks %}tab-active{% endif %}" onclick="switchToWeekStandings()">
                         <i class="fas fa-calendar-week mr-2"></i>
                         Week
                     </a>
+                    <a class="tab {% if show_league_picks %}tab-active{% endif %}" onclick="switchToLeaguePicks()">
+                        <i class="fas fa-users mr-2"></i>
+                        League Picks
+                    </a>
                 </div>
                 
-                <!-- Week Selector (shown when week tab is active) -->
-                {% if available_weeks and show_week_standings %}
+                <!-- Week Selector (shown when week tab or league picks tab is active) -->
+                {% if available_weeks and show_week_standings or available_weeks and show_league_picks %}
                 <div class="form-control w-full lg:w-auto">
                     <select class="select select-bordered select-primary" onchange="changeWeek(this.value)">
                         {% for week_data in available_weeks %}
@@ -77,6 +81,7 @@
 {% endif %}
 
 <!-- Leaderboard -->
+{% if current_league and standings %}
 <div class="card bg-base-100 shadow-xl">
     <div class="card-body">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
@@ -221,6 +226,175 @@
         </div>
     </div>
 </div>
+{% endif %}
+
+<!-- League Picks Table -->
+{% if show_league_picks and league_picks_data %}
+<div class="card bg-base-100 shadow-xl">
+    <div class="card-body">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+            <h2 class="card-title">
+                <i class="fas fa-users text-primary mr-2"></i>
+                {{ current_league.name }} - Week {{ selected_week.number }} Picks
+            </h2>
+            
+            <!-- Manager Switch for Unstarted Picks -->
+            {% if is_league_manager %}
+            <div class="flex items-center gap-3">
+                <span class="text-sm text-base-content/70">
+                    {% if show_unstarted_picks %}
+                        Showing all picks (including unstarted games)
+                    {% else %}
+                        Showing picks for started/finished games only
+                    {% endif %}
+                </span>
+                <div class="form-control">
+                    <label class="label cursor-pointer gap-3">
+                        <span class="label-text text-sm font-medium">Show Unstarted Picks</span>
+                        <input type="checkbox" 
+                               class="toggle toggle-primary" 
+                               {% if show_unstarted_picks %}checked{% endif %}
+                               onchange="toggleUnstartedPicks(this.checked)" />
+                    </label>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        <div class="overflow-x-auto">
+            <table class="table table-zebra w-full">
+                <thead>
+                    <tr>
+                        <th class="bg-base-200">Player</th>
+                        {% for game in league_picks_data.games %}
+                        <th class="bg-base-200 text-center {% if not game.has_started and not game.is_final %}opacity-50{% endif %}">
+                            <div class="flex items-center justify-center gap-2 mb-1">
+                                <!-- Away Team -->
+                                <div class="flex items-center gap-1">
+                                    {% if game.away_team|team_logo_url %}
+                                    <img src="{% static game.away_team|team_logo_url %}" 
+                                         alt="{{ game.away_team.name }}" 
+                                         class="w-6 h-6 object-contain"
+                                         onerror="this.style.display='none'">
+                                    {% endif %}
+                                    <span class="text-xs font-medium">{{ game.away_team.abbreviation|default:game.away_team.name }}</span>
+                                </div>
+                                
+                                <span class="text-xs text-base-content/50">@</span>
+                                
+                                <!-- Home Team -->
+                                <div class="flex items-center gap-1">
+                                    {% if game.home_team|team_logo_url %}
+                                    <img src="{% static game.home_team|team_logo_url %}" 
+                                         alt="{{ game.home_team.name }}" 
+                                         class="w-6 h-6 object-contain"
+                                         onerror="this.style.display='none'">
+                                    {% endif %}
+                                    <span class="text-xs font-medium">{{ game.home_team.abbreviation|default:game.home_team.name }}</span>
+                                </div>
+                            </div>
+                            <div class="text-xs text-base-content/70">
+                                {{ game.kickoff|date:"M j, g:i A" }}
+                            </div>
+                            {% if not game.has_started and not game.is_final %}
+                            <div class="text-xs text-warning font-medium">
+                                <i class="fas fa-clock mr-1"></i>Not Started
+                            </div>
+                            {% elif game.is_final %}
+                            <div class="text-xs text-success font-medium">
+                                <i class="fas fa-flag-checkered mr-1"></i>Final
+                            </div>
+                            {% else %}
+                            <div class="text-xs text-info font-medium">
+                                <i class="fas fa-play mr-1"></i>Live
+                            </div>
+                            {% endif %}
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for member_data in league_picks_data.members %}
+                    <tr class="hover {% if member_data.user == request.user %}bg-primary/10{% endif %}">
+                        <td>
+                            <div class="flex items-center gap-3">
+                                <div class="avatar placeholder">
+                                    <div class="bg-primary text-primary-content rounded-full w-10">
+                                        <span>
+                                            {% if member_data.user.first_name %}
+                                                {{ member_data.user.first_name|slice:":1"|upper }}
+                                            {% else %}
+                                                {{ member_data.user.username|slice:":1"|upper }}
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="font-bold">
+                                        {% if member_data.user.first_name and member_data.user.last_name %}
+                                            {{ member_data.user.first_name }} {{ member_data.user.last_name }}
+                                        {% elif member_data.user.first_name %}
+                                            {{ member_data.user.first_name }}
+                                        {% elif member_data.user.last_name %}
+                                            {{ member_data.user.last_name }}
+                                        {% else %}
+                                            {{ member_data.user.username }}
+                                        {% endif %}
+                                        {% if member_data.user == request.user %}
+                                        <span class="text-xs text-primary">(You)</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        {% for game in league_picks_data.games %}
+                        <td class="text-center {% if not game.has_started and not game.is_final %}opacity-50{% endif %}">
+                            {% if not game.has_started and not game.is_final and not show_unstarted_picks %}
+                                <!-- Don't show picks for unstarted games unless manager has enabled it -->
+                                <div class="text-base-content/30" title="Picks hidden until game starts">
+                                    <i class="fas fa-lock text-sm"></i>
+                                </div>
+                            {% else %}
+                                {% for pick in member_data.picks %}
+                                    {% if pick.game_id == game.id %}
+                                        <div class="flex flex-col items-center">
+                                            <div class="flex items-center gap-1 font-medium {% if pick.is_correct == True %}text-success{% elif pick.is_correct == False %}text-error{% endif %}">
+                                                {% if pick.picked_team|team_logo_url %}
+                                                <img src="{% static pick.picked_team|team_logo_url %}" 
+                                                     alt="{{ pick.picked_team.name }}" 
+                                                     class="w-5 h-5 object-contain"
+                                                     onerror="this.style.display='none'">
+                                                {% endif %}
+                                                <span>{{ pick.picked_team.abbreviation|default:pick.picked_team.name }}</span>
+                                            </div>
+                                            {% if pick.is_key_pick %}
+                                            <div class="text-xs text-warning">
+                                                <i class="fas fa-star"></i>
+                                            </div>
+                                            {% endif %}
+                                            {% if pick.is_correct == True %}
+                                            <div class="text-xs text-success">
+                                                <i class="fas fa-check"></i>
+                                            </div>
+                                            {% elif pick.is_correct == False %}
+                                            <div class="text-xs text-error">
+                                                <i class="fas fa-times"></i>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                {% empty %}
+                                    <div class="text-base-content/50">-</div>
+                                {% endfor %}
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 {% elif current_league %}
 <!-- No picks yet -->
 <div class="card bg-base-100 shadow-xl">
@@ -341,6 +515,23 @@ function switchToWeekStandings() {
     
     // Remove full parameter when switching to week view
     url.searchParams.delete('full');
+    url.searchParams.delete('league_picks');
+    
+    // Add a week parameter to trigger week view, even if empty
+    // Backend will handle setting the default week
+    url.searchParams.set('week', 'latest');
+    
+    window.location.href = url.toString();
+}
+
+function switchToLeaguePicks() {
+    const url = new URL(window.location);
+    
+    // Remove full parameter when switching to league picks view
+    url.searchParams.delete('full');
+    
+    // Add league_picks parameter to trigger league picks view
+    url.searchParams.set('league_picks', 'true');
     
     // Add a week parameter to trigger week view, even if empty
     // Backend will handle setting the default week
@@ -360,6 +551,22 @@ function changeWeek(weekId) {
     
     // Remove full parameter when switching weeks
     url.searchParams.delete('full');
+    
+    // Preserve league_picks parameter if it exists
+    // (don't delete it, just keep it as is)
+    
+    window.location.href = url.toString();
+}
+
+function toggleUnstartedPicks(showUnstarted) {
+    const url = new URL(window.location);
+    
+    // Preserve existing query parameters (like league_id, week, league_picks)
+    if (showUnstarted) {
+        url.searchParams.set('show_unstarted', 'true');
+    } else {
+        url.searchParams.delete('show_unstarted');
+    }
     
     window.location.href = url.toString();
 }
