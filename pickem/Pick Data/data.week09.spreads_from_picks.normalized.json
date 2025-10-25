@@ -1,0 +1,182 @@
+[
+  {
+    "col_index": 0,
+    "team1_name": "Indiana",
+    "team1_spread": -24.5,
+    "team2_name": "UCLA",
+    "team2_spread": 24.5,
+    "teams_seen": [
+      "Indiana",
+      "UCLA"
+    ],
+    "sample_line_used": -24.5
+  },
+  {
+    "col_index": 1,
+    "team1_name": "Oklahoma",
+    "team1_spread": -4.5,
+    "team2_name": "Ole Miss",
+    "team2_spread": 4.5,
+    "teams_seen": [
+      "Oklahoma",
+      "Mississippi"
+    ],
+    "sample_line_used": -4.5
+  },
+  {
+    "col_index": 2,
+    "team1_name": "Nebraska",
+    "team1_spread": -7.5,
+    "team2_name": "Northwestern",
+    "team2_spread": 7.5,
+    "teams_seen": [
+      "Northwestern",
+      "Nebraska"
+    ],
+    "sample_line_used": -7.5
+  },
+  {
+    "col_index": 3,
+    "team1_name": "South Florida",
+    "team1_spread": -3.5,
+    "team2_name": "Memphis",
+    "team2_spread": 3.5,
+    "teams_seen": [
+      "South Florida",
+      "Memphis"
+    ],
+    "sample_line_used": -3.5
+  },
+  {
+    "col_index": 4,
+    "team1_name": "Virginia",
+    "team1_spread": -9.5,
+    "team2_name": "North Carolina",
+    "team2_spread": 9.5,
+    "teams_seen": [
+      "Virginia",
+      "North Carolina"
+    ],
+    "sample_line_used": -9.5
+  },
+  {
+    "col_index": 5,
+    "team1_name": "Rutgers",
+    "team1_spread": -2.5,
+    "team2_name": "Purdue",
+    "team2_spread": 2.5,
+    "teams_seen": [
+      "Rutgers",
+      "Purdue"
+    ],
+    "sample_line_used": -2.5
+  },
+  {
+    "col_index": 6,
+    "team1_name": "Washington",
+    "team1_spread": -5.5,
+    "team2_name": "Illinois",
+    "team2_spread": 5.5,
+    "teams_seen": [
+      "Washington",
+      "Illinois"
+    ],
+    "sample_line_used": -5.5
+  },
+  {
+    "col_index": 7,
+    "team1_name": "Alabama",
+    "team1_spread": -13.5,
+    "team2_name": "South Carolina",
+    "team2_spread": 13.5,
+    "teams_seen": [
+      "Alabama",
+      "South Carolina"
+    ],
+    "sample_line_used": -13.5
+  },
+  {
+    "col_index": 8,
+    "team1_name": "Iowa",
+    "team1_spread": -7.5,
+    "team2_name": "Minnesota",
+    "team2_spread": 7.5,
+    "teams_seen": [
+      "Minnesota",
+      "Iowa"
+    ],
+    "sample_line_used": -7.5
+  },
+  {
+    "col_index": 9,
+    "team1_name": "Vanderbilt",
+    "team1_spread": -3.5,
+    "team2_name": "Missouri",
+    "team2_spread": 3.5,
+    "teams_seen": [
+      "Vanderbilt",
+      "Missouri"
+    ],
+    "sample_line_used": -3.5
+  },
+  {
+    "col_index": 10,
+    "team1_name": "Texas",
+    "team1_spread": -6.5,
+    "team2_name": "Mississippi State",
+    "team2_spread": 6.5,
+    "teams_seen": [
+      "Texas",
+      "Mississippi State"
+    ],
+    "sample_line_used": -6.5
+  },
+  {
+    "col_index": 11,
+    "team1_name": "Oregon",
+    "team1_spread": -34.5,
+    "team2_name": "Wisconsin",
+    "team2_spread": 34.5,
+    "teams_seen": [
+      "Wisconsin",
+      "Oregon"
+    ],
+    "sample_line_used": -34.5
+  },
+  {
+    "col_index": 12,
+    "team1_name": "Texas A&M",
+    "team1_spread": -2.5,
+    "team2_name": "LSU",
+    "team2_spread": 2.5,
+    "teams_seen": [
+      "Texas A&M",
+      "LSU"
+    ],
+    "sample_line_used": -2.5
+  },
+  {
+    "col_index": 13,
+    "team1_name": "Michigan",
+    "team1_spread": -13.5,
+    "team2_name": "Michigan State",
+    "team2_spread": 13.5,
+    "teams_seen": [
+      "Michigan",
+      "Michigan State"
+    ],
+    "sample_line_used": -13.5
+  },
+  {
+    "col_index": 14,
+    "team1_name": "Tennessee",
+    "team1_spread": -9.5,
+    "team2_name": "Kentucky",
+    "team2_spread": 9.5,
+    "teams_seen": [
+      "Tennessee",
+      "Kentucky"
+    ],
+    "sample_line_used": -9.5
+  }
+]
