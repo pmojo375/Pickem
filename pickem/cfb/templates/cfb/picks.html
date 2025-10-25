@@ -184,6 +184,45 @@
                         </label>
                     </div>
                     {% endif %}
+                    
+                    <!-- Line Movement Chart Section -->
+                    <div class="divider my-1">Game Info</div>
+                    
+                    <div class="collapse collapse-arrow bg-base-200 rounded-lg">
+                        <input type="checkbox" class="spread-chart-toggle" data-game-id="{{ lg.game.id }}" />
+                        <div class="collapse-title text-sm font-medium flex items-center justify-center gap-2">
+                            <i class="fas fa-chart-line text-primary"></i>
+                            View Line Movement
+                        </div>
+                        <div class="collapse-content">
+                            <div class="pt-2">
+                                <div class="text-center text-xs text-base-content/70 mb-3">
+                                    <div class="flex justify-center gap-4">
+                                        <span class="flex items-center gap-1">
+                                            <div class="w-3 h-0.5 bg-primary"></div>
+                                            {{ lg.game.home_team.abbreviation|default:lg.game.home_team.name }} (Favorite)
+                                        </span>
+                                        {% if lg.locked_home_spread is not None %}
+                                        <span class="flex items-center gap-1">
+                                            <i class="fas fa-lock text-warning text-xs"></i>
+                                            Locked
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                    <div id="chart-info-{{ lg.game.id }}" class="text-xs text-base-content/50 mt-1" style="display: none;">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        <span class="chart-data-type">Loading...</span>
+                                    </div>
+                                </div>
+                                <div class="relative" style="height: 300px; padding: 0 4px;">
+                                    <canvas id="spread-chart-{{ lg.game.id }}" class="w-full h-full" style="width: 100% !important; height: 100% !important;"></canvas>
+                                    <div id="spread-chart-loading-{{ lg.game.id }}" class="absolute inset-0 flex items-center justify-center bg-base-200/80">
+                                        <span class="loading loading-spinner loading-md text-primary"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             {% endwith %}
@@ -277,10 +316,48 @@
     .team-card-content {
         transition: all 0.3s ease;
     }
+    
+    /* Spread chart styling */
+    .spread-chart-toggle:checked + .collapse-title {
+        background-color: hsl(var(--b2));
+    }
+    
+    .spread-chart-toggle:checked + .collapse-title .fas {
+        transform: rotate(180deg);
+        transition: transform 0.3s ease;
+    }
+    
+    .collapse-content {
+        transition: all 0.3s ease;
+    }
+    
+    /* Chart container styling */
+    #spread-chart-loading-* {
+        border-radius: 0.5rem;
+    }
+    
+    /* Charts have consistent height and mobile-friendly sizing */
+    .collapse-content canvas {
+        height: 300px !important;
+        width: 100% !important;
+    }
+    
+    /* Mobile-specific chart improvements */
+    @media (max-width: 768px) {
+        .collapse-content {
+            padding: 0 8px;
+        }
+        
+        .collapse-content canvas {
+            height: 250px !important;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block extra_js %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('picks-form');
@@ -462,6 +539,258 @@
                 bypassValidation = true;
                 form.submit();
             });
+        }
+        
+        // Spread Chart Management
+        const chartCache = new Map();
+        const currentLeagueId = {{ current_league.id|default:"null" }};
+        
+        // Handle spread chart toggles
+        document.querySelectorAll('.spread-chart-toggle').forEach(toggle => {
+            toggle.addEventListener('change', function() {
+                const gameId = this.dataset.gameId;
+                const chartCanvas = document.getElementById(`spread-chart-${gameId}`);
+                const loadingDiv = document.getElementById(`spread-chart-loading-${gameId}`);
+                
+                if (this.checked && !chartCache.has(gameId)) {
+                    // Show loading spinner
+                    loadingDiv.style.display = 'flex';
+                    
+                    // Fetch spread data
+                    fetchSpreadData(gameId, chartCanvas, loadingDiv);
+                } else if (this.checked && chartCache.has(gameId)) {
+                    // Chart already loaded, just show it
+                    chartCanvas.style.display = 'block';
+                } else {
+                    // Hide chart
+                    chartCanvas.style.display = 'none';
+                }
+            });
+        });
+        
+        async function fetchSpreadData(gameId, canvas, loadingDiv) {
+            try {
+                const url = `/api/games/${gameId}/spread-history/${currentLeagueId ? `?league_id=${currentLeagueId}` : ''}`;
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Debug logging
+                console.log(`Game ${gameId} API response:`, data);
+                console.log(`Spread history count:`, data.spread_history ? data.spread_history.length : 0);
+                if (data.debug) {
+                    console.log(`Debug info for game ${gameId}:`, data.debug);
+                }
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                // Hide loading spinner
+                loadingDiv.style.display = 'none';
+                
+                // Check if we have data to display
+                if (!data.spread_history || data.spread_history.length === 0) {
+                    loadingDiv.innerHTML = '<div class="text-center text-base-content/70 py-8"><i class="fas fa-chart-line text-4xl mb-2"></i><p>No spread history available</p><p class="text-sm">Spread data will appear here once available</p></div>';
+                    return;
+                }
+                
+                // Show data type info
+                const chartInfo = document.getElementById(`chart-info-${gameId}`);
+                if (chartInfo) {
+                    const hasHistoricalData = data.spread_history.some(item => item.source !== 'Opening Spread' && item.source !== 'Current Spread' && item.source !== 'Estimated');
+                    const hasEstimatedData = data.spread_history.some(item => item.source === 'Estimated');
+                    
+                    chartInfo.style.display = 'block';
+                    let dataTypeText = 'Live spread data';
+                    if (hasHistoricalData) {
+                        dataTypeText = 'Historical spread data';
+                    } else if (hasEstimatedData) {
+                        dataTypeText = 'Estimated movement from opening to current';
+                    } else if (data.spread_history.length === 2) {
+                        dataTypeText = 'Opening vs current spread';
+                    }
+                    
+                    chartInfo.querySelector('.chart-data-type').textContent = dataTypeText;
+                }
+                
+                // Update the legend to show the correct favorite team
+                const firstSpread = data.spread_history[0];
+                const isHomeFavorite = firstSpread && firstSpread.home_spread < 0;
+                const favoriteTeam = isHomeFavorite ? data.game.home_team : data.game.away_team;
+                
+                // Update the legend in the template
+                const legendElement = document.querySelector(`[data-game-id="${gameId}"]`).closest('.collapse').querySelector('.flex.justify-center.gap-4 span:first-child');
+                if (legendElement) {
+                    legendElement.innerHTML = `
+                        <div class="w-3 h-0.5 bg-primary"></div>
+                        ${favoriteTeam.abbreviation || favoriteTeam.name} (Favorite)
+                    `;
+                }
+                
+                // Create chart
+                const chart = createSpreadChart(canvas, data);
+                chartCache.set(gameId, chart);
+                
+            } catch (error) {
+                console.error('Error fetching spread data:', error);
+                loadingDiv.innerHTML = '<span class="text-error text-sm">Error loading chart</span>';
+            }
+        }
+        
+        function createSpreadChart(canvas, data) {
+            const ctx = canvas.getContext('2d');
+            
+            // Prepare data
+            const labels = data.spread_history.map(item => {
+                const date = new Date(item.timestamp);
+                return date.toLocaleDateString('en-US', { weekday: 'short' });
+            });
+            
+            const homeSpreads = data.spread_history.map(item => item.home_spread);
+            const awaySpreads = data.spread_history.map(item => item.away_spread);
+            
+            // Determine which team is the favorite (negative spread)
+            const firstSpread = data.spread_history[0];
+            const isHomeFavorite = firstSpread && firstSpread.home_spread < 0;
+            const favoriteTeam = isHomeFavorite ? data.game.home_team : data.game.away_team;
+            const favoriteSpreads = isHomeFavorite ? homeSpreads : awaySpreads;
+            
+            // Find all locked spread points
+            let lockedSpreadValue = null;
+            let lockedIndices = [];
+            
+            if (data.locked_spread) {
+                lockedSpreadValue = isHomeFavorite ? data.locked_spread.home_spread : data.locked_spread.away_spread;
+                
+                // Find ALL data points that match the locked spread
+                favoriteSpreads.forEach((spread, index) => {
+                    if (Math.abs(spread - lockedSpreadValue) < 0.01) {
+                        lockedIndices.push(index);
+                    }
+                });
+            }
+            
+            // Prepare datasets
+            const datasets = [{
+                label: `${favoriteTeam.abbreviation} (Favorite)`,
+                data: favoriteSpreads,
+                borderColor: '#60a5fa', // Light blue
+                backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                borderWidth: 3,
+                fill: false,
+                tension: 0.1,
+                pointBackgroundColor: favoriteSpreads.map((_, index) => 
+                    lockedIndices.includes(index) ? '#fbbf24' : '#60a5fa'
+                ),
+                pointBorderColor: favoriteSpreads.map((_, index) => 
+                    lockedIndices.includes(index) ? '#ffffff' : '#ffffff'
+                ),
+                pointBorderWidth: favoriteSpreads.map((_, index) => 
+                    lockedIndices.includes(index) ? 4 : 2
+                ),
+                pointRadius: favoriteSpreads.map((_, index) => 
+                    lockedIndices.includes(index) ? 8 : 5
+                )
+            }];
+
+            const chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    devicePixelRatio: window.devicePixelRatio || 1,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#e5e7eb', // Light gray
+                                usePointStyle: true,
+                                padding: 20,
+                                font: {
+                                    size: 12,
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'hsl(var(--b1))', // Base 100
+                            titleColor: 'hsl(var(--bc))',
+                            bodyColor: 'hsl(var(--bc))',
+                            borderColor: 'hsl(var(--b3))',
+                            borderWidth: 1,
+                            callbacks: {
+                                title: function(context) {
+                                    return context[0].label;
+                                },
+                                label: function(context) {
+                                    const team = context.dataset.label;
+                                    const spread = context.parsed.y;
+                                    const isLocked = lockedIndices.includes(context.dataIndex);
+                                    const lockIcon = isLocked ? '🔒 ' : '';
+                                    return `${lockIcon}${team}: ${spread > 0 ? '+' : ''}${spread}${isLocked ? ' (Locked)' : ''}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Day',
+                                color: '#e5e7eb' // Light gray
+                            },
+                            ticks: {
+                                color: '#e5e7eb', // Light gray
+                                maxTicksLimit: 6,
+                                font: {
+                                    size: 12
+                                }
+                            },
+                            grid: {
+                                color: '#374151' // Darker gray
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Spread',
+                                color: '#e5e7eb' // Light gray
+                            },
+                            ticks: {
+                                color: '#e5e7eb', // Light gray
+                                stepSize: 0.5, // Half-point increments
+                                callback: function(value) {
+                                    return value > 0 ? '+' + value : value;
+                                },
+                                font: {
+                                    size: 12
+                                }
+                            },
+                            grid: {
+                                color: '#374151' // Darker gray
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            });
+            
+            return chart;
         }
     });
 </script>

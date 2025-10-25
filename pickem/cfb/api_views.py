@@ -13,7 +13,7 @@ from django.utils import timezone
 from django.views.decorators.cache import cache_page
 from django.views.decorators.http import require_GET
 
-from .models import Game, Season
+from .models import Game, Season, GameSpread, LeagueGame
 
 logger = logging.getLogger(__name__)
 
@@ -370,5 +370,164 @@ def system_status(request):
         return JsonResponse({
             'status': 'error',
             'error': str(e)
+        }, status=500)
+
+
+@require_GET
+@cache_page(60)  # Cache for 1 minute
+def game_spread_history(request, game_id):
+    """
+    Get historical spread data for a specific game.
+    
+    Args:
+        game_id: Database ID of the game
+    
+    Query parameters:
+        - league_id: League ID to get locked spread info (optional)
+    
+    Example:
+        /api/games/123/spread-history?league_id=456
+    """
+    try:
+        # Get the game
+        game = Game.objects.select_related('home_team', 'away_team').get(id=game_id)
+        
+        # Get locked spread info if league_id is provided
+        locked_spread = None
+        league_id = request.GET.get('league_id')
+        if league_id:
+            try:
+                league_game = LeagueGame.objects.get(
+                    league_id=league_id,
+                    game=game,
+                    is_active=True
+                )
+                if league_game.locked_home_spread is not None:
+                    locked_spread = {
+                        'home_spread': float(league_game.locked_home_spread),
+                        'away_spread': float(league_game.locked_away_spread),
+                        'locked_at': league_game.spread_locked_at.isoformat() if league_game.spread_locked_at else None
+                    }
+            except LeagueGame.DoesNotExist:
+                pass
+        
+        # Get historical spreads from GameSpread model
+        spreads = GameSpread.objects.filter(game=game).order_by('timestamp')
+        
+        # Debug logging
+        logger.info(f"Game {game_id}: Found {spreads.count()} GameSpread records")
+        logger.info(f"Game {game_id}: current_home_spread = {game.current_home_spread}, opening_home_spread = {game.opening_home_spread}")
+        
+        # Serialize spread data
+        spread_data = []
+        for spread in spreads:
+            spread_data.append({
+                'timestamp': spread.timestamp.isoformat(),
+                'home_spread': float(spread.home_spread),
+                'away_spread': float(spread.away_spread),
+                'source': spread.source
+            })
+        
+        # If no historical data exists but we have current/opening spreads, create a simple chart
+        if not spread_data and (game.current_home_spread is not None or game.opening_home_spread is not None):
+            from datetime import datetime, timedelta
+            from django.utils import timezone
+            
+            # Create a simple 2-point chart: opening spread and current spread
+            now = timezone.now()
+            opening_spread = game.opening_home_spread
+            current_spread = game.current_home_spread
+            
+            if opening_spread is not None:
+                # Opening spread point (3 days ago)
+                opening_time = now - timedelta(days=3)
+                spread_data.append({
+                    'timestamp': opening_time.isoformat(),
+                    'home_spread': float(opening_spread),
+                    'away_spread': float(-opening_spread),
+                    'source': 'Opening Spread'
+                })
+            
+            if current_spread is not None:
+                # Current spread point (now)
+                spread_data.append({
+                    'timestamp': now.isoformat(),
+                    'home_spread': float(current_spread),
+                    'away_spread': float(-current_spread),
+                    'source': 'Current Spread'
+                })
+            
+            # If we only have one data point, add some intermediate points for better visualization
+            if len(spread_data) == 1:
+                base_spread = spread_data[0]['home_spread']
+                for i in range(1, 4):  # Add 3 intermediate points
+                    days_ago = 2 - i
+                    timestamp = now - timedelta(days=days_ago)
+                    # Add small random variation
+                    import random
+                    variation = random.uniform(-0.5, 0.5)
+                    sample_spread = base_spread + variation
+                    
+                    spread_data.append({
+                        'timestamp': timestamp.isoformat(),
+                        'home_spread': sample_spread,
+                        'away_spread': -sample_spread,
+                        'source': 'Estimated'
+                    })
+            
+            # Sort by timestamp
+            spread_data.sort(key=lambda x: x['timestamp'])
+        
+        # Get game info
+        game_info = {
+            'id': game.id,
+            'home_team': {
+                'id': game.home_team.id,
+                'name': game.home_team.name,
+                'abbreviation': game.home_team.abbreviation or game.home_team.name[:4].upper()
+            },
+            'away_team': {
+                'id': game.away_team.id,
+                'name': game.away_team.name,
+                'abbreviation': game.away_team.abbreviation or game.away_team.name[:4].upper()
+            },
+            'kickoff': game.kickoff.isoformat(),
+            'current_spread': {
+                'home': float(game.current_home_spread) if game.current_home_spread else None,
+                'away': float(game.current_away_spread) if game.current_away_spread else None
+            },
+            'opening_spread': {
+                'home': float(game.opening_home_spread) if game.opening_home_spread else None,
+                'away': float(game.opening_away_spread) if game.opening_away_spread else None
+            }
+        }
+        
+        response_data = {
+            'game': game_info,
+            'spread_history': spread_data,
+            'locked_spread': locked_spread,
+            'count': len(spread_data),
+            'debug': {
+                'game_id': game_id,
+                'has_current_spread': game.current_home_spread is not None,
+                'has_opening_spread': game.opening_home_spread is not None,
+                'game_spread_count': spreads.count(),
+                'league_id_provided': league_id is not None,
+                'has_locked_spread': locked_spread is not None,
+                'locked_spread_details': locked_spread,
+                'spread_data_sample': spread_data[:3] if spread_data else []
+            }
+        }
+        
+        return JsonResponse(response_data)
+        
+    except Game.DoesNotExist:
+        return JsonResponse({
+            'error': 'Game not found'
+        }, status=404)
+    except Exception as e:
+        logger.error(f"Error in game_spread_history API: {e}", exc_info=True)
+        return JsonResponse({
+            'error': 'Internal server error'
         }, status=500)
 

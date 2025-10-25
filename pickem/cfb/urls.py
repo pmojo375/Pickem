@@ -28,6 +28,7 @@ urlpatterns = [
     # Public API endpoints for game data
     path('api/games/', api_views.games_list, name='api_games_list'),
     path('api/games/<int:game_id>/', api_views.game_detail, name='api_game_detail'),
+    path('api/games/<int:game_id>/spread-history/', api_views.game_spread_history, name='api_game_spread_history'),
     path('api/games/live/', api_views.live_games, name='api_live_games'),
     path('api/games/upcoming/', api_views.upcoming_games, name='api_upcoming_games'),
     path('api/system/status/', api_views.system_status, name='api_system_status'),
