@@ -1,13 +1,32 @@
-Django>=5,<6
-requests>=2.31
-python-dotenv>=1.0
-cfbd>=5.12.1
-pytz
-
-# Celery and Redis for background task processing
-celery>=5.4.0
-redis>=4.5.0,<5.0.0  # Use Redis 4.x for better compatibility
-kombu>=5.3.0  # Celery dependency
-
-# Enhanced HTTP client with retry capabilities
-tenacity>=8.2.0
+aenum==3.1.16
+amqp==5.3.1
+asgiref==3.9.2
+billiard==4.2.2
+celery==5.5.3
+certifi==2025.8.3
+cfbd==5.13.0
+charset-normalizer==3.4.3
+click==8.3.0
+click-didyoumean==0.3.1
+click-plugins==1.1.1.2
+click-repl==0.3.0
+colorama==0.4.6
+django==5.2.7
+idna==3.10
+kombu==5.5.4
+packaging==25.0
+prompt-toolkit==3.0.52
+pydantic==1.10.24
+python-dateutil==2.9.0.post0
+python-dotenv==1.1.1
+pytz==2025.2
+redis==4.6.0
+requests==2.32.5
+six==1.17.0
+sqlparse==0.5.3
+tenacity==9.1.2
+typing-extensions==4.15.0
+tzdata==2025.2
+urllib3==2.5.0
+vine==5.1.0
+wcwidth==0.2.14
