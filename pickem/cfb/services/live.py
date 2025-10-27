@@ -7,6 +7,94 @@ from datetime import timedelta
 ESPN_SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard"
 
 
+def fetch_single_game_score(game: Game) -> bool:
+    """
+    Fetch score for a single game from ESPN API.
+    Updates Game record with current score, quarter, clock, and final status.
+    
+    Returns True if the game was updated, False otherwise.
+    """
+    if not game.external_id:
+        return False
+    
+    try:
+        # Get the game date for the API request
+        game_date = game.kickoff.date()
+        params = {"dates": game_date.strftime("%Y%m%d")}
+        
+        resp = requests.get(ESPN_SCOREBOARD_URL, params=params, timeout=20)
+        resp.raise_for_status()
+        data = resp.json()
+        
+        events = data.get("events", [])
+        
+        # Find our game in the events
+        for event in events:
+            event_id = str(event.get("id", ""))
+            if event_id == game.external_id:
+                # Check game status
+                status = event.get("status", {})
+                status_type = status.get("type", {})
+                status_state = status_type.get("state", "")
+                
+                # Only update games that are in progress or completed
+                if status_state not in ["in", "post"]:
+                    return False
+                
+                # Get competitions (usually just one)
+                competitions = event.get("competitions", [])
+                if not competitions:
+                    return False
+                
+                competition = competitions[0]
+                competitors = competition.get("competitors", [])
+                
+                # Find home and away teams and their scores
+                home_competitor = None
+                away_competitor = None
+                
+                for competitor in competitors:
+                    if competitor.get("homeAway") == "home":
+                        home_competitor = competitor
+                    elif competitor.get("homeAway") == "away":
+                        away_competitor = competitor
+                
+                if not home_competitor or not away_competitor:
+                    return False
+                
+                # Extract scores
+                try:
+                    home_score = int(home_competitor.get("score", 0))
+                    away_score = int(away_competitor.get("score", 0))
+                except (ValueError, TypeError):
+                    return False
+                
+                # Extract game clock and period
+                is_final = status_state == "post"
+                period = status.get("period")
+                clock = status.get("displayClock", "")
+                
+                # Update the game
+                game.home_score = home_score
+                game.away_score = away_score
+                game.is_final = is_final
+                game.quarter = period
+                game.clock = clock
+                game.save(update_fields=["home_score", "away_score", "is_final", "quarter", "clock"])
+                
+                # If game is final, grade the picks
+                if is_final:
+                    grade_picks_for_game(game)
+                
+                return True
+        
+        return False
+        
+    except requests.RequestException as e:
+        print(f"Error fetching ESPN scores for game {game.id}: {e}")
+        return False
+
+
 def grade_picks_for_game(game: Game) -> int:
     """
     Grade all picks for a completed game based on spread.

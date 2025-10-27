@@ -15,11 +15,43 @@ from django.utils import timezone
 
 from .models import Game, Team, Season, Location, Week, Ranking, GameSpread, League, LeagueRules, LeagueGame
 from .services.cfbd_api import get_cfbd_client
-from .services.live import grade_picks_for_game, fetch_and_store_live_scores
+from .services.live import grade_picks_for_game, fetch_and_store_live_scores, fetch_single_game_score
 
 logger = logging.getLogger(__name__)
 
 logger.info("Logger initialized")
+
+@shared_task(name='cfb.tasks.update_single_game')
+def update_single_game(game_id: int) -> bool:
+    """
+    Update a single game's score from ESPN.
+    
+    Args:
+        game_id: Database ID of the game to update
+        
+    Returns:
+        True if the game was updated, False otherwise
+    """
+    try:
+        game = Game.objects.select_related('home_team', 'away_team').get(id=game_id)
+        logger.info(f"Updating game {game_id}: {game.away_team.name} @ {game.home_team.name}")
+        
+        updated = fetch_single_game_score(game)
+        
+        if updated:
+            logger.info(f"Successfully updated game {game_id}")
+        else:
+            logger.warning(f"Game {game_id} was not found or could not be updated from ESPN")
+        
+        return updated
+        
+    except Game.DoesNotExist:
+        logger.error(f"Game {game_id} does not exist")
+        return False
+    except Exception as e:
+        logger.error(f"Error updating game {game_id}: {e}", exc_info=True)
+        return False
+
 
 @shared_task(bind=True, name='cfb.tasks.poll_espn_scores', max_retries=3, default_retry_delay=60,)
 def poll_espn_scores(self):
