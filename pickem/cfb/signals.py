@@ -2,7 +2,7 @@
 Signal handlers for updating member statistics when games are finalized.
 """
 import logging
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
 from .models import Game
@@ -11,19 +11,34 @@ from .services.scoring import update_member_week_for_game
 logger = logging.getLogger(__name__)
 
 
+@receiver(pre_save, sender=Game)
+def cache_previous_game_state(sender, instance, raw=False, **kwargs):
+    """Cache whether the game was already final before this save."""
+    if raw:
+        instance._was_final = False
+        return
+
+    if not instance.pk:
+        instance._was_final = False
+        return
+
+    try:
+        previous_final = sender.objects.only("is_final").get(pk=instance.pk).is_final
+    except sender.DoesNotExist:
+        previous_final = False
+
+    instance._was_final = previous_final
+
+
 @receiver(post_save, sender=Game)
 def game_finalized(sender, instance, created, update_fields, **kwargs):
     """
     Signal handler to update member statistics when a game is marked as final.
     """
-    # Only process if is_final was changed to True
-    if update_fields is None:
-        # If update_fields is None, all fields were updated
-        should_process = instance.is_final
-    else:
-        should_process = 'is_final' in update_fields and instance.is_final
-    
-    if should_process and instance.is_final:
+    was_final = getattr(instance, "_was_final", False)
+    became_final = instance.is_final and (created or not was_final)
+
+    if became_final:
         try:
             logger.info(f"Game {instance.id} marked as final, updating member statistics")
             update_member_week_for_game(instance)
