@@ -254,6 +254,7 @@ class Game(models.Model):
     quarter = models.PositiveIntegerField(null=True, blank=True)
     clock = models.CharField(max_length=16, blank=True)
     is_final = models.BooleanField(default=False)
+    finalized_at = models.DateTimeField(null=True, blank=True, help_text="Timestamp when the game was first finalized")
 
     class Meta:
         ordering = ["kickoff"]
