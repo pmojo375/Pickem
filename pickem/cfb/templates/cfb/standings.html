@@ -267,29 +267,29 @@
                         <th class="bg-base-200">Player</th>
                         {% for game in league_picks_data.games %}
                         <th class="bg-base-200 text-center {% if not game.has_started and not game.is_final %}opacity-50{% endif %}">
-                            <div class="flex items-center justify-center gap-2 mb-1">
+                            <div class="flex items-center justify-center gap-3 mb-2 league-picks-matchup">
                                 <!-- Away Team -->
-                                <div class="flex items-center gap-1">
+                                <div class="flex items-center gap-1 league-picks-team">
                                     {% if game.away_team|team_logo_url %}
                                     <img src="{% static game.away_team|team_logo_url %}" 
                                          alt="{{ game.away_team.name }}" 
                                          class="w-6 h-6 object-contain"
                                          onerror="this.style.display='none'">
                                     {% endif %}
-                                    <span class="text-xs font-medium">{{ game.away_team.abbreviation|default:game.away_team.name }}</span>
+                                    <span class="text-xs md:text-sm font-medium league-picks-team-name">{{ game.away_team.abbreviation|default:game.away_team.name }}</span>
                                 </div>
                                 
-                                <span class="text-xs text-base-content/50">@</span>
+                                <span class="text-xs text-base-content/50 league-picks-at">@</span>
                                 
                                 <!-- Home Team -->
-                                <div class="flex items-center gap-1">
+                                <div class="flex items-center gap-1 league-picks-team">
                                     {% if game.home_team|team_logo_url %}
                                     <img src="{% static game.home_team|team_logo_url %}" 
                                          alt="{{ game.home_team.name }}" 
                                          class="w-6 h-6 object-contain"
                                          onerror="this.style.display='none'">
                                     {% endif %}
-                                    <span class="text-xs font-medium">{{ game.home_team.abbreviation|default:game.home_team.name }}</span>
+                                    <span class="text-xs md:text-sm font-medium league-picks-team-name">{{ game.home_team.abbreviation|default:game.home_team.name }}</span>
                                 </div>
                             </div>
                             <div class="text-xs text-base-content/70">
@@ -482,6 +482,52 @@
 
         .standings-tab {
             flex: 0 0 auto;
+        }
+    }
+
+    .league-picks-matchup {
+        flex-wrap: wrap;
+        row-gap: 0.35rem;
+    }
+
+    .league-picks-team {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
+        flex: 1 1 100%;
+        min-width: 0;
+    }
+
+    .league-picks-team-name {
+        white-space: normal;
+        word-break: break-word;
+        text-align: center;
+        padding: 0 0.25rem;
+    }
+
+    .league-picks-at {
+        flex: 0 0 auto;
+        padding: 0 0.35rem;
+    }
+
+    @media (min-width: 640px) {
+        .league-picks-matchup {
+            flex-wrap: nowrap;
+            gap: 1rem;
+        }
+
+        .league-picks-team {
+            flex: 0 1 auto;
+            gap: 0.5rem;
+        }
+
+        .league-picks-team-name {
+            white-space: nowrap;
+        }
+
+        .league-picks-at {
+            padding: 0;
         }
     }
 </style>
