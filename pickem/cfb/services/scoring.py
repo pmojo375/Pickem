@@ -3,7 +3,7 @@ Scoring service for grading picks and updating member statistics.
 Handles complex scoring logic including ATS with/without hooks, straight-up picks, and key pick bonuses.
 """
 import logging
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Tuple, Optional, List, Dict
 from math import ceil
 
@@ -48,7 +48,26 @@ def is_pick_correct(pick: Pick, game: Game, league_rules: LeagueRules) -> Option
     
     if league_rules.against_the_spread_enabled:
         # Scoring is based on ATS
-        spread = Decimal(str(league_game.locked_home_spread))
+        locked_spread = league_game.locked_home_spread
+        if locked_spread is None:
+            logger.warning(
+                "No locked spread for league_game %s (league=%s, game=%s); treating pick as tie.",
+                league_game.id,
+                league_game.league_id,
+                league_game.game_id,
+            )
+            return None
+        try:
+            spread = Decimal(str(locked_spread))
+        except (TypeError, InvalidOperation):
+            logger.error(
+                "Invalid locked spread value '%s' for league_game %s (league=%s, game=%s); treating pick as tie.",
+                locked_spread,
+                league_game.id,
+                league_game.league_id,
+                league_game.game_id,
+            )
+            return None
         
         # Apply force hooks if enabled
         if league_rules.force_hooks:
