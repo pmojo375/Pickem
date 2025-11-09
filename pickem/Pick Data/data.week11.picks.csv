@@ -1,0 +1,316 @@
+week_title,player,col_index,picked_team_full,line_value,is_key,result
+Week 11 Winners,Verne Rambo,0,Georgia,-8.5,True,win
+Week 11 Winners,Verne Rambo,1,Indiana,-13.5,True,loss
+Week 11 Winners,Verne Rambo,2,Texas Tech,-10.5,False,win
+Week 11 Winners,Verne Rambo,3,Ohio State,-28.5,True,loss
+Week 11 Winners,Verne Rambo,4,Rutgers,-1.5,False,win
+Week 11 Winners,Verne Rambo,5,Oregon,-6.5,False,loss
+Week 11 Winners,Verne Rambo,6,Texas A&M,-6.5,True,win
+Week 11 Winners,Verne Rambo,7,Auburn,7.5,False,win
+Week 11 Winners,Verne Rambo,8,Wisconsin,11.5,False,win
+Week 11 Winners,Verne Rambo,9,Wake Forest,6.5,False,win
+Week 11 Winners,Verne Rambo,10,Clemson,-2.5,False,win
+Week 11 Winners,Verne Rambo,11,Kentucky,3.5,False,win
+Week 11 Winners,Verne Rambo,12,Alabama,-10.5,True,win
+Week 11 Winners,Verne Rambo,13,Notre Dame,-24.5,False,win
+Week 11 Winners,Verne Rambo,14,Nebraska,2.5,False,win
+Week 11 Winners,Ralf Mojsiejenko,0,Georgia,-8.5,True,win
+Week 11 Winners,Ralf Mojsiejenko,1,Penn State,13.5,True,win
+Week 11 Winners,Ralf Mojsiejenko,2,Texas Tech,-10.5,False,win
+Week 11 Winners,Ralf Mojsiejenko,3,Purdue,28.5,True,win
+Week 11 Winners,Ralf Mojsiejenko,4,Maryland,1.5,False,loss
+Week 11 Winners,Ralf Mojsiejenko,5,Iowa,6.5,True,win
+Week 11 Winners,Ralf Mojsiejenko,6,Texas A&M,-6.5,False,win
+Week 11 Winners,Ralf Mojsiejenko,7,Auburn,7.5,False,win
+Week 11 Winners,Ralf Mojsiejenko,8,Wisconsin,11.5,False,win
+Week 11 Winners,Ralf Mojsiejenko,9,Virginia,-6.5,False,loss
+Week 11 Winners,Ralf Mojsiejenko,10,Florida State,2.5,False,loss
+Week 11 Winners,Ralf Mojsiejenko,11,Florida,-3.5,True,loss
+Week 11 Winners,Ralf Mojsiejenko,12,Alabama,-10.5,False,win
+Week 11 Winners,Ralf Mojsiejenko,13,Navy,24.5,False,loss
+Week 11 Winners,Ralf Mojsiejenko,14,Nebraska,2.5,False,win
+Week 11 Winners,Zac Nemitz,0,Mississippi State,8.5,False,loss
+Week 11 Winners,Zac Nemitz,1,Indiana,-13.5,False,loss
+Week 11 Winners,Zac Nemitz,2,BYU,10.5,True,loss
+Week 11 Winners,Zac Nemitz,3,Ohio State,-28.5,False,loss
+Week 11 Winners,Zac Nemitz,4,Rutgers,-1.5,False,win
+Week 11 Winners,Zac Nemitz,5,Iowa,6.5,False,win
+Week 11 Winners,Zac Nemitz,6,Texas A&M,-6.5,True,win
+Week 11 Winners,Zac Nemitz,7,Auburn,7.5,False,win
+Week 11 Winners,Zac Nemitz,8,Washington,-11.5,False,loss
+Week 11 Winners,Zac Nemitz,9,Wake Forest,6.5,True,win
+Week 11 Winners,Zac Nemitz,10,Clemson,-2.5,True,win
+Week 11 Winners,Zac Nemitz,11,Kentucky,3.5,True,win
+Week 11 Winners,Zac Nemitz,12,LSU,10.5,False,loss
+Week 11 Winners,Zac Nemitz,13,Notre Dame,-24.5,False,win
+Week 11 Winners,Zac Nemitz,14,Nebraska,2.5,False,win
+Week 11 Winners,Brandon Smith,0,Mississippi State,8.5,False,loss
+Week 11 Winners,Brandon Smith,1,Indiana,-13.5,True,loss
+Week 11 Winners,Brandon Smith,2,Texas Tech,-10.5,True,win
+Week 11 Winners,Brandon Smith,3,Ohio State,-28.5,False,loss
+Week 11 Winners,Brandon Smith,4,Maryland,1.5,False,loss
+Week 11 Winners,Brandon Smith,5,Oregon,-6.5,False,loss
+Week 11 Winners,Brandon Smith,6,Texas A&M,-6.5,True,win
+Week 11 Winners,Brandon Smith,7,Auburn,7.5,False,win
+Week 11 Winners,Brandon Smith,8,Wisconsin,11.5,False,win
+Week 11 Winners,Brandon Smith,9,Virginia,-6.5,False,loss
+Week 11 Winners,Brandon Smith,10,Clemson,-2.5,True,win
+Week 11 Winners,Brandon Smith,11,Florida,-3.5,False,loss
+Week 11 Winners,Brandon Smith,12,Alabama,-10.5,True,win
+Week 11 Winners,Brandon Smith,13,Notre Dame,-24.5,False,win
+Week 11 Winners,Brandon Smith,14,Nebraska,2.5,False,win
+Week 11 Winners,Adam Huttenstine,0,Georgia,-8.5,False,win
+Week 11 Winners,Adam Huttenstine,1,Penn State,13.5,False,win
+Week 11 Winners,Adam Huttenstine,2,BYU,10.5,False,loss
+Week 11 Winners,Adam Huttenstine,3,Ohio State,-28.5,True,loss
+Week 11 Winners,Adam Huttenstine,4,Rutgers,-1.5,False,win
+Week 11 Winners,Adam Huttenstine,5,Iowa,6.5,True,win
+Week 11 Winners,Adam Huttenstine,6,Missouri,6.5,False,loss
+Week 11 Winners,Adam Huttenstine,7,Auburn,7.5,False,win
+Week 11 Winners,Adam Huttenstine,8,Wisconsin,11.5,False,win
+Week 11 Winners,Adam Huttenstine,9,Virginia,-6.5,True,loss
+Week 11 Winners,Adam Huttenstine,10,Florida State,2.5,False,loss
+Week 11 Winners,Adam Huttenstine,11,Kentucky,3.5,False,win
+Week 11 Winners,Adam Huttenstine,12,Alabama,-10.5,True,win
+Week 11 Winners,Adam Huttenstine,13,Navy,24.5,False,loss
+Week 11 Winners,Adam Huttenstine,14,UCLA,-2.5,True,loss
+Week 11 Winners,Nancie Oxley,0,Georgia,-8.5,True,win
+Week 11 Winners,Nancie Oxley,1,Indiana,-13.5,True,loss
+Week 11 Winners,Nancie Oxley,2,Texas Tech,-10.5,False,win
+Week 11 Winners,Nancie Oxley,3,Purdue,28.5,False,win
+Week 11 Winners,Nancie Oxley,4,Rutgers,-1.5,False,win
+Week 11 Winners,Nancie Oxley,5,Oregon,-6.5,False,loss
+Week 11 Winners,Nancie Oxley,6,Texas A&M,-6.5,False,win
+Week 11 Winners,Nancie Oxley,7,Vanderbilt,-7.5,True,loss
+Week 11 Winners,Nancie Oxley,8,Washington,-11.5,False,loss
+Week 11 Winners,Nancie Oxley,9,Virginia,-6.5,True,loss
+Week 11 Winners,Nancie Oxley,10,Clemson,-2.5,False,win
+Week 11 Winners,Nancie Oxley,11,Kentucky,3.5,False,win
+Week 11 Winners,Nancie Oxley,12,Alabama,-10.5,True,win
+Week 11 Winners,Nancie Oxley,13,Navy,24.5,False,loss
+Week 11 Winners,Nancie Oxley,14,UCLA,-2.5,False,loss
+Week 11 Winners,Kyle Totzke,0,Georgia,-8.5,True,win
+Week 11 Winners,Kyle Totzke,1,Indiana,-13.5,True,loss
+Week 11 Winners,Kyle Totzke,2,Texas Tech,-10.5,False,win
+Week 11 Winners,Kyle Totzke,3,Ohio State,-28.5,True,loss
+Week 11 Winners,Kyle Totzke,4,Maryland,1.5,True,loss
+Week 11 Winners,Kyle Totzke,5,Oregon,-6.5,False,loss
+Week 11 Winners,Kyle Totzke,6,Texas A&M,-6.5,False,win
+Week 11 Winners,Kyle Totzke,7,Vanderbilt,-7.5,False,loss
+Week 11 Winners,Kyle Totzke,8,Washington,-11.5,True,loss
+Week 11 Winners,Kyle Totzke,9,Wake Forest,6.5,False,win
+Week 11 Winners,Kyle Totzke,10,Clemson,-2.5,False,win
+Week 11 Winners,Kyle Totzke,11,Kentucky,3.5,False,win
+Week 11 Winners,Kyle Totzke,12,Alabama,-10.5,False,win
+Week 11 Winners,Kyle Totzke,13,Notre Dame,-24.5,False,win
+Week 11 Winners,Kyle Totzke,14,Nebraska,2.5,False,win
+Week 11 Winners,Scott Zdanek,0,Georgia,-8.5,True,win
+Week 11 Winners,Scott Zdanek,1,Penn State,13.5,False,win
+Week 11 Winners,Scott Zdanek,2,Texas Tech,-10.5,False,win
+Week 11 Winners,Scott Zdanek,3,Purdue,28.5,True,win
+Week 11 Winners,Scott Zdanek,4,Rutgers,-1.5,False,win
+Week 11 Winners,Scott Zdanek,5,Oregon,-6.5,False,loss
+Week 11 Winners,Scott Zdanek,6,Missouri,6.5,False,loss
+Week 11 Winners,Scott Zdanek,7,Vanderbilt,-7.5,False,loss
+Week 11 Winners,Scott Zdanek,8,Washington,-11.5,True,loss
+Week 11 Winners,Scott Zdanek,9,Virginia,-6.5,True,loss
+Week 11 Winners,Scott Zdanek,10,Clemson,-2.5,False,win
+Week 11 Winners,Scott Zdanek,11,Florida,-3.5,False,loss
+Week 11 Winners,Scott Zdanek,12,LSU,10.5,False,loss
+Week 11 Winners,Scott Zdanek,13,Navy,24.5,False,loss
+Week 11 Winners,Scott Zdanek,14,Nebraska,2.5,True,win
+Week 11 Winners,Brian Christoffersen,0,Mississippi State,8.5,False,loss
+Week 11 Winners,Brian Christoffersen,1,Indiana,-13.5,True,loss
+Week 11 Winners,Brian Christoffersen,2,BYU,10.5,False,loss
+Week 11 Winners,Brian Christoffersen,3,Ohio State,-28.5,False,loss
+Week 11 Winners,Brian Christoffersen,4,Rutgers,-1.5,True,win
+Week 11 Winners,Brian Christoffersen,5,Iowa,6.5,False,win
+Week 11 Winners,Brian Christoffersen,6,Texas A&M,-6.5,True,win
+Week 11 Winners,Brian Christoffersen,7,Vanderbilt,-7.5,False,loss
+Week 11 Winners,Brian Christoffersen,8,Washington,-11.5,False,loss
+Week 11 Winners,Brian Christoffersen,9,Virginia,-6.5,False,loss
+Week 11 Winners,Brian Christoffersen,10,Florida State,2.5,False,loss
+Week 11 Winners,Brian Christoffersen,11,Florida,-3.5,False,loss
+Week 11 Winners,Brian Christoffersen,12,Alabama,-10.5,True,win
+Week 11 Winners,Brian Christoffersen,13,Navy,24.5,False,loss
+Week 11 Winners,Brian Christoffersen,14,Nebraska,2.5,True,win
+Week 11 Winners,Erich Kirchner,0,Georgia,-8.5,False,win
+Week 11 Winners,Erich Kirchner,1,Indiana,-13.5,False,loss
+Week 11 Winners,Erich Kirchner,2,Texas Tech,-10.5,False,win
+Week 11 Winners,Erich Kirchner,3,Ohio State,-28.5,False,loss
+Week 11 Winners,Erich Kirchner,4,Rutgers,-1.5,False,win
+Week 11 Winners,Erich Kirchner,5,Oregon,-6.5,True,loss
+Week 11 Winners,Erich Kirchner,6,Texas A&M,-6.5,True,win
+Week 11 Winners,Erich Kirchner,7,Vanderbilt,-7.5,False,loss
+Week 11 Winners,Erich Kirchner,8,Washington,-11.5,True,loss
+Week 11 Winners,Erich Kirchner,9,Virginia,-6.5,False,loss
+Week 11 Winners,Erich Kirchner,10,Clemson,-2.5,True,win
+Week 11 Winners,Erich Kirchner,11,Kentucky,3.5,False,win
+Week 11 Winners,Erich Kirchner,12,LSU,10.5,False,loss
+Week 11 Winners,Erich Kirchner,13,Navy,24.5,True,loss
+Week 11 Winners,Erich Kirchner,14,Nebraska,2.5,False,win
+Week 11 Winners,Mary Mojsiejenko,0,Georgia,-8.5,False,win
+Week 11 Winners,Mary Mojsiejenko,1,Indiana,-13.5,True,loss
+Week 11 Winners,Mary Mojsiejenko,2,Texas Tech,-10.5,False,win
+Week 11 Winners,Mary Mojsiejenko,3,Ohio State,-28.5,False,loss
+Week 11 Winners,Mary Mojsiejenko,4,Maryland,1.5,False,loss
+Week 11 Winners,Mary Mojsiejenko,5,Iowa,6.5,False,win
+Week 11 Winners,Mary Mojsiejenko,6,Texas A&M,-6.5,True,win
+Week 11 Winners,Mary Mojsiejenko,7,Vanderbilt,-7.5,True,loss
+Week 11 Winners,Mary Mojsiejenko,8,Washington,-11.5,True,loss
+Week 11 Winners,Mary Mojsiejenko,9,Virginia,-6.5,False,loss
+Week 11 Winners,Mary Mojsiejenko,10,Florida State,2.5,False,loss
+Week 11 Winners,Mary Mojsiejenko,11,Florida,-3.5,False,loss
+Week 11 Winners,Mary Mojsiejenko,12,Alabama,-10.5,False,win
+Week 11 Winners,Mary Mojsiejenko,13,Notre Dame,-24.5,False,win
+Week 11 Winners,Mary Mojsiejenko,14,Nebraska,2.5,True,win
+Week 11 Winners,Ryan Smith,0,Mississippi State,8.5,False,loss
+Week 11 Winners,Ryan Smith,1,Indiana,-13.5,True,loss
+Week 11 Winners,Ryan Smith,2,Texas Tech,-10.5,True,win
+Week 11 Winners,Ryan Smith,3,Purdue,28.5,False,win
+Week 11 Winners,Ryan Smith,4,Rutgers,-1.5,False,win
+Week 11 Winners,Ryan Smith,5,Iowa,6.5,False,win
+Week 11 Winners,Ryan Smith,6,Missouri,6.5,True,loss
+Week 11 Winners,Ryan Smith,7,Auburn,7.5,False,win
+Week 11 Winners,Ryan Smith,8,Washington,-11.5,False,loss
+Week 11 Winners,Ryan Smith,9,Wake Forest,6.5,True,win
+Week 11 Winners,Ryan Smith,10,Florida State,2.5,False,loss
+Week 11 Winners,Ryan Smith,11,Florida,-3.5,True,loss
+Week 11 Winners,Ryan Smith,12,Alabama,-10.5,False,win
+Week 11 Winners,Ryan Smith,13,Navy,24.5,False,loss
+Week 11 Winners,Ryan Smith,14,UCLA,-2.5,False,loss
+Week 11 Winners,Mike Augustine,0,Georgia,-8.5,False,win
+Week 11 Winners,Mike Augustine,1,Indiana,-13.5,True,loss
+Week 11 Winners,Mike Augustine,2,BYU,10.5,True,loss
+Week 11 Winners,Mike Augustine,3,Purdue,28.5,True,win
+Week 11 Winners,Mike Augustine,4,Rutgers,-1.5,False,win
+Week 11 Winners,Mike Augustine,5,Oregon,-6.5,False,loss
+Week 11 Winners,Mike Augustine,6,Texas A&M,-6.5,False,win
+Week 11 Winners,Mike Augustine,7,Vanderbilt,-7.5,False,loss
+Week 11 Winners,Mike Augustine,8,Washington,-11.5,False,loss
+Week 11 Winners,Mike Augustine,9,Virginia,-6.5,False,loss
+Week 11 Winners,Mike Augustine,10,Florida State,2.5,False,loss
+Week 11 Winners,Mike Augustine,11,Florida,-3.5,False,loss
+Week 11 Winners,Mike Augustine,12,Alabama,-10.5,True,win
+Week 11 Winners,Mike Augustine,13,Navy,24.5,True,loss
+Week 11 Winners,Mike Augustine,14,Nebraska,2.5,False,win
+Week 11 Winners,Apollo Braganini,0,Georgia,-8.5,False,win
+Week 11 Winners,Apollo Braganini,1,Indiana,-13.5,True,loss
+Week 11 Winners,Apollo Braganini,2,Texas Tech,-10.5,False,win
+Week 11 Winners,Apollo Braganini,3,Ohio State,-28.5,False,loss
+Week 11 Winners,Apollo Braganini,4,Rutgers,-1.5,False,win
+Week 11 Winners,Apollo Braganini,5,Oregon,-6.5,True,loss
+Week 11 Winners,Apollo Braganini,6,Texas A&M,-6.5,False,win
+Week 11 Winners,Apollo Braganini,7,Vanderbilt,-7.5,False,loss
+Week 11 Winners,Apollo Braganini,8,Washington,-11.5,False,loss
+Week 11 Winners,Apollo Braganini,9,Virginia,-6.5,True,loss
+Week 11 Winners,Apollo Braganini,10,Clemson,-2.5,False,win
+Week 11 Winners,Apollo Braganini,11,Florida,-3.5,False,loss
+Week 11 Winners,Apollo Braganini,12,Alabama,-10.5,False,win
+Week 11 Winners,Apollo Braganini,13,Navy,24.5,True,loss
+Week 11 Winners,Apollo Braganini,14,Nebraska,2.5,True,win
+Week 11 Winners,Ryan Fechner,0,Georgia,-8.5,False,win
+Week 11 Winners,Ryan Fechner,1,Indiana,-13.5,True,loss
+Week 11 Winners,Ryan Fechner,2,Texas Tech,-10.5,False,win
+Week 11 Winners,Ryan Fechner,3,Ohio State,-28.5,False,loss
+Week 11 Winners,Ryan Fechner,4,Rutgers,-1.5,True,win
+Week 11 Winners,Ryan Fechner,5,Oregon,-6.5,False,loss
+Week 11 Winners,Ryan Fechner,6,Texas A&M,-6.5,True,win
+Week 11 Winners,Ryan Fechner,7,Vanderbilt,-7.5,False,loss
+Week 11 Winners,Ryan Fechner,8,Washington,-11.5,True,loss
+Week 11 Winners,Ryan Fechner,9,Virginia,-6.5,False,loss
+Week 11 Winners,Ryan Fechner,10,Florida State,2.5,True,loss
+Week 11 Winners,Ryan Fechner,11,Kentucky,3.5,False,win
+Week 11 Winners,Ryan Fechner,12,Alabama,-10.5,False,win
+Week 11 Winners,Ryan Fechner,13,Navy,24.5,False,loss
+Week 11 Winners,Ryan Fechner,14,UCLA,-2.5,False,loss
+Week 11 Winners,Danielle Mojsiejenko,0,Georgia,-8.5,False,win
+Week 11 Winners,Danielle Mojsiejenko,1,Indiana,-13.5,False,loss
+Week 11 Winners,Danielle Mojsiejenko,2,Texas Tech,-10.5,False,win
+Week 11 Winners,Danielle Mojsiejenko,3,Ohio State,-28.5,False,loss
+Week 11 Winners,Danielle Mojsiejenko,4,Rutgers,-1.5,False,win
+Week 11 Winners,Danielle Mojsiejenko,5,Oregon,-6.5,True,loss
+Week 11 Winners,Danielle Mojsiejenko,6,Texas A&M,-6.5,True,win
+Week 11 Winners,Danielle Mojsiejenko,7,Vanderbilt,-7.5,False,loss
+Week 11 Winners,Danielle Mojsiejenko,8,Washington,-11.5,False,loss
+Week 11 Winners,Danielle Mojsiejenko,9,Virginia,-6.5,True,loss
+Week 11 Winners,Danielle Mojsiejenko,10,Clemson,-2.5,False,win
+Week 11 Winners,Danielle Mojsiejenko,11,Florida,-3.5,True,loss
+Week 11 Winners,Danielle Mojsiejenko,12,Alabama,-10.5,False,win
+Week 11 Winners,Danielle Mojsiejenko,13,Notre Dame,-24.5,False,win
+Week 11 Winners,Danielle Mojsiejenko,14,UCLA,-2.5,True,loss
+Week 11 Winners,Parker Mojsiejenko,0,Georgia,-8.5,False,win
+Week 11 Winners,Parker Mojsiejenko,1,Indiana,-13.5,True,loss
+Week 11 Winners,Parker Mojsiejenko,2,BYU,10.5,True,loss
+Week 11 Winners,Parker Mojsiejenko,3,Purdue,28.5,False,win
+Week 11 Winners,Parker Mojsiejenko,4,Rutgers,-1.5,False,win
+Week 11 Winners,Parker Mojsiejenko,5,Oregon,-6.5,False,loss
+Week 11 Winners,Parker Mojsiejenko,6,Texas A&M,-6.5,False,win
+Week 11 Winners,Parker Mojsiejenko,7,Vanderbilt,-7.5,False,loss
+Week 11 Winners,Parker Mojsiejenko,8,Washington,-11.5,True,loss
+Week 11 Winners,Parker Mojsiejenko,9,Virginia,-6.5,False,loss
+Week 11 Winners,Parker Mojsiejenko,10,Florida State,2.5,False,loss
+Week 11 Winners,Parker Mojsiejenko,11,Kentucky,3.5,False,win
+Week 11 Winners,Parker Mojsiejenko,12,Alabama,-10.5,True,win
+Week 11 Winners,Parker Mojsiejenko,13,Navy,24.5,True,loss
+Week 11 Winners,Parker Mojsiejenko,14,Nebraska,2.5,False,win
+Week 11 Winners,Chris Cross,0,Georgia,-8.5,False,win
+Week 11 Winners,Chris Cross,1,Indiana,-13.5,True,loss
+Week 11 Winners,Chris Cross,2,Texas Tech,-10.5,False,win
+Week 11 Winners,Chris Cross,3,Ohio State,-28.5,False,loss
+Week 11 Winners,Chris Cross,4,Rutgers,-1.5,False,win
+Week 11 Winners,Chris Cross,5,Oregon,-6.5,False,loss
+Week 11 Winners,Chris Cross,6,Texas A&M,-6.5,False,win
+Week 11 Winners,Chris Cross,7,Vanderbilt,-7.5,True,loss
+Week 11 Winners,Chris Cross,8,Washington,-11.5,True,loss
+Week 11 Winners,Chris Cross,9,Virginia,-6.5,True,loss
+Week 11 Winners,Chris Cross,10,Florida State,2.5,False,loss
+Week 11 Winners,Chris Cross,11,Florida,-3.5,False,loss
+Week 11 Winners,Chris Cross,12,Alabama,-10.5,False,win
+Week 11 Winners,Chris Cross,13,Navy,24.5,False,loss
+Week 11 Winners,Chris Cross,14,Nebraska,2.5,True,win
+Week 11 Winners,Jon Malm,0,Mississippi State,8.5,True,loss
+Week 11 Winners,Jon Malm,1,Indiana,-13.5,True,loss
+Week 11 Winners,Jon Malm,2,Texas Tech,-10.5,True,win
+Week 11 Winners,Jon Malm,3,Ohio State,-28.5,True,loss
+Week 11 Winners,Jon Malm,4,Maryland,1.5,False,loss
+Week 11 Winners,Jon Malm,5,Iowa,6.5,False,win
+Week 11 Winners,Jon Malm,6,Texas A&M,-6.5,False,win
+Week 11 Winners,Jon Malm,7,Vanderbilt,-7.5,True,loss
+Week 11 Winners,Jon Malm,8,Washington,-11.5,False,loss
+Week 11 Winners,Jon Malm,9,Virginia,-6.5,False,loss
+Week 11 Winners,Jon Malm,10,Florida State,2.5,False,loss
+Week 11 Winners,Jon Malm,11,Florida,-3.5,False,loss
+Week 11 Winners,Jon Malm,12,Alabama,-10.5,False,win
+Week 11 Winners,Jon Malm,13,Notre Dame,-24.5,False,win
+Week 11 Winners,Jon Malm,14,Nebraska,2.5,False,win
+Week 11 Winners,David Zdanek,0,Mississippi State,8.5,False,loss
+Week 11 Winners,David Zdanek,1,Indiana,-13.5,True,loss
+Week 11 Winners,David Zdanek,2,BYU,10.5,True,loss
+Week 11 Winners,David Zdanek,3,Purdue,28.5,False,win
+Week 11 Winners,David Zdanek,4,Rutgers,-1.5,False,win
+Week 11 Winners,David Zdanek,5,Iowa,6.5,False,win
+Week 11 Winners,David Zdanek,6,Texas A&M,-6.5,False,win
+Week 11 Winners,David Zdanek,7,Vanderbilt,-7.5,False,loss
+Week 11 Winners,David Zdanek,8,Washington,-11.5,True,loss
+Week 11 Winners,David Zdanek,9,Virginia,-6.5,False,loss
+Week 11 Winners,David Zdanek,10,Florida State,2.5,False,loss
+Week 11 Winners,David Zdanek,11,Florida,-3.5,True,loss
+Week 11 Winners,David Zdanek,12,Alabama,-10.5,True,win
+Week 11 Winners,David Zdanek,13,Navy,24.5,False,loss
+Week 11 Winners,David Zdanek,14,UCLA,-2.5,False,loss
+Week 11 Winners,Roger Mojsiejenko,0,Mississippi State,8.5,True,loss
+Week 11 Winners,Roger Mojsiejenko,1,Indiana,-13.5,True,loss
+Week 11 Winners,Roger Mojsiejenko,2,BYU,10.5,False,loss
+Week 11 Winners,Roger Mojsiejenko,3,Ohio State,-28.5,True,loss
+Week 11 Winners,Roger Mojsiejenko,4,Maryland,1.5,True,loss
+Week 11 Winners,Roger Mojsiejenko,5,Oregon,-6.5,False,loss
+Week 11 Winners,Roger Mojsiejenko,6,Missouri,6.5,False,loss
+Week 11 Winners,Roger Mojsiejenko,7,Auburn,7.5,False,win
+Week 11 Winners,Roger Mojsiejenko,8,Washington,-11.5,False,loss
+Week 11 Winners,Roger Mojsiejenko,9,Virginia,-6.5,False,loss
+Week 11 Winners,Roger Mojsiejenko,10,Clemson,-2.5,True,win
+Week 11 Winners,Roger Mojsiejenko,11,Florida,-3.5,False,loss
+Week 11 Winners,Roger Mojsiejenko,12,Alabama,-10.5,False,win
+Week 11 Winners,Roger Mojsiejenko,13,Notre Dame,-24.5,False,win
+Week 11 Winners,Roger Mojsiejenko,14,UCLA,-2.5,False,loss
