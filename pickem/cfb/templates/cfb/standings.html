@@ -41,16 +41,16 @@
         <div class="card-body py-4">
             <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                 <!-- Tab Selection -->
-                <div class="tabs tabs-boxed">
-                    <a class="tab {% if not show_week_standings and not show_league_picks %}tab-active{% endif %}" onclick="switchToSeasonStandings()">
+                <div class="tabs tabs-boxed standings-tabs">
+                    <a class="tab standings-tab {% if not show_week_standings and not show_league_picks %}tab-active{% endif %}" onclick="switchToSeasonStandings()">
                         <i class="fas fa-calendar-alt mr-2"></i>
                         Season
                     </a>
-                    <a class="tab {% if show_week_standings and not show_league_picks %}tab-active{% endif %}" onclick="switchToWeekStandings()">
+                    <a class="tab standings-tab {% if show_week_standings and not show_league_picks %}tab-active{% endif %}" onclick="switchToWeekStandings()">
                         <i class="fas fa-calendar-week mr-2"></i>
                         Week
                     </a>
-                    <a class="tab {% if show_league_picks %}tab-active{% endif %}" onclick="switchToLeaguePicks()">
+                    <a class="tab standings-tab {% if show_league_picks %}tab-active{% endif %}" onclick="switchToLeaguePicks()">
                         <i class="fas fa-users mr-2"></i>
                         League Picks
                     </a>
@@ -446,6 +446,46 @@
     </div>
 </div>
 {% endif %}
+
+{% block extra_css %}
+<style>
+    .standings-tabs {
+        width: 100%;
+        display: flex;
+        gap: 0.5rem;
+        padding: 0.25rem;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .standings-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .standings-tab {
+        flex: 1 0 auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        min-height: 2.75rem;
+        padding: 0.5rem 0.75rem;
+        white-space: nowrap;
+    }
+
+    @media (min-width: 1024px) {
+        .standings-tabs {
+            width: auto;
+            padding: 0;
+            overflow-x: visible;
+        }
+
+        .standings-tab {
+            flex: 0 0 auto;
+        }
+    }
+</style>
+{% endblock %}
 
 <!-- Sample Leaderboard Design (Hidden, for future reference) -->
 <div class="hidden">
