@@ -36,8 +36,12 @@ SECRET_KEY = 'django-insecure-*b81w^qc#k(8d6p-ozt(1aa&bk$yw@b40ban5_bj(xvcrbog!3
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
-
+ALLOWED_HOSTS = ['bigpicks.app', 'www.bigpicks.app', 'localhost', '127.0.0.1']
+ 
+CSRF_TRUSTED_ORIGINS = [
+    'https://bigpicks.app',
+    'https://www.bigpicks.app',
+]
 
 # Application definition
 
