@@ -1,0 +1,316 @@
+week_title,player,col_index,picked_team_full,line_value,is_key,result
+Week 10 Winners,Zac Nemitz,0,Vanderbilt,3.5,False,win
+Week 10 Winners,Zac Nemitz,1,Illinois,-13.5,False,win
+Week 10 Winners,Zac Nemitz,2,Ohio State,-20.5,True,win
+Week 10 Winners,Zac Nemitz,3,Miami,-10.5,True,loss
+Week 10 Winners,Zac Nemitz,4,Arizona State,3.5,True,win
+Week 10 Winners,Zac Nemitz,5,Indiana,-21.5,False,win
+Week 10 Winners,Zac Nemitz,6,Boston College,28.5,False,win
+Week 10 Winners,Zac Nemitz,7,Florida,7.5,False,win
+Week 10 Winners,Zac Nemitz,8,Michigan State,5.5,False,win
+Week 10 Winners,Zac Nemitz,9,Western Michigan,-6.5,False,loss
+Week 10 Winners,Zac Nemitz,10,Purdue,21.5,False,win
+Week 10 Winners,Zac Nemitz,11,Auburn,-10.5,False,loss
+Week 10 Winners,Zac Nemitz,12,Tennessee,-3.5,True,loss
+Week 10 Winners,Zac Nemitz,13,Nebraska,6.5,False,win
+Week 10 Winners,Zac Nemitz,14,Utah,-7.5,True,win
+Week 10 Winners,Kyle Totzke,0,Texas,-3.5,False,loss
+Week 10 Winners,Kyle Totzke,1,Illinois,-13.5,True,win
+Week 10 Winners,Kyle Totzke,2,Ohio State,-20.5,False,win
+Week 10 Winners,Kyle Totzke,3,Miami,-10.5,False,loss
+Week 10 Winners,Kyle Totzke,4,Iowa State,-3.5,True,loss
+Week 10 Winners,Kyle Totzke,5,Indiana,-21.5,True,win
+Week 10 Winners,Kyle Totzke,6,Notre Dame,-28.5,True,loss
+Week 10 Winners,Kyle Totzke,7,Georgia,-7.5,False,loss
+Week 10 Winners,Kyle Totzke,8,Michigan State,5.5,False,win
+Week 10 Winners,Kyle Totzke,9,Western Michigan,-6.5,False,loss
+Week 10 Winners,Kyle Totzke,10,Michigan,-21.5,False,loss
+Week 10 Winners,Kyle Totzke,11,Kentucky,10.5,False,win
+Week 10 Winners,Kyle Totzke,12,Oklahoma,3.5,False,win
+Week 10 Winners,Kyle Totzke,13,Nebraska,6.5,False,win
+Week 10 Winners,Kyle Totzke,14,Utah,-7.5,True,win
+Week 10 Winners,Chris Cross,0,Vanderbilt,3.5,False,win
+Week 10 Winners,Chris Cross,1,Illinois,-13.5,True,win
+Week 10 Winners,Chris Cross,2,Ohio State,-20.5,False,win
+Week 10 Winners,Chris Cross,3,Miami,-10.5,False,loss
+Week 10 Winners,Chris Cross,4,Iowa State,-3.5,True,loss
+Week 10 Winners,Chris Cross,5,Maryland,21.5,False,loss
+Week 10 Winners,Chris Cross,6,Notre Dame,-28.5,False,loss
+Week 10 Winners,Chris Cross,7,Georgia,-7.5,True,loss
+Week 10 Winners,Chris Cross,8,Minnesota,-5.5,False,loss
+Week 10 Winners,Chris Cross,9,Central Michigan,6.5,False,win
+Week 10 Winners,Chris Cross,10,Michigan,-21.5,False,loss
+Week 10 Winners,Chris Cross,11,Auburn,-10.5,False,loss
+Week 10 Winners,Chris Cross,12,Oklahoma,3.5,True,win
+Week 10 Winners,Chris Cross,13,Nebraska,6.5,True,win
+Week 10 Winners,Chris Cross,14,Utah,-7.5,False,win
+Week 10 Winners,Jon Malm,0,Vanderbilt,3.5,True,win
+Week 10 Winners,Jon Malm,1,Illinois,-13.5,False,win
+Week 10 Winners,Jon Malm,2,Ohio State,-20.5,True,win
+Week 10 Winners,Jon Malm,3,Miami,-10.5,False,loss
+Week 10 Winners,Jon Malm,4,Arizona State,3.5,False,win
+Week 10 Winners,Jon Malm,5,Indiana,-21.5,True,win
+Week 10 Winners,Jon Malm,6,Notre Dame,-28.5,False,loss
+Week 10 Winners,Jon Malm,7,Georgia,-7.5,True,loss
+Week 10 Winners,Jon Malm,8,Michigan State,5.5,False,win
+Week 10 Winners,Jon Malm,9,Western Michigan,-6.5,False,loss
+Week 10 Winners,Jon Malm,10,Michigan,-21.5,False,loss
+Week 10 Winners,Jon Malm,11,Auburn,-10.5,False,loss
+Week 10 Winners,Jon Malm,12,Tennessee,-3.5,True,loss
+Week 10 Winners,Jon Malm,13,USC,-6.5,False,loss
+Week 10 Winners,Jon Malm,14,Utah,-7.5,False,win
+Week 10 Winners,Ryan Smith,0,Vanderbilt,3.5,False,win
+Week 10 Winners,Ryan Smith,1,Illinois,-13.5,False,win
+Week 10 Winners,Ryan Smith,2,Penn State,20.5,False,loss
+Week 10 Winners,Ryan Smith,3,SMU,10.5,False,win
+Week 10 Winners,Ryan Smith,4,Iowa State,-3.5,True,loss
+Week 10 Winners,Ryan Smith,5,Indiana,-21.5,False,win
+Week 10 Winners,Ryan Smith,6,Notre Dame,-28.5,True,loss
+Week 10 Winners,Ryan Smith,7,Florida,7.5,False,win
+Week 10 Winners,Ryan Smith,8,Michigan State,5.5,False,win
+Week 10 Winners,Ryan Smith,9,Central Michigan,6.5,False,win
+Week 10 Winners,Ryan Smith,10,Michigan,-21.5,True,loss
+Week 10 Winners,Ryan Smith,11,Auburn,-10.5,False,loss
+Week 10 Winners,Ryan Smith,12,Tennessee,-3.5,True,loss
+Week 10 Winners,Ryan Smith,13,Nebraska,6.5,False,win
+Week 10 Winners,Ryan Smith,14,Utah,-7.5,True,win
+Week 10 Winners,Mike Augustine,0,Texas,-3.5,True,loss
+Week 10 Winners,Mike Augustine,1,Illinois,-13.5,False,win
+Week 10 Winners,Mike Augustine,2,Ohio State,-20.5,True,win
+Week 10 Winners,Mike Augustine,3,Miami,-10.5,False,loss
+Week 10 Winners,Mike Augustine,4,Arizona State,3.5,False,win
+Week 10 Winners,Mike Augustine,5,Indiana,-21.5,True,win
+Week 10 Winners,Mike Augustine,6,Notre Dame,-28.5,True,loss
+Week 10 Winners,Mike Augustine,7,Georgia,-7.5,False,loss
+Week 10 Winners,Mike Augustine,8,Minnesota,-5.5,False,loss
+Week 10 Winners,Mike Augustine,9,Central Michigan,6.5,False,win
+Week 10 Winners,Mike Augustine,10,Purdue,21.5,True,win
+Week 10 Winners,Mike Augustine,11,Auburn,-10.5,False,loss
+Week 10 Winners,Mike Augustine,12,Tennessee,-3.5,False,loss
+Week 10 Winners,Mike Augustine,13,USC,-6.5,False,loss
+Week 10 Winners,Mike Augustine,14,Cincinnati,7.5,False,loss
+Week 10 Winners,Adam Huttenstine,0,Texas,-3.5,True,loss
+Week 10 Winners,Adam Huttenstine,1,Illinois,-13.5,True,win
+Week 10 Winners,Adam Huttenstine,2,Ohio State,-20.5,True,win
+Week 10 Winners,Adam Huttenstine,3,SMU,10.5,False,win
+Week 10 Winners,Adam Huttenstine,4,Iowa State,-3.5,False,loss
+Week 10 Winners,Adam Huttenstine,5,Maryland,21.5,True,loss
+Week 10 Winners,Adam Huttenstine,6,Boston College,28.5,False,win
+Week 10 Winners,Adam Huttenstine,7,Georgia,-7.5,False,loss
+Week 10 Winners,Adam Huttenstine,8,Michigan State,5.5,False,win
+Week 10 Winners,Adam Huttenstine,9,Western Michigan,-6.5,False,loss
+Week 10 Winners,Adam Huttenstine,10,Michigan,-21.5,True,loss
+Week 10 Winners,Adam Huttenstine,11,Auburn,-10.5,False,loss
+Week 10 Winners,Adam Huttenstine,12,Oklahoma,3.5,False,win
+Week 10 Winners,Adam Huttenstine,13,USC,-6.5,False,loss
+Week 10 Winners,Adam Huttenstine,14,Utah,-7.5,False,win
+Week 10 Winners,Parker Mojsiejenko,0,Vanderbilt,3.5,True,win
+Week 10 Winners,Parker Mojsiejenko,1,Illinois,-13.5,False,win
+Week 10 Winners,Parker Mojsiejenko,2,Penn State,20.5,False,loss
+Week 10 Winners,Parker Mojsiejenko,3,Miami,-10.5,True,loss
+Week 10 Winners,Parker Mojsiejenko,4,Arizona State,3.5,False,win
+Week 10 Winners,Parker Mojsiejenko,5,Indiana,-21.5,False,win
+Week 10 Winners,Parker Mojsiejenko,6,Boston College,28.5,False,win
+Week 10 Winners,Parker Mojsiejenko,7,Georgia,-7.5,False,loss
+Week 10 Winners,Parker Mojsiejenko,8,Minnesota,-5.5,False,loss
+Week 10 Winners,Parker Mojsiejenko,9,Western Michigan,-6.5,True,loss
+Week 10 Winners,Parker Mojsiejenko,10,Michigan,-21.5,False,loss
+Week 10 Winners,Parker Mojsiejenko,11,Kentucky,10.5,False,win
+Week 10 Winners,Parker Mojsiejenko,12,Tennessee,-3.5,False,loss
+Week 10 Winners,Parker Mojsiejenko,13,USC,-6.5,True,loss
+Week 10 Winners,Parker Mojsiejenko,14,Utah,-7.5,True,win
+Week 10 Winners,Nancie Oxley,0,Vanderbilt,3.5,False,win
+Week 10 Winners,Nancie Oxley,1,Rutgers,13.5,False,loss
+Week 10 Winners,Nancie Oxley,2,Ohio State,-20.5,True,win
+Week 10 Winners,Nancie Oxley,3,SMU,10.5,True,win
+Week 10 Winners,Nancie Oxley,4,Iowa State,-3.5,True,loss
+Week 10 Winners,Nancie Oxley,5,Maryland,21.5,True,loss
+Week 10 Winners,Nancie Oxley,6,Notre Dame,-28.5,False,loss
+Week 10 Winners,Nancie Oxley,7,Georgia,-7.5,True,loss
+Week 10 Winners,Nancie Oxley,8,Minnesota,-5.5,False,loss
+Week 10 Winners,Nancie Oxley,9,Central Michigan,6.5,False,win
+Week 10 Winners,Nancie Oxley,10,Michigan,-21.5,False,loss
+Week 10 Winners,Nancie Oxley,11,Kentucky,10.5,False,win
+Week 10 Winners,Nancie Oxley,12,Tennessee,-3.5,False,loss
+Week 10 Winners,Nancie Oxley,13,Nebraska,6.5,False,win
+Week 10 Winners,Nancie Oxley,14,Utah,-7.5,False,win
+Week 10 Winners,Verne Rambo,0,Vanderbilt,3.5,False,win
+Week 10 Winners,Verne Rambo,1,Rutgers,13.5,False,loss
+Week 10 Winners,Verne Rambo,2,Penn State,20.5,False,loss
+Week 10 Winners,Verne Rambo,3,Miami,-10.5,True,loss
+Week 10 Winners,Verne Rambo,4,Iowa State,-3.5,True,loss
+Week 10 Winners,Verne Rambo,5,Indiana,-21.5,False,win
+Week 10 Winners,Verne Rambo,6,Notre Dame,-28.5,True,loss
+Week 10 Winners,Verne Rambo,7,Georgia,-7.5,False,loss
+Week 10 Winners,Verne Rambo,8,Michigan State,5.5,True,win
+Week 10 Winners,Verne Rambo,9,Central Michigan,6.5,False,win
+Week 10 Winners,Verne Rambo,10,Michigan,-21.5,False,loss
+Week 10 Winners,Verne Rambo,11,Auburn,-10.5,False,loss
+Week 10 Winners,Verne Rambo,12,Oklahoma,3.5,False,win
+Week 10 Winners,Verne Rambo,13,Nebraska,6.5,True,win
+Week 10 Winners,Verne Rambo,14,Utah,-7.5,False,win
+Week 10 Winners,Scott Zdanek,0,Vanderbilt,3.5,True,win
+Week 10 Winners,Scott Zdanek,1,Illinois,-13.5,False,win
+Week 10 Winners,Scott Zdanek,2,Penn State,20.5,False,loss
+Week 10 Winners,Scott Zdanek,3,Miami,-10.5,True,loss
+Week 10 Winners,Scott Zdanek,4,Arizona State,3.5,True,win
+Week 10 Winners,Scott Zdanek,5,Indiana,-21.5,False,win
+Week 10 Winners,Scott Zdanek,6,Notre Dame,-28.5,False,loss
+Week 10 Winners,Scott Zdanek,7,Georgia,-7.5,True,loss
+Week 10 Winners,Scott Zdanek,8,Minnesota,-5.5,False,loss
+Week 10 Winners,Scott Zdanek,9,Western Michigan,-6.5,False,loss
+Week 10 Winners,Scott Zdanek,10,Michigan,-21.5,False,loss
+Week 10 Winners,Scott Zdanek,11,Kentucky,10.5,False,win
+Week 10 Winners,Scott Zdanek,12,Tennessee,-3.5,True,loss
+Week 10 Winners,Scott Zdanek,13,Nebraska,6.5,False,win
+Week 10 Winners,Scott Zdanek,14,Utah,-7.5,False,win
+Week 10 Winners,Apollo Braganini,0,Vanderbilt,3.5,True,win
+Week 10 Winners,Apollo Braganini,1,Illinois,-13.5,False,win
+Week 10 Winners,Apollo Braganini,2,Ohio State,-20.5,False,win
+Week 10 Winners,Apollo Braganini,3,Miami,-10.5,True,loss
+Week 10 Winners,Apollo Braganini,4,Arizona State,3.5,False,win
+Week 10 Winners,Apollo Braganini,5,Indiana,-21.5,False,win
+Week 10 Winners,Apollo Braganini,6,Notre Dame,-28.5,False,loss
+Week 10 Winners,Apollo Braganini,7,Georgia,-7.5,False,loss
+Week 10 Winners,Apollo Braganini,8,Minnesota,-5.5,True,loss
+Week 10 Winners,Apollo Braganini,9,Western Michigan,-6.5,False,loss
+Week 10 Winners,Apollo Braganini,10,Purdue,21.5,False,win
+Week 10 Winners,Apollo Braganini,11,Auburn,-10.5,False,loss
+Week 10 Winners,Apollo Braganini,12,Tennessee,-3.5,True,loss
+Week 10 Winners,Apollo Braganini,13,USC,-6.5,True,loss
+Week 10 Winners,Apollo Braganini,14,Utah,-7.5,False,win
+Week 10 Winners,Mary Mojsiejenko,0,Vanderbilt,3.5,False,win
+Week 10 Winners,Mary Mojsiejenko,1,Illinois,-13.5,True,win
+Week 10 Winners,Mary Mojsiejenko,2,Ohio State,-20.5,False,win
+Week 10 Winners,Mary Mojsiejenko,3,Miami,-10.5,True,loss
+Week 10 Winners,Mary Mojsiejenko,4,Arizona State,3.5,False,win
+Week 10 Winners,Mary Mojsiejenko,5,Indiana,-21.5,True,win
+Week 10 Winners,Mary Mojsiejenko,6,Notre Dame,-28.5,False,loss
+Week 10 Winners,Mary Mojsiejenko,7,Georgia,-7.5,True,loss
+Week 10 Winners,Mary Mojsiejenko,8,Minnesota,-5.5,False,loss
+Week 10 Winners,Mary Mojsiejenko,9,Central Michigan,6.5,False,win
+Week 10 Winners,Mary Mojsiejenko,10,Michigan,-21.5,True,loss
+Week 10 Winners,Mary Mojsiejenko,11,Auburn,-10.5,False,loss
+Week 10 Winners,Mary Mojsiejenko,12,Tennessee,-3.5,False,loss
+Week 10 Winners,Mary Mojsiejenko,13,USC,-6.5,False,loss
+Week 10 Winners,Mary Mojsiejenko,14,Cincinnati,7.5,False,loss
+Week 10 Winners,Brandon Smith,0,Texas,-3.5,True,loss
+Week 10 Winners,Brandon Smith,1,Illinois,-13.5,True,win
+Week 10 Winners,Brandon Smith,2,Ohio State,-20.5,False,win
+Week 10 Winners,Brandon Smith,3,Miami,-10.5,False,loss
+Week 10 Winners,Brandon Smith,4,Iowa State,-3.5,False,loss
+Week 10 Winners,Brandon Smith,5,Maryland,21.5,False,loss
+Week 10 Winners,Brandon Smith,6,Boston College,28.5,False,win
+Week 10 Winners,Brandon Smith,7,Georgia,-7.5,False,loss
+Week 10 Winners,Brandon Smith,8,Michigan State,5.5,True,win
+Week 10 Winners,Brandon Smith,9,Western Michigan,-6.5,True,loss
+Week 10 Winners,Brandon Smith,10,Michigan,-21.5,True,loss
+Week 10 Winners,Brandon Smith,11,Auburn,-10.5,False,loss
+Week 10 Winners,Brandon Smith,12,Oklahoma,3.5,False,win
+Week 10 Winners,Brandon Smith,13,Nebraska,6.5,False,win
+Week 10 Winners,Brandon Smith,14,Cincinnati,7.5,False,loss
+Week 10 Winners,David Zdanek,0,Vanderbilt,3.5,True,win
+Week 10 Winners,David Zdanek,1,Illinois,-13.5,False,win
+Week 10 Winners,David Zdanek,2,Ohio State,-20.5,False,win
+Week 10 Winners,David Zdanek,3,Miami,-10.5,False,loss
+Week 10 Winners,David Zdanek,4,Iowa State,-3.5,True,loss
+Week 10 Winners,David Zdanek,5,Indiana,-21.5,True,win
+Week 10 Winners,David Zdanek,6,Notre Dame,-28.5,False,loss
+Week 10 Winners,David Zdanek,7,Georgia,-7.5,False,loss
+Week 10 Winners,David Zdanek,8,Minnesota,-5.5,True,loss
+Week 10 Winners,David Zdanek,9,Central Michigan,6.5,False,win
+Week 10 Winners,David Zdanek,10,Michigan,-21.5,False,loss
+Week 10 Winners,David Zdanek,11,Auburn,-10.5,False,loss
+Week 10 Winners,David Zdanek,12,Tennessee,-3.5,False,loss
+Week 10 Winners,David Zdanek,13,USC,-6.5,True,loss
+Week 10 Winners,David Zdanek,14,Utah,-7.5,False,win
+Week 10 Winners,Brian Christoffersen,0,Vanderbilt,3.5,True,win
+Week 10 Winners,Brian Christoffersen,1,Rutgers,13.5,True,loss
+Week 10 Winners,Brian Christoffersen,2,Ohio State,-20.5,False,win
+Week 10 Winners,Brian Christoffersen,3,Miami,-10.5,True,loss
+Week 10 Winners,Brian Christoffersen,4,Iowa State,-3.5,False,loss
+Week 10 Winners,Brian Christoffersen,5,Indiana,-21.5,False,win
+Week 10 Winners,Brian Christoffersen,6,Notre Dame,-28.5,False,loss
+Week 10 Winners,Brian Christoffersen,7,Georgia,-7.5,False,loss
+Week 10 Winners,Brian Christoffersen,8,Michigan State,5.5,True,win
+Week 10 Winners,Brian Christoffersen,9,Western Michigan,-6.5,False,loss
+Week 10 Winners,Brian Christoffersen,10,Michigan,-21.5,False,loss
+Week 10 Winners,Brian Christoffersen,11,Kentucky,10.5,False,win
+Week 10 Winners,Brian Christoffersen,12,Tennessee,-3.5,False,loss
+Week 10 Winners,Brian Christoffersen,13,USC,-6.5,False,loss
+Week 10 Winners,Brian Christoffersen,14,Cincinnati,7.5,True,loss
+Week 10 Winners,Ralf Mojsiejenko,0,Texas,-3.5,True,loss
+Week 10 Winners,Ralf Mojsiejenko,1,Rutgers,13.5,False,loss
+Week 10 Winners,Ralf Mojsiejenko,2,Penn State,20.5,False,loss
+Week 10 Winners,Ralf Mojsiejenko,3,SMU,10.5,True,win
+Week 10 Winners,Ralf Mojsiejenko,4,Iowa State,-3.5,False,loss
+Week 10 Winners,Ralf Mojsiejenko,5,Maryland,21.5,True,loss
+Week 10 Winners,Ralf Mojsiejenko,6,Boston College,28.5,False,win
+Week 10 Winners,Ralf Mojsiejenko,7,Georgia,-7.5,True,loss
+Week 10 Winners,Ralf Mojsiejenko,8,Minnesota,-5.5,False,loss
+Week 10 Winners,Ralf Mojsiejenko,9,Central Michigan,6.5,True,win
+Week 10 Winners,Ralf Mojsiejenko,10,Purdue,21.5,False,win
+Week 10 Winners,Ralf Mojsiejenko,11,Auburn,-10.5,False,loss
+Week 10 Winners,Ralf Mojsiejenko,12,Oklahoma,3.5,False,win
+Week 10 Winners,Ralf Mojsiejenko,13,USC,-6.5,False,loss
+Week 10 Winners,Ralf Mojsiejenko,14,Cincinnati,7.5,False,loss
+Week 10 Winners,Roger Mojsiejenko,0,Vanderbilt,3.5,True,win
+Week 10 Winners,Roger Mojsiejenko,1,Illinois,-13.5,False,win
+Week 10 Winners,Roger Mojsiejenko,2,Ohio State,-20.5,False,win
+Week 10 Winners,Roger Mojsiejenko,3,SMU,10.5,True,win
+Week 10 Winners,Roger Mojsiejenko,4,Iowa State,-3.5,True,loss
+Week 10 Winners,Roger Mojsiejenko,5,Maryland,21.5,False,loss
+Week 10 Winners,Roger Mojsiejenko,6,Notre Dame,-28.5,True,loss
+Week 10 Winners,Roger Mojsiejenko,7,Georgia,-7.5,False,loss
+Week 10 Winners,Roger Mojsiejenko,8,Minnesota,-5.5,False,loss
+Week 10 Winners,Roger Mojsiejenko,9,Western Michigan,-6.5,False,loss
+Week 10 Winners,Roger Mojsiejenko,10,Michigan,-21.5,False,loss
+Week 10 Winners,Roger Mojsiejenko,11,Auburn,-10.5,False,loss
+Week 10 Winners,Roger Mojsiejenko,12,Tennessee,-3.5,False,loss
+Week 10 Winners,Roger Mojsiejenko,13,Nebraska,6.5,False,win
+Week 10 Winners,Roger Mojsiejenko,14,Cincinnati,7.5,True,loss
+Week 10 Winners,Ryan Fechner,0,Vanderbilt,3.5,True,win
+Week 10 Winners,Ryan Fechner,1,Rutgers,13.5,False,loss
+Week 10 Winners,Ryan Fechner,2,Ohio State,-20.5,False,win
+Week 10 Winners,Ryan Fechner,3,Miami,-10.5,True,loss
+Week 10 Winners,Ryan Fechner,4,Iowa State,-3.5,True,loss
+Week 10 Winners,Ryan Fechner,5,Indiana,-21.5,True,win
+Week 10 Winners,Ryan Fechner,6,Notre Dame,-28.5,False,loss
+Week 10 Winners,Ryan Fechner,7,Georgia,-7.5,False,loss
+Week 10 Winners,Ryan Fechner,8,Minnesota,-5.5,True,loss
+Week 10 Winners,Ryan Fechner,9,Western Michigan,-6.5,False,loss
+Week 10 Winners,Ryan Fechner,10,Michigan,-21.5,False,loss
+Week 10 Winners,Ryan Fechner,11,Auburn,-10.5,False,loss
+Week 10 Winners,Ryan Fechner,12,Tennessee,-3.5,False,loss
+Week 10 Winners,Ryan Fechner,13,USC,-6.5,False,loss
+Week 10 Winners,Ryan Fechner,14,Utah,-7.5,False,win
+Week 10 Winners,Erich Kirchner,0,Texas,-3.5,False,loss
+Week 10 Winners,Erich Kirchner,1,Illinois,-13.5,False,win
+Week 10 Winners,Erich Kirchner,2,Ohio State,-20.5,False,win
+Week 10 Winners,Erich Kirchner,3,Miami,-10.5,True,loss
+Week 10 Winners,Erich Kirchner,4,Iowa State,-3.5,False,loss
+Week 10 Winners,Erich Kirchner,5,Indiana,-21.5,True,win
+Week 10 Winners,Erich Kirchner,6,Notre Dame,-28.5,True,loss
+Week 10 Winners,Erich Kirchner,7,Georgia,-7.5,True,loss
+Week 10 Winners,Erich Kirchner,8,Minnesota,-5.5,False,loss
+Week 10 Winners,Erich Kirchner,9,Western Michigan,-6.5,False,loss
+Week 10 Winners,Erich Kirchner,10,Purdue,21.5,False,win
+Week 10 Winners,Erich Kirchner,11,Auburn,-10.5,False,loss
+Week 10 Winners,Erich Kirchner,12,Tennessee,-3.5,True,loss
+Week 10 Winners,Erich Kirchner,13,USC,-6.5,False,loss
+Week 10 Winners,Erich Kirchner,14,Cincinnati,7.5,False,loss
+Week 10 Winners,Danielle Mojsiejenko,0,Texas,-3.5,True,loss
+Week 10 Winners,Danielle Mojsiejenko,1,Illinois,-13.5,False,win
+Week 10 Winners,Danielle Mojsiejenko,2,Ohio State,-20.5,False,win
+Week 10 Winners,Danielle Mojsiejenko,3,Miami,-10.5,False,loss
+Week 10 Winners,Danielle Mojsiejenko,4,Iowa State,-3.5,True,loss
+Week 10 Winners,Danielle Mojsiejenko,5,Indiana,-21.5,False,win
+Week 10 Winners,Danielle Mojsiejenko,6,Notre Dame,-28.5,False,loss
+Week 10 Winners,Danielle Mojsiejenko,7,Georgia,-7.5,True,loss
+Week 10 Winners,Danielle Mojsiejenko,8,Michigan State,5.5,False,win
+Week 10 Winners,Danielle Mojsiejenko,9,Western Michigan,-6.5,False,loss
+Week 10 Winners,Danielle Mojsiejenko,10,Michigan,-21.5,False,loss
+Week 10 Winners,Danielle Mojsiejenko,11,Auburn,-10.5,False,loss
+Week 10 Winners,Danielle Mojsiejenko,12,Tennessee,-3.5,True,loss
+Week 10 Winners,Danielle Mojsiejenko,13,USC,-6.5,True,loss
+Week 10 Winners,Danielle Mojsiejenko,14,Utah,-7.5,False,win
