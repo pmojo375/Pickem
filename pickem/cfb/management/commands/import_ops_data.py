@@ -264,6 +264,8 @@ class Command(BaseCommand):
                         # Special case: ParkerMojsiejenko -> pmojo375
                         if username == 'ParkerMojsiejenko':
                             username = 'pmojo375'
+                        elif username == 'RalfMojsiejenko':
+                            username = 'Ralfmojo'
                         else:
                             # Ensure proper capitalization (FirstLast, not firstlast)
                             if username and username[0].islower():
