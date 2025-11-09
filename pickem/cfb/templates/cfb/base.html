@@ -104,11 +104,12 @@
                         <li class="menu-title">
                             <span>{{ request.user.username }}</span>
                         </li>
-                        <li><a href="/logout/"><i class="fas fa-sign-out-alt mr-1"></i> Logout</a></li>
+                        <li><a href="{% url 'socialaccount_connections' %}"><i class="fas fa-link mr-1"></i> Connected Accounts</a></li>
+                        <li><a href="{% url 'account_logout' %}"><i class="fas fa-sign-out-alt mr-1"></i> Logout</a></li>
                     </ul>
                 </div>
             {% else %}
-                <a href="/login/" class="btn btn-primary btn-sm">
+                <a href="{% url 'account_login' %}" class="btn btn-primary btn-sm">
                     <i class="fas fa-sign-in-alt mr-1"></i> Login
                 </a>
             {% endif %}
@@ -162,11 +163,12 @@
                         {% if request.user.is_staff %}
                         <li><a href="/settings/"><i class="fas fa-cog mr-1"></i> Settings</a></li>
                         {% endif %}
-                        <li><a href="/logout/"><i class="fas fa-sign-out-alt mr-1"></i> Logout</a></li>
+                        <li><a href="{% url 'socialaccount_connections' %}"><i class="fas fa-link mr-1"></i> Connected Accounts</a></li>
+                        <li><a href="{% url 'account_logout' %}"><i class="fas fa-sign-out-alt mr-1"></i> Logout</a></li>
                     </ul>
                 </div>
             {% else %}
-                <a href="/login/" class="btn btn-primary btn-sm">Login</a>
+                <a href="{% url 'account_login' %}" class="btn btn-primary btn-sm">Login</a>
             {% endif %}
         </div>
     </div>

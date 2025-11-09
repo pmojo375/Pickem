@@ -12,10 +12,12 @@ click-plugins==1.1.1.2
 click-repl==0.3.0
 colorama==0.4.6
 django==5.2.7
+django-allauth==0.63.6
 idna==3.10
 kombu==5.5.4
 packaging==25.0
 prompt-toolkit==3.0.52
+pyjwt[crypto]==2.10.1
 pydantic==1.10.24
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.1

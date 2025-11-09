@@ -305,3 +305,30 @@ def team_record_display(team_records, team_id, show_zero=True):
     except (ValueError, TypeError, IndexError):
         # Handle any unexpected data format issues
         return ""
+
+
+@register.filter
+def add_attrs(field, attrs):
+    """
+    Update a form field widget with additional HTML attributes.
+    Usage: {{ form.field|add_attrs:"class=input primary,placeholder=Enter value" }}
+    """
+    if not hasattr(field, "as_widget"):
+        return field
+
+    attrs_dict = {}
+    if attrs:
+        for attr in attrs.split(","):
+            attr = attr.strip()
+            if not attr:
+                continue
+            if "=" in attr:
+                key, value = attr.split("=", 1)
+                attrs_dict[key.strip()] = value.strip()
+            else:
+                attrs_dict[attr] = True
+
+    widget_attrs = field.field.widget.attrs.copy()
+    widget_attrs.update(attrs_dict)
+
+    return field.as_widget(attrs=widget_attrs)

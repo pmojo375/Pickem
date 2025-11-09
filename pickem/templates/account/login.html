@@ -1,0 +1,87 @@
+{% extends "cfb/base.html" %}
+{% load i18n %}
+{% load socialaccount %}
+{% load cfb_tags %}
+
+{% block title %}Sign In | CFB Pick'em{% endblock %}
+
+{% block content %}
+<section class="max-w-2xl mx-auto">
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body space-y-4">
+            <h1 class="card-title text-2xl">Welcome back</h1>
+            <p class="text-sm text-base-content/70">
+                Sign in with your username or email. Your account email is required for new registrations.
+            </p>
+
+            <form method="post" action="{% url 'account_login' %}" class="space-y-4">
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                    <div class="alert alert-error">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>{{ form.non_field_errors|striptags }}</span>
+                    </div>
+                {% endif %}
+
+                <div class="form-control">
+                    <label class="label" for="{{ form.login.id_for_label }}">
+                        <span class="label-text">{{ form.login.label }}</span>
+                    </label>
+                    {{ form.login|add_attrs:"class=input input-bordered w-full,placeholder=Username or email" }}
+                    {% if form.login.errors %}
+                        <label class="label">
+                            <span class="label-text-alt text-error">{{ form.login.errors|striptags }}</span>
+                        </label>
+                    {% endif %}
+                </div>
+
+                <div class="form-control">
+                    <label class="label" for="{{ form.password.id_for_label }}">
+                        <span class="label-text">{{ form.password.label }}</span>
+                        <a class="label-text-alt link link-hover" href="{% url 'account_reset_password' %}">
+                            {% trans "Forgot password?" %}
+                        </a>
+                    </label>
+                    {{ form.password|add_attrs:"class=input input-bordered w-full,placeholder=Password" }}
+                    {% if form.password.errors %}
+                        <label class="label">
+                            <span class="label-text-alt text-error">{{ form.password.errors|striptags }}</span>
+                        </label>
+                    {% endif %}
+                </div>
+
+                {% if form.remember %}
+                    <label class="label cursor-pointer justify-start gap-3">
+                        {{ form.remember|add_attrs:"class=checkbox checkbox-primary" }}
+                        <span class="label-text">{{ form.remember.label }}</span>
+                    </label>
+                    {% if form.remember.errors %}
+                        <label class="label">
+                            <span class="label-text-alt text-error">{{ form.remember.errors|striptags }}</span>
+                        </label>
+                    {% endif %}
+                {% endif %}
+
+                <div class="form-control">
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <i class="fas fa-sign-in-alt mr-2"></i> {% trans "Sign In" %}
+                    </button>
+                </div>
+            </form>
+
+            <div class="divider">Or continue with</div>
+            {% providers_media_js %}
+            <a href="{% provider_login_url 'google' %}" class="btn btn-outline gap-2">
+                <i class="fab fa-google"></i>
+                Google
+            </a>
+
+            <p class="text-sm text-base-content/70">
+                {% trans "Need an account?" %}
+                <a href="{% url 'account_signup' %}" class="link link-primary link-hover">{% trans "Create one now" %}</a>
+            </p>
+        </div>
+    </div>
+</section>
+{% endblock %}
+

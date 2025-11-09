@@ -1,0 +1,31 @@
+{% extends "cfb/base.html" %}
+{% load i18n %}
+
+{% block title %}Sign Out | CFB Pick'em{% endblock %}
+
+{% block content %}
+<section class="max-w-xl mx-auto">
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body space-y-4">
+            <h1 class="card-title text-2xl">{% trans "Sign out" %}</h1>
+            <p class="text-base-content/70">
+                {% trans "Are you sure you want to sign out?" %}
+            </p>
+
+            <form method="post" action="{% url 'account_logout' %}" class="flex gap-3 justify-end">
+                {% csrf_token %}
+                {% if redirect_field_value %}
+                    <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">
+                {% endif %}
+                <a href="{% url 'account_login' %}" class="btn btn-ghost">
+                    {% trans "Cancel" %}
+                </a>
+                <button type="submit" class="btn btn-error">
+                    <i class="fas fa-sign-out-alt mr-2"></i> {% trans "Sign Out" %}
+                </button>
+            </form>
+        </div>
+    </div>
+</section>
+{% endblock %}
+

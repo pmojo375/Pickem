@@ -1,0 +1,87 @@
+{% extends "cfb/base.html" %}
+{% load i18n %}
+{% load allauth %}
+
+{% block title %}Connected Accounts | CFB Pick'em{% endblock %}
+
+{% block content %}
+<section class="max-w-4xl mx-auto space-y-8">
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body space-y-6">
+            <div class="flex items-center gap-3">
+                <div class="avatar placeholder">
+                    <div class="bg-primary text-primary-content rounded-full w-12">
+                        <span class="text-lg"><i class="fas fa-link"></i></span>
+                    </div>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-semibold">{% trans "Account Connections" %}</h1>
+                    <p class="text-sm text-base-content/70">
+                        {% trans "Link or unlink third-party providers like Google to sign in faster while keeping your picks and standings intact." %}
+                    </p>
+                </div>
+            </div>
+
+            {% if form.accounts %}
+                <div class="space-y-4">
+                    <h2 class="text-lg font-semibold">{% trans "Connected providers" %}</h2>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <span>{% trans "Select a provider below and choose Remove to unlink it from your account." %}</span>
+                    </div>
+                    <form method="post" action="{% url 'socialaccount_connections' %}" class="space-y-4">
+                        {% csrf_token %}
+                        <div class="grid gap-4">
+                            {% for acc in form.fields.account.choices %}
+                                {% with provider_account=acc.0.instance.get_provider_account current_account=acc.0.instance %}
+                                    <label class="flex items-center justify-between p-4 rounded-lg border border-base-300 hover:border-primary transition cursor-pointer gap-4">
+                                        <div class="flex items-center gap-4">
+                                            <input
+                                                type="radio"
+                                                name="account"
+                                                value="{{ current_account.pk }}"
+                                                class="radio radio-primary"
+                                                id="id_account_{{ current_account.pk }}"
+                                            >
+                                            <div>
+                                                <p class="font-semibold">{{ provider_account }}</p>
+                                                <p class="text-xs text-base-content/60">
+                                                    {{ provider_account.get_brand.name }}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <span class="badge badge-outline">{{ current_account.provider|title }}</span>
+                                    </label>
+                                {% endwith %}
+                            {% endfor %}
+                        </div>
+                        <button type="submit" class="btn btn-error btn-outline">
+                            <i class="fas fa-unlink mr-2"></i>
+                            {% trans "Remove selected provider" %}
+                        </button>
+                    </form>
+                </div>
+            {% else %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-link-slash"></i>
+                    <span>{% trans "You don't have any third-party providers linked yet." %}</span>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body space-y-4">
+            <h2 class="text-lg font-semibold">{% trans "Add a third-party account" %}</h2>
+            <p class="text-sm text-base-content/70">
+                {% trans "Connect a provider to sign in with one click. We'll match it to your existing picks automatically." %}
+            </p>
+            <div class="space-y-2">
+                {% include "socialaccount/snippets/provider_list.html" with process="connect" %}
+            </div>
+            {% include "socialaccount/snippets/login_extra.html" %}
+        </div>
+    </div>
+</section>
+{% endblock %}
+

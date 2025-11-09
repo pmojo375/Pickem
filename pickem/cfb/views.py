@@ -1,7 +1,5 @@
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.contrib.auth.forms import AuthenticationForm
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.core.exceptions import ValidationError
@@ -10,45 +8,6 @@ from .models import Game, Pick, Team, League, LeagueMembership, LeagueGame, Leag
 from django.utils import timezone
 from . import services
 from django.conf import settings
-
-
-def login_view(request):
-    """Custom login view with styled template."""
-    if request.user.is_authenticated:
-        return redirect('home')
-    
-    if request.method == 'POST':
-        form = AuthenticationForm(request, data=request.POST)
-        if form.is_valid():
-            username = form.cleaned_data.get('username')
-            password = form.cleaned_data.get('password')
-            user = authenticate(username=username, password=password)
-            if user is not None:
-                login(request, user)
-                messages.success(request, f"Welcome back, {username}! 🏈")
-                next_url = request.POST.get('next') or request.GET.get('next') or '/'
-                return redirect(next_url)
-            else:
-                messages.error(request, "Invalid username or password.")
-        else:
-            messages.error(request, "Invalid username or password.")
-    else:
-        form = AuthenticationForm()
-    
-    context = {
-        'form': form,
-        'next': request.GET.get('next', ''),
-    }
-    return render(request, 'cfb/login.html', context)
-
-
-def logout_view(request):
-    """Custom logout view with styled template."""
-    if request.method == 'POST' or request.method == 'GET':
-        logout(request)
-        return render(request, 'cfb/logout.html')
-    return redirect('home')
-
 
 def home_view(request):
     context = {}

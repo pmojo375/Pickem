@@ -1,0 +1,76 @@
+{% extends "cfb/base.html" %}
+{% load i18n %}
+{% load cfb_tags %}
+
+{% block title %}Complete Social Signup | CFB Pick'em{% endblock %}
+
+{% block content %}
+<section class="max-w-2xl mx-auto">
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body space-y-6">
+            <div class="flex items-center gap-3">
+                <div class="avatar placeholder">
+                    <div class="bg-secondary text-secondary-content rounded-full w-12">
+                        <span class="text-lg">{{ account.get_provider.name|slice:":1" }}</span>
+                    </div>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-semibold">{% trans "Complete your profile" %}</h1>
+                    <p class="text-sm text-base-content/70">
+                        {% blocktrans with provider_name=account.get_provider.name site_name=site.name %}
+                            You're almost ready to use {{ site_name }} with your {{ provider_name }} account.
+                            Confirm the details below to finish signing up.
+                        {% endblocktrans %}
+                    </p>
+                </div>
+            </div>
+
+            <form method="post" action="{% url 'socialaccount_signup' %}" class="space-y-4">
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                    <div class="alert alert-error">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>{{ form.non_field_errors|striptags }}</span>
+                    </div>
+                {% endif %}
+
+                <div class="grid gap-4">
+                    {% for field in form.visible_fields %}
+                        <div class="form-control">
+                            <label class="label" for="{{ field.id_for_label }}">
+                                <span class="label-text">{{ field.label }}</span>
+                            </label>
+                            {{ field|add_attrs:"class=input input-bordered w-full" }}
+                            {% if field.help_text %}
+                                <span class="text-xs text-base-content/60">{{ field.help_text|safe }}</span>
+                            {% endif %}
+                            {% if field.errors %}
+                                <label class="label">
+                                    <span class="label-text-alt text-error">{{ field.errors|striptags }}</span>
+                                </label>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+
+                {{ redirect_field }}
+
+                <button type="submit" class="btn btn-primary btn-block">
+                    <i class="fas fa-check mr-2"></i>
+                    {% trans "Finish Signup" %}
+                </button>
+            </form>
+
+            <div class="text-sm text-base-content/60 text-center">
+                <p>
+                    {% trans "Have an existing account?" %}
+                    <a href="{% url 'account_login' %}" class="link link-primary link-hover">
+                        {% trans "Sign in instead" %}
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+

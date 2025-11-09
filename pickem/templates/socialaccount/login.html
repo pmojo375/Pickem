@@ -1,0 +1,64 @@
+{% extends "cfb/base.html" %}
+{% load i18n %}
+{% load cfb_tags %}
+
+{% block title %}Social Sign In | CFB Pick'em{% endblock %}
+
+{% block content %}
+<section class="max-w-xl mx-auto">
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body space-y-6">
+            <div class="flex items-center gap-3">
+                <div class="avatar placeholder">
+                    <div class="bg-secondary text-secondary-content rounded-full w-12">
+                        <span class="text-lg">{{ provider.name|slice:":1" }}</span>
+                    </div>
+                </div>
+                <div>
+                    {% if process == "connect" %}
+                        <h1 class="text-2xl font-semibold">
+                            {% blocktrans with provider=provider.name %}Connect {{ provider }}{% endblocktrans %}
+                        </h1>
+                        <p class="text-base-content/70 text-sm">
+                            {% blocktrans with provider=provider.name %}You are about to connect a new third-party account from {{ provider }} to CFB Pick'em.{% endblocktrans %}
+                        </p>
+                    {% else %}
+                        <h1 class="text-2xl font-semibold">
+                            {% blocktrans with provider=provider.name %}Sign In with {{ provider }}{% endblocktrans %}
+                        </h1>
+                        <p class="text-base-content/70 text-sm">
+                            {% blocktrans with provider=provider.name %}You are about to sign in using your {{ provider }} account.{% endblocktrans %}
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <i class="fas fa-shield-alt"></i>
+                <span>{% trans "We'll use your Google profile to authenticate you securely." %}</span>
+            </div>
+
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                {% for hidden in form.hidden_fields %}
+                    {{ hidden }}
+                {% endfor %}
+                <button type="submit" class="btn btn-primary btn-block">
+                    <i class="fab fa-google mr-2"></i>
+                    {% trans "Continue" %}
+                </button>
+            </form>
+
+            <div class="text-sm text-base-content/60 text-center">
+                <p>
+                    {% trans "Not what you expected?" %}
+                    <a href="{% url 'account_login' %}" class="link link-primary link-hover">
+                        {% trans "Go back to regular sign in" %}
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+

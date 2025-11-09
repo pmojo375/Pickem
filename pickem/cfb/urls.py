@@ -1,12 +1,13 @@
 from django.urls import path
+from django.views.generic import RedirectView
 from . import views
 from . import api_views
 
 urlpatterns = [
     path('', views.home_view, name='home'),
     # Auth URLs
-    path('login/', views.login_view, name='login'),
-    path('logout/', views.logout_view, name='logout'),
+    path('login/', RedirectView.as_view(pattern_name='account_login', permanent=False), name='login'),
+    path('logout/', RedirectView.as_view(pattern_name='account_logout', permanent=False), name='logout'),
     # Main app URLs
     path('picks/', views.picks_view, name='picks'),
     path('live/', views.live_view, name='live'),
