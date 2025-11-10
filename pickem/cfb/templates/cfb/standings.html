@@ -593,6 +593,7 @@ function switchToSeasonStandings() {
     const url = new URL(window.location);
     url.searchParams.delete('week');
     url.searchParams.delete('full');
+    url.searchParams.delete('league_picks');
     window.location.href = url.toString();
 }
 
