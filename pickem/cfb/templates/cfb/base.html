@@ -201,6 +201,132 @@
     </footer>
 
     {% block extra_js %}{% endblock %}
+    
+    <script>
+    /**
+     * League Selection Persistence
+     * Remembers the user's selected league across page navigations
+     */
+    (function() {
+        'use strict';
+        
+        const LEAGUE_STORAGE_KEY = 'cfb_pickem_selected_league_id';
+        
+        // Function to save league selection to localStorage
+        function saveLeagueSelection(leagueId) {
+            if (leagueId) {
+                localStorage.setItem(LEAGUE_STORAGE_KEY, leagueId);
+            }
+        }
+        
+        // Function to get saved league selection from localStorage
+        function getSavedLeagueSelection() {
+            return localStorage.getItem(LEAGUE_STORAGE_KEY);
+        }
+        
+        // Function to handle league dropdown change
+        function handleLeagueChange(selectElement) {
+            const leagueId = selectElement.value;
+            if (leagueId) {
+                saveLeagueSelection(leagueId);
+                
+                // Get current URL and update league_id parameter
+                const url = new URL(window.location);
+                url.searchParams.set('league_id', leagueId);
+                window.location.href = url.toString();
+            }
+        }
+        
+        // Function to update navigation links to preserve league_id
+        function updateNavigationLinks(leagueId) {
+            if (!leagueId) return;
+            
+            // Pages that should preserve league_id
+            const leaguePages = ['/', '/picks/', '/live/', '/standings/', '/roster/', '/settings/'];
+            
+            // Find all navigation links
+            const navLinks = document.querySelectorAll('.navbar a[href], .btm-nav a[href]');
+            
+            navLinks.forEach(function(link) {
+                const href = link.getAttribute('href');
+                if (!href) return;
+                
+                // Check if this is a league-related page
+                const isLeaguePage = leaguePages.some(function(page) {
+                    return href === page || href.startsWith(page + '?');
+                });
+                
+                if (isLeaguePage) {
+                    try {
+                        const url = new URL(href, window.location.origin);
+                        // Only update if league_id is not already set
+                        if (!url.searchParams.has('league_id')) {
+                            url.searchParams.set('league_id', leagueId);
+                            link.setAttribute('href', url.pathname + url.search);
+                        }
+                    } catch (e) {
+                        // If URL parsing fails, skip this link
+                        console.warn('Failed to parse URL:', href, e);
+                    }
+                }
+            });
+        }
+        
+        // Attach handlers to all league dropdowns on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Find all league selector dropdowns
+            const leagueSelectors = document.querySelectorAll('select[onchange*="league_id"]');
+            
+            leagueSelectors.forEach(function(select) {
+                // Remove inline onchange handler
+                const oldOnchange = select.getAttribute('onchange');
+                select.removeAttribute('onchange');
+                
+                // Add event listener
+                select.addEventListener('change', function() {
+                    handleLeagueChange(this);
+                });
+            });
+            
+            // Check if we need to redirect to include saved league_id
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentLeagueId = urlParams.get('league_id');
+            const savedLeagueId = getSavedLeagueSelection();
+            
+            // Only redirect if:
+            // 1. We have a saved league_id
+            // 2. Current URL doesn't have a league_id parameter
+            // 3. We're on a page that uses league selection (not on leagues list or detail pages)
+            const path = window.location.pathname;
+            const shouldUseLeagueSelection = !path.includes('/leagues/') && 
+                                            !path.includes('/league/') &&
+                                            path !== '/login/' &&
+                                            path !== '/logout/' &&
+                                            path !== '/accounts/';
+            
+            if (shouldUseLeagueSelection && savedLeagueId && !currentLeagueId) {
+                // Redirect to include the saved league_id
+                const url = new URL(window.location);
+                url.searchParams.set('league_id', savedLeagueId);
+                window.location.href = url.toString();
+                return; // Exit early to prevent further execution
+            }
+            
+            // Determine which league_id to use (current URL or saved)
+            const activeLeagueId = currentLeagueId || savedLeagueId;
+            
+            // If we have a league_id in URL, save it
+            if (currentLeagueId) {
+                saveLeagueSelection(currentLeagueId);
+            }
+            
+            // Update navigation links to preserve league_id
+            if (activeLeagueId) {
+                updateNavigationLinks(activeLeagueId);
+            }
+        });
+    })();
+    </script>
 </body>
 </html>
 
