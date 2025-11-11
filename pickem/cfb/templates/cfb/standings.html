@@ -81,7 +81,7 @@
 {% endif %}
 
 <!-- Leaderboard -->
-{% if current_league and standings %}
+{% if current_league and standings|length > 0 %}
 <div class="card bg-base-100 shadow-xl">
     <div class="card-body">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
@@ -395,8 +395,10 @@
         </div>
     </div>
 </div>
-{% elif current_league %}
-<!-- No picks yet -->
+{% endif %}
+
+<!-- No Standings Yet (only show if no standings and not showing league picks) -->
+{% if current_league and standings|length == 0 and not show_league_picks %}
 <div class="card bg-base-100 shadow-xl">
     <div class="card-body items-center text-center py-16">
         <i class="fas fa-medal text-6xl text-warning mb-4"></i>
@@ -404,36 +406,9 @@
         <p class="text-base-content/70 mb-6 max-w-md">
             Make some picks and check back to see the leaderboard!
         </p>
-        
-        <!-- Preview Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-4xl mt-8">
-            <div class="card bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/50">
-                <div class="card-body items-center">
-                    <i class="fas fa-crown text-4xl text-yellow-400 mb-2"></i>
-                    <h3 class="font-bold text-lg">Overall Leader</h3>
-                    <p class="text-sm text-base-content/70">Top performer all season</p>
-                </div>
-            </div>
-            
-            <div class="card bg-gradient-to-br from-purple-500/20 to-purple-600/20 border border-purple-500/50">
-                <div class="card-body items-center">
-                    <i class="fas fa-fire text-4xl text-purple-400 mb-2"></i>
-                    <h3 class="font-bold text-lg">Hot Streak</h3>
-                    <p class="text-sm text-base-content/70">Most consecutive wins</p>
-                </div>
-            </div>
-            
-            <div class="card bg-gradient-to-br from-blue-500/20 to-blue-600/20 border border-blue-500/50">
-                <div class="card-body items-center">
-                    <i class="fas fa-chart-line text-4xl text-blue-400 mb-2"></i>
-                    <h3 class="font-bold text-lg">Weekly Leader</h3>
-                    <p class="text-sm text-base-content/70">Best picks this week</p>
-                </div>
-            </div>
-        </div>
     </div>
 </div>
-{% else %}
+{% elif not current_league %}
 <!-- No league -->
 <div class="card bg-base-100 shadow-xl">
     <div class="card-body items-center text-center py-16">
