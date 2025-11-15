@@ -427,19 +427,14 @@
     .standings-tabs {
         width: 100%;
         display: flex;
+        flex-direction: column;
         gap: 0.5rem;
         padding: 0.25rem;
-        overflow-x: auto;
-        scrollbar-width: none;
-    }
-
-    .standings-tabs::-webkit-scrollbar {
-        display: none;
     }
 
     .standings-tab {
-        flex: 1 0 auto;
-        display: inline-flex;
+        width: 100%;
+        display: flex;
         align-items: center;
         justify-content: center;
         gap: 0.5rem;
@@ -448,14 +443,15 @@
         white-space: nowrap;
     }
 
-    @media (min-width: 1024px) {
+    @media (min-width: 640px) {
         .standings-tabs {
+            flex-direction: row;
             width: auto;
             padding: 0;
-            overflow-x: visible;
         }
 
         .standings-tab {
+            width: auto;
             flex: 0 0 auto;
         }
     }
