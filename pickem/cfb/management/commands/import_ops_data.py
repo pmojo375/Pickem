@@ -258,18 +258,14 @@ class Command(BaseCommand):
 
                     # Get or create user
                     if player_name not in users_created:
-                        # Convert player name to FirstLast format
-                        username = player_name.replace(' ', '')
+                        # Convert player name to firstlast format (lowercase)
+                        username = player_name.replace(' ', '').lower()
                         
                         # Special case: ParkerMojsiejenko -> pmojo375
-                        if username == 'ParkerMojsiejenko':
+                        if username == 'parkermojsiejenko':
                             username = 'pmojo375'
-                        elif username == 'RalfMojsiejenko':
-                            username = 'Ralfmojo'
-                        else:
-                            # Ensure proper capitalization (FirstLast, not firstlast)
-                            if username and username[0].islower():
-                                username = username[0].upper() + username[1:]
+                        elif username == 'ralfmojsiejenko':
+                            username = 'ralfmojo'
                         
                         user, user_created = User.objects.get_or_create(
                             username=username,
