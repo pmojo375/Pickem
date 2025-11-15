@@ -64,7 +64,7 @@ app.conf.beat_schedule = {
     },
     'sync-rankings': {
         'task': 'cfb.tasks.update_rankings',
-        'schedule': crontab(day_of_week=1, hour=0, minute=0), # Monday at 12 AM
+        'schedule': crontab(day_of_week=1, hour=6, minute=0), # Monday at 12 AM
         'options': {'expires': 3600},
     },
     # Update spreads once daily at 9 AM
