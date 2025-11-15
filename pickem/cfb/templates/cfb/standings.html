@@ -376,7 +376,7 @@
             </div>
             {% endif %}
         </div>
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto league-picks-table-wrapper">
             <table class="table table-zebra w-full league-picks-table">
                 <thead>
                     <tr>
@@ -635,6 +635,19 @@
     /* Add subtle shadow for depth on all sticky cells */
     .league-picks-table td:first-child {
         box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Scroll snapping for league picks table */
+    .league-picks-table-wrapper {
+        scroll-snap-type: x mandatory;
+        scroll-padding-left: 200px; /* Account for sticky first column width */
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    }
+
+    /* Snap each game column - align to start */
+    .league-picks-table th:not(:first-child),
+    .league-picks-table td:not(:first-child) {
+        scroll-snap-align: start;
     }
 </style>
 {% endblock %}
