@@ -435,3 +435,16 @@ class MemberSeason(models.Model):
     class Meta:
         unique_together = ("league", "season", "user")
         indexes = [models.Index(fields=["league", "season"]), models.Index(fields=["league", "points"])]
+        
+class TeamStat(models.Model):
+    season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="team_stats")
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="team_stats")
+    stat = models.CharField(max_length=128)
+    value = models.FloatField()
+    
+    class Meta:
+        unique_together = ("season", "team", "stat")
+        indexes = [models.Index(fields=["season", "team"]), models.Index(fields=["season", "stat"])]
+        
+    def __str__(self) -> str:
+        return f"{self.team.name} - {self.stat}: {self.value}"
