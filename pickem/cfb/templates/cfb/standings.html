@@ -123,7 +123,123 @@
             </div>
             {% endif %}
         </div>
-        <div class="overflow-x-auto">
+        <!-- Mobile Card Layout -->
+        <div class="md:hidden space-y-4">
+            {% for standing in standings %}
+            <div class="card bg-base-200 shadow-md {% if standing.user == request.user %}ring-2 ring-primary{% endif %}">
+                <div class="card-body">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="card-title text-lg flex items-center gap-3">
+                            <div class="avatar placeholder">
+                                <div class="bg-primary text-primary-content rounded-full w-10">
+                                    <span>
+                                        {% if standing.user.first_name %}
+                                            {{ standing.user.first_name|slice:":1"|upper }}
+                                        {% else %}
+                                            {{ standing.user.username|slice:":1"|upper }}
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="flex flex-col">
+                                <span>
+                                    {% if standing.user.first_name and standing.user.last_name %}
+                                        {{ standing.user.first_name }} {{ standing.user.last_name }}
+                                    {% elif standing.user.first_name %}
+                                        {{ standing.user.first_name }}
+                                    {% elif standing.user.last_name %}
+                                        {{ standing.user.last_name }}
+                                    {% else %}
+                                        {{ standing.user.username }}
+                                    {% endif %}
+                                    {% if standing.user == request.user %}
+                                    <span class="text-xs text-primary">(You)</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </h3>
+                        <div class="flex items-center gap-2">
+                            {% if standing.display_rank == 1 %}
+                                <i class="fas fa-crown text-yellow-400 text-xl"></i>
+                            {% elif standing.display_rank == 2 %}
+                                <i class="fas fa-medal text-gray-400 text-xl"></i>
+                            {% elif standing.display_rank == 3 %}
+                                <i class="fas fa-medal text-amber-600 text-xl"></i>
+                            {% endif %}
+                            <span class="font-bold text-lg">#{{ standing.display_rank }}</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="flex flex-col">
+                            <span class="text-xs text-base-content/70 mb-1">Points</span>
+                            <span class="font-bold text-xl">{{ standing.points }}</span>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-xs text-base-content/70 mb-1">Win %</span>
+                            {% if standing.total > 0 %}
+                            <span class="badge {% if standing.win_pct >= 60 %}badge-success{% elif standing.win_pct >= 40 %}badge-warning{% else %}badge-error{% endif %} w-fit">
+                                {{ standing.win_pct }}%
+                            </span>
+                            {% else %}
+                            <span class="badge badge-ghost w-fit">-</span>
+                            {% endif %}
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-xs text-base-content/70 mb-1">Wins</span>
+                            <span class="font-medium">{{ standing.wins }}</span>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-xs text-base-content/70 mb-1">Losses</span>
+                            <span class="font-medium">{{ standing.losses }}</span>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-xs text-base-content/70 mb-1">Ties</span>
+                            <span class="font-medium">{{ standing.ties|default:0 }}</span>
+                        </div>
+                        {% if key_picks_enabled %}
+                        <div class="flex flex-col">
+                            <span class="text-xs text-base-content/70 mb-1">Key Picks</span>
+                            {% if standing.correct_key > 0 %}
+                            <div class="flex flex-col">
+                                <span class="font-medium">{{ standing.correct_key }}</span>
+                                {% if standing.key_pick_pct > 0 %}
+                                <span class="text-xs text-base-content/70">{{ standing.key_pick_pct }}%</span>
+                                {% endif %}
+                            </div>
+                            {% else %}
+                            <span class="text-base-content/50">0</span>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <div class="flex flex-col">
+                            <span class="text-xs text-base-content/70 mb-1">Total Picks</span>
+                            <div class="flex flex-col">
+                                <span class="font-medium">{{ standing.picks_made|default:0 }}</span>
+                                {% if standing.total != standing.picks_made and standing.picks_made > 0 %}
+                                <span class="text-xs text-base-content/70">{{ standing.total }} scored</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if key_picks_enabled %}
+                        <div class="flex flex-col col-span-2">
+                            <span class="text-xs text-base-content/70 mb-1">Total Picks</span>
+                            <div class="flex flex-col">
+                                <span class="font-medium">{{ standing.picks_made|default:0 }}</span>
+                                {% if standing.total != standing.picks_made and standing.picks_made > 0 %}
+                                <span class="text-xs text-base-content/70">{{ standing.total }} scored</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Desktop Table Layout -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="table table-zebra w-full">
                 <thead>
                     <tr>
