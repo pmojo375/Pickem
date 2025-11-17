@@ -1113,3 +1113,62 @@ def update_team_records_async(season_year: int):
             'season_year': season_year,
             'error': str(e)
         }
+
+
+@shared_task(bind=True, name='cfb.tasks.update_team_stats', max_retries=3, default_retry_delay=300)
+def update_team_stats(self, season_year: int = None, week: int = None):
+    """
+    Update team season statistics from CFBD API.
+    Fetches cumulative stats from week 0 through the last completed week.
+    
+    The API call uses startWeek=0 and endWeek=last_completed_week (which is current_week - 1).
+    This ensures we get stats through the last completed week.
+    
+    Args:
+        season_year: Year of the season (if None, uses active season)
+        week: Current week number (if None, uses current week)
+    """
+    try:
+        from .services.schedule import get_current_week
+        
+        # Auto-determine parameters if not provided
+        if season_year is None or week is None:
+            current_week = get_current_week()
+            if not current_week:
+                logger.error("No current week found and parameters not provided")
+                return
+            
+            if season_year is None:
+                season_year = current_week.season.year
+            if week is None:
+                week = current_week.number
+        
+        # Verify season exists
+        try:
+            season = Season.objects.get(year=season_year)
+        except Season.DoesNotExist:
+            logger.error(f"Season {season_year} not found")
+            return
+        
+        logger.info(f"Updating team stats for {season_year} (through week {week})")
+        
+        # Fetch stats from CFBD
+        # The fetch_season_stats method handles:
+        # - Using end_week - 1 as the last completed week
+        # - Setting startWeek=0 and endWeek=last_completed_week
+        # - Processing and saving stats to the database
+        cfbd_client = get_cfbd_client()
+        stats_data = cfbd_client.fetch_season_stats(
+            year=season_year,
+            end_week=week
+        )
+        
+        if not stats_data:
+            logger.error(f"No team stats data returned from CFBD for {season_year} week {week}")
+            return
+        
+        logger.info(f"Team stats update complete for {season_year} (through week {week})")
+        
+    except Exception as exc:
+        logger.error(f"Error in update_team_stats task: {exc}", exc_info=True)
+        raise self.retry(exc=exc)

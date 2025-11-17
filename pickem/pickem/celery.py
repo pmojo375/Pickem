@@ -67,6 +67,12 @@ app.conf.beat_schedule = {
         'schedule': crontab(day_of_week=1, hour=6, minute=0), # Monday at 12 AM
         'options': {'expires': 3600},
     },
+    # Update team stats every Monday at 6 AM
+    'update-team-stats': {
+        'task': 'cfb.tasks.update_team_stats',
+        'schedule': crontab(day_of_week=1, hour=6, minute=0),  # Monday at 6 AM
+        'options': {'expires': 3600},
+    },
     # Update spreads once daily at 9 AM
     'daily-spread-update': {
         'task': 'cfb.tasks.update_spreads',
@@ -81,6 +87,7 @@ app.conf.task_routes = {
     'cfb.tasks.update_single_game': {'queue': 'scores'},
     'cfb.tasks.pull_season_games': {'queue': 'scores'},
     'cfb.tasks.update_spreads': {'queue': 'scores'},
+    'cfb.tasks.update_team_stats': {'queue': 'scores'},
 }
 
 # Worker configuration
