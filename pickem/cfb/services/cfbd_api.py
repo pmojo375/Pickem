@@ -381,6 +381,7 @@ class CFBDAPIClient:
     def _process_and_save_stats(self, stats_data: List[Dict[str, Any]], year: int) -> None:
         """
         Process stats data from API and create/update TeamStat objects.
+        Uses bulk operations for better performance with large datasets.
         
         Args:
             stats_data: List of stat dictionaries from API
@@ -394,50 +395,130 @@ class CFBDAPIClient:
             logger.error(f"Season {year} not found, cannot save stats")
             return
         
-        stats_created = 0
-        stats_updated = 0
-        teams_not_found = []
+        # Pre-load all teams into a dictionary for O(1) lookup
+        # Use both exact name and normalized name as keys
+        teams_by_name = {}
+        teams_by_name_normalized = {}
+        all_teams = Team.objects.filter(season=season).select_related()
         
-        with transaction.atomic():
-            for stat_entry in stats_data:
-                team_name = stat_entry.get('team')
-                stat_name = stat_entry.get('statName')
-                stat_value = stat_entry.get('statValue')
-                
-                if not team_name or not stat_name or stat_value is None:
-                    logger.warning(f"Skipping invalid stat entry: {stat_entry}")
-                    continue
-                
-                # Find the team
-                team = self._find_team_for_stats(season, team_name)
-                
-                if not team:
-                    if team_name not in teams_not_found:
-                        teams_not_found.append(team_name)
-                    continue
-                
-                # Create or update TeamStat
-                stat_obj, created = TeamStat.objects.update_or_create(
-                    season=season,
-                    team=team,
-                    stat=stat_name,
-                    defaults={'value': float(stat_value)}
+        for team in all_teams:
+            # Exact name match (case-insensitive)
+            teams_by_name[team.name.lower()] = team
+            # Also store normalized versions for fuzzy matching
+            teams_by_name_normalized[team.name.lower().strip()] = team
+        
+        logger.info(f"Pre-loaded {len(teams_by_name)} teams for season {year}")
+        
+        # Process all stat entries and build lists for bulk operations
+        stats_to_create = []
+        stats_to_update = []
+        teams_not_found = set()
+        
+        # Get existing TeamStat records in bulk to check what needs updating
+        existing_stats = {}
+        existing_stat_keys = set()
+        
+        # Process stat entries and build lookup keys
+        valid_entries = []
+        
+        for stat_entry in stats_data:
+            team_name = stat_entry.get('team')
+            stat_name = stat_entry.get('statName')
+            stat_value = stat_entry.get('statValue')
+            
+            if not team_name or not stat_name or stat_value is None:
+                logger.warning(f"Skipping invalid stat entry: {stat_entry}")
+                continue
+            
+            # Find team using pre-loaded dictionary
+            team = None
+            team_name_lower = team_name.lower().strip()
+            
+            # Try exact match first
+            team = teams_by_name.get(team_name_lower)
+            
+            # Try normalized match
+            if not team:
+                team = teams_by_name_normalized.get(team_name_lower)
+            
+            # Try fuzzy matching if still not found
+            if not team:
+                for db_team_name, db_team in teams_by_name_normalized.items():
+                    if self._teams_match_for_stats(db_team_name, team_name_lower):
+                        team = db_team
+                        break
+            
+            if not team:
+                teams_not_found.add(team_name)
+                continue
+            
+            # Build lookup key for existing stats
+            stat_key = (season.id, team.id, stat_name)
+            existing_stat_keys.add(stat_key)
+            
+            valid_entries.append({
+                'team': team,
+                'stat_name': stat_name,
+                'stat_value': float(stat_value),
+                'key': stat_key
+            })
+        
+        # Fetch existing stats in one query
+        # Get all existing stats for this season to check what needs updating
+        if existing_stat_keys:
+            # Fetch all existing stats for teams that might have stats
+            team_ids = {key[1] for key in existing_stat_keys}
+            existing_stats_qs = TeamStat.objects.filter(
+                season=season,
+                team_id__in=team_ids
+            ).select_related('team')
+            
+            for existing_stat in existing_stats_qs:
+                key = (existing_stat.season_id, existing_stat.team_id, existing_stat.stat)
+                if key in existing_stat_keys:
+                    existing_stats[key] = existing_stat
+        
+        logger.info(f"Found {len(existing_stats)} existing stats, processing {len(valid_entries)} stat entries")
+        
+        # Separate into create and update lists
+        for entry in valid_entries:
+            key = entry['key']
+            
+            if key in existing_stats:
+                # Update existing stat
+                existing_stat = existing_stats[key]
+                existing_stat.value = entry['stat_value']
+                stats_to_update.append(existing_stat)
+            else:
+                # Create new stat
+                stats_to_create.append(
+                    TeamStat(
+                        season=season,
+                        team=entry['team'],
+                        stat=entry['stat_name'],
+                        value=entry['stat_value']
+                    )
                 )
-                
-                if created:
-                    stats_created += 1
-                else:
-                    stats_updated += 1
+        
+        # Bulk operations
+        with transaction.atomic():
+            if stats_to_create:
+                TeamStat.objects.bulk_create(stats_to_create, ignore_conflicts=True)
+                logger.info(f"Bulk created {len(stats_to_create)} new stats")
+            
+            if stats_to_update:
+                TeamStat.objects.bulk_update(stats_to_update, ['value'], batch_size=1000)
+                logger.info(f"Bulk updated {len(stats_to_update)} existing stats")
         
         logger.info(
             f"Processed team stats for {year}: "
-            f"{stats_created} created, {stats_updated} updated"
+            f"{len(stats_to_create)} created, {len(stats_to_update)} updated"
         )
         
         if teams_not_found:
             logger.warning(
                 f"Could not find {len(teams_not_found)} teams in database: "
-                f"{', '.join(teams_not_found[:10])}"
+                f"{', '.join(list(teams_not_found)[:10])}"
                 f"{'...' if len(teams_not_found) > 10 else ''}"
             )
     
