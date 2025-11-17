@@ -274,6 +274,140 @@ def format_spread_display(spread, force_hooks=False):
 
 
 @register.simple_tag
+def get_team_stats_organized(team_stats, team_id):
+    """
+    Organize team stats into categories for display.
+    Returns a dict with: mobile_stats, desktop_stats, expandable_stats, all_stats
+    """
+    if not team_stats or team_id not in team_stats:
+        return {
+            'mobile_stats': [],
+            'desktop_stats': [],
+            'expandable_stats': [],
+            'all_stats': []
+        }
+    
+    stats = team_stats[team_id]
+    
+    # Stat name mappings from API to display names
+    stat_display_names = {
+        'totalYards': 'Total Yards',
+        'totalYardsOpponent': 'Total Yards (Opponent)',
+        'rushingYards': 'Rush Yards',
+        'rushingYardsOpponent': 'Rush Yards (Opponent)',
+        'netPassingYards': 'Pass Yards',
+        'netPassingYardsOpponent': 'Pass Yards (Opponent)',
+        'thirdDownConversions': 'Third Down Conversions',
+        'thirdDowns': 'Third Down Attempts',
+        'thirdDownConversionsOpponent': 'Third Down Conversions (Opponent)',
+        'thirdDownsOpponent': 'Third Down Attempts (Opponent)',
+        'turnovers': 'Turnovers',
+        'turnoversOpponent': 'Turnovers (Opponent)',
+        'possessionTime': 'Time of Possession',
+        'firstDowns': 'First Downs',
+        'firstDownsOpponent': 'First Downs (Opponent)',
+        'penalties': 'Penalties',
+        'penaltyYards': 'Penalty Yards',
+        'penaltiesOpponent': 'Penalties (Opponent)',
+        'penaltyYardsOpponent': 'Penalty Yards (Opponent)',
+        'sacks': 'Sacks',
+        'tacklesForLoss': 'Tackles for Loss',
+        'sacksOpponent': 'Sacks (Opponent)',
+        'tacklesForLossOpponent': 'Tackles for Loss (Opponent)',
+        'fourthDownConversions': '4th Down Conversions',
+        'fourthDowns': '4th Down Attempts',
+        'fourthDownConversionsOpponent': '4th Down Conversions (Opponent)',
+        'fourthDownsOpponent': '4th Down Attempts (Opponent)',
+    }
+    
+    def get_stat_value(stat_name):
+        return stats.get(stat_name, 0)
+    
+    def format_stat(stat_name, value):
+        display_name = stat_display_names.get(stat_name, stat_name)
+        return {'name': display_name, 'value': value, 'raw_name': stat_name}
+    
+    # Calculate derived stats
+    total_yards_off = get_stat_value('totalYards')
+    total_yards_def = get_stat_value('totalYardsOpponent')
+    rush_yards = get_stat_value('rushingYards')
+    pass_yards = get_stat_value('netPassingYards')
+    
+    # Third down %
+    third_conv = get_stat_value('thirdDownConversions')
+    third_attempts = get_stat_value('thirdDowns')
+    third_pct = (third_conv / third_attempts * 100) if third_attempts > 0 else 0
+    
+    # Turnover margin
+    turnovers = get_stat_value('turnovers')
+    turnovers_opp = get_stat_value('turnoversOpponent')
+    turnover_margin = int(turnovers_opp - turnovers)  # Convert to int for +d format
+    
+    # Time of possession (in minutes, API returns seconds)
+    possession_time_sec = get_stat_value('possessionTime')
+    possession_time_min = possession_time_sec / 60 if possession_time_sec else 0
+    
+    # Mobile stats (6 stats)
+    mobile_stats = [
+        {'name': 'Total Yards (O / D)', 'value': f"{total_yards_off:,.0f} / {total_yards_def:,.0f}"},
+        {'name': 'Rush Yards', 'value': f"{rush_yards:,.0f}"},
+        {'name': 'Pass Yards', 'value': f"{pass_yards:,.0f}"},
+        {'name': 'Third Down %', 'value': f"{third_pct:.1f}%"},
+        {'name': 'Turnover Margin', 'value': f"{turnover_margin:+d}"},
+        {'name': 'Time of Possession', 'value': f"{possession_time_min:.1f} min" if possession_time_min else "N/A"},
+    ]
+    
+    # Desktop/expandable stats
+    first_downs = get_stat_value('firstDowns')
+    first_downs_opp = get_stat_value('firstDownsOpponent')
+    penalties = get_stat_value('penalties')
+    penalty_yards = get_stat_value('penaltyYards')
+    sacks = get_stat_value('sacks')
+    tfl = get_stat_value('tacklesForLoss')
+    fourth_conv = get_stat_value('fourthDownConversions')
+    fourth_attempts = get_stat_value('fourthDowns')
+    fourth_pct = (fourth_conv / fourth_attempts * 100) if fourth_attempts > 0 else 0
+    
+    desktop_stats = [
+        {'name': 'First Downs', 'value': f"{first_downs} / {first_downs_opp}"},
+        {'name': 'Penalties', 'value': f"{penalties} ({penalty_yards} yds)"},
+        {'name': 'Sack/TFL', 'value': f"{sacks} sacks / {tfl} TFL"},
+        {'name': '4th Down Stats', 'value': f"{fourth_pct:.1f}% ({fourth_conv}/{fourth_attempts})"},
+    ]
+    
+    # All other stats
+    expandable_stats = []
+    processed_stats = {
+        'totalYards', 'totalYardsOpponent', 'rushingYards', 'netPassingYards',
+        'thirdDownConversions', 'thirdDowns', 'turnovers', 'turnoversOpponent',
+        'possessionTime', 'firstDowns', 'firstDownsOpponent', 'penalties',
+        'penaltyYards', 'sacks', 'tacklesForLoss', 'fourthDownConversions',
+        'fourthDowns', 'fourthDownConversionsOpponent', 'fourthDownsOpponent',
+        'thirdDownConversionsOpponent', 'thirdDownsOpponent'
+    }
+    
+    for stat_name, value in stats.items():
+        if stat_name not in processed_stats:
+            display_name = stat_display_names.get(stat_name, stat_name)
+            # Format numeric values
+            if isinstance(value, (int, float)):
+                if value == int(value):
+                    formatted_value = f"{int(value):,}"
+                else:
+                    formatted_value = f"{value:,.1f}"
+            else:
+                formatted_value = str(value)
+            expandable_stats.append({'name': display_name, 'value': formatted_value})
+    
+    return {
+        'mobile_stats': mobile_stats,
+        'desktop_stats': desktop_stats,
+        'expandable_stats': expandable_stats,
+        'all_stats': mobile_stats + desktop_stats + expandable_stats
+    }
+
+
+@register.simple_tag
 def team_record_display(team_records, team_id, show_zero=True):
     """
     Display team record in a nice format (e.g., "8-2" or "0-0").

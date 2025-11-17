@@ -12,6 +12,7 @@ from pathlib import Path
 import requests
 from django.conf import settings
 from django.core.cache import cache
+from django.db import transaction
 
 logger = logging.getLogger(__name__)
 
@@ -322,6 +323,185 @@ class CFBDAPIClient:
             # Cache for 1 week
             cache.set(cache_key, data, timeout=604800)
             logger.info(f"Fetched {len(data)} calendar data from CFBD")
+    
+    def fetch_season_stats(
+        self,
+        year: int,
+        end_week: int
+    ) -> Optional[List[Dict[str, Any]]]:
+        """
+        Fetch cumulative team season statistics from week 0 through end_week - 1.
+        Uses end_week - 1 to get stats through the last completed week.
+        
+        Args:
+            year: Season year
+            end_week: Current week number (will use end_week - 1 as the last completed week)
+            
+        Returns:
+            List of team stat dictionaries or None on failure
+        """
+        # Use end_week - 1 to get stats through the last completed week
+        last_completed_week = max(0, end_week - 1)
+        
+        params = {
+            'year': year,
+            'startWeek': 0,
+            'endWeek': last_completed_week,
+        }
+        
+        cache_key = f"cfbd:stats:season:{year}:0-{last_completed_week}"
+        
+        # Check cache first (gracefully handle Redis connection errors)
+        try:
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                logger.info(f"Using cached CFBD season stats data for weeks 0-{last_completed_week}")
+                # Still process cached data to ensure database is up to date
+                self._process_and_save_stats(cached_data, year)
+                return cached_data
+        except Exception as e:
+            logger.warning(f"Cache unavailable, skipping cache check: {e}")
+        
+        # Fetch from API
+        data = self._make_request('/stats/season', params)
+        
+        if data:
+            # Cache for 1 hour (gracefully handle Redis connection errors)
+            try:
+                cache.set(cache_key, data, timeout=3600)
+            except Exception as e:
+                logger.warning(f"Cache unavailable, skipping cache write: {e}")
+            logger.info(f"Fetched {len(data)} team stats from CFBD for weeks 0-{last_completed_week}")
+            
+            # Process and save stats to database
+            self._process_and_save_stats(data, year)
+        
+        return data
+    
+    def _process_and_save_stats(self, stats_data: List[Dict[str, Any]], year: int) -> None:
+        """
+        Process stats data from API and create/update TeamStat objects.
+        
+        Args:
+            stats_data: List of stat dictionaries from API
+            year: Season year
+        """
+        from ..models import Season, Team, TeamStat
+        
+        try:
+            season = Season.objects.get(year=year)
+        except Season.DoesNotExist:
+            logger.error(f"Season {year} not found, cannot save stats")
+            return
+        
+        stats_created = 0
+        stats_updated = 0
+        teams_not_found = []
+        
+        with transaction.atomic():
+            for stat_entry in stats_data:
+                team_name = stat_entry.get('team')
+                stat_name = stat_entry.get('statName')
+                stat_value = stat_entry.get('statValue')
+                
+                if not team_name or not stat_name or stat_value is None:
+                    logger.warning(f"Skipping invalid stat entry: {stat_entry}")
+                    continue
+                
+                # Find the team
+                team = self._find_team_for_stats(season, team_name)
+                
+                if not team:
+                    if team_name not in teams_not_found:
+                        teams_not_found.append(team_name)
+                    continue
+                
+                # Create or update TeamStat
+                stat_obj, created = TeamStat.objects.update_or_create(
+                    season=season,
+                    team=team,
+                    stat=stat_name,
+                    defaults={'value': float(stat_value)}
+                )
+                
+                if created:
+                    stats_created += 1
+                else:
+                    stats_updated += 1
+        
+        logger.info(
+            f"Processed team stats for {year}: "
+            f"{stats_created} created, {stats_updated} updated"
+        )
+        
+        if teams_not_found:
+            logger.warning(
+                f"Could not find {len(teams_not_found)} teams in database: "
+                f"{', '.join(teams_not_found[:10])}"
+                f"{'...' if len(teams_not_found) > 10 else ''}"
+            )
+    
+    def _find_team_for_stats(self, season, team_name: str):
+        """
+        Find a team in the database by name for stats processing.
+        
+        Args:
+            season: Season object
+            team_name: Team name from API
+            
+        Returns:
+            Team object or None
+        """
+        from ..models import Team
+        
+        # Try exact name match (case-insensitive)
+        team = Team.objects.filter(
+            season=season,
+            name__iexact=team_name
+        ).first()
+        
+        if team:
+            return team
+        
+        # Try fuzzy matching
+        teams = Team.objects.filter(season=season)
+        for t in teams:
+            if self._teams_match_for_stats(t.name, team_name):
+                return t
+        
+        return None
+    
+    def _teams_match_for_stats(self, db_name: str, api_name: str) -> bool:
+        """
+        Check if team names match with fuzzy logic.
+        
+        Args:
+            db_name: Team name from database
+            api_name: Team name from API
+            
+        Returns:
+            True if names match
+        """
+        db_normalized = db_name.lower().strip()
+        api_normalized = api_name.lower().strip()
+        
+        # Exact match
+        if db_normalized == api_normalized:
+            return True
+        
+        # One contains the other
+        if db_normalized in api_normalized or api_normalized in db_normalized:
+            return True
+        
+        # Check word overlap
+        db_words = set(db_normalized.split())
+        api_words = set(api_normalized.split())
+        common_words = db_words & api_words
+        
+        # At least 1 word in common for short names, 2 for longer names
+        if len(db_words) <= 2 or len(api_words) <= 2:
+            return len(common_words) >= 1
+        return len(common_words) >= 2
 
 
 # Singleton instance

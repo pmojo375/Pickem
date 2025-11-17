@@ -51,7 +51,7 @@ def is_pick_correct(pick: Pick, game: Game, league_rules: LeagueRules) -> Option
         locked_spread = league_game.locked_home_spread
         if locked_spread is None:
             logger.warning(
-                "No locked spread for league_game %s (league=%s, game=%s); treating pick as tie.",
+                "No locked spread for league_gawme %s (league=%s, game=%s); treating pick as tie.",
                 league_game.id,
                 league_game.league_id,
                 league_game.game_id,

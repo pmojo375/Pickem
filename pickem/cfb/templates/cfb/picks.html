@@ -132,7 +132,9 @@
                                         <span class="font-bold text-sm md:text-base leading-tight">{{ lg.game.away_team.name }}</span>
                                     </div>
                                     {% team_record_display team_records lg.game.away_team.id %}
-                                    <div class="badge badge-ghost badge-xs md:badge-sm mt-1">Away</div>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <div class="badge badge-ghost badge-xs md:badge-sm">Away</div>
+                                    </div>
                                 </div>
                             </div>
                         </label>
@@ -159,7 +161,9 @@
                                         <span class="font-bold text-sm md:text-base leading-tight">{{ lg.game.home_team.name }}</span>
                                     </div>
                                     {% team_record_display team_records lg.game.home_team.id %}
-                                    <div class="badge badge-ghost badge-xs md:badge-sm mt-1">Home</div>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <div class="badge badge-ghost badge-xs md:badge-sm">Home</div>
+                                    </div>
                                 </div>
                             </div>
                         </label>
@@ -185,12 +189,152 @@
                     </div>
                     {% endif %}
                     
+                    <!-- Team Stats Section -->
+                    {% get_team_stats_organized team_stats lg.game.away_team.id as away_stats %}
+                    {% get_team_stats_organized team_stats lg.game.home_team.id as home_stats %}
+                    {% if away_stats.mobile_stats or home_stats.mobile_stats %}
+                    <div class="divider my-1">Team Stats</div>
+                    
+                    <div class="collapse collapse-arrow bg-base-200 rounded-lg">
+                        <input type="checkbox" />
+                        <div class="collapse-title text-sm font-medium flex items-center justify-center gap-2 min-h-0">
+                            <i class="fas fa-chart-bar text-primary"></i>
+                            View Team Stats
+                        </div>
+                        <div class="collapse-content p-2">
+                            <!-- Mobile Stats (stacked) -->
+                            <div class="md:hidden">
+                                {% if away_stats.mobile_stats %}
+                                <div class="mb-4">
+                                    <div class="text-xs font-bold mb-2 text-primary">{{ lg.game.away_team.name }}</div>
+                                    <div class="space-y-1">
+                                        {% for stat in away_stats.mobile_stats %}
+                                        <div class="flex justify-between py-1 text-xs border-b border-base-300">
+                                            <span class="text-base-content/80">{{ stat.name }}</span>
+                                            <span class="font-semibold">{{ stat.value }}</span>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                {% if home_stats.mobile_stats %}
+                                <div>
+                                    <div class="text-xs font-bold mb-2 text-primary">{{ lg.game.home_team.name }}</div>
+                                    <div class="space-y-1">
+                                        {% for stat in home_stats.mobile_stats %}
+                                        <div class="flex justify-between py-1 text-xs border-b border-base-300">
+                                            <span class="text-base-content/80">{{ stat.name }}</span>
+                                            <span class="font-semibold">{{ stat.value }}</span>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Desktop Stats (side by side) -->
+                            <div class="hidden md:block">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <!-- Away Team Stats -->
+                                    {% if away_stats.mobile_stats %}
+                                    <div>
+                                        <div class="text-xs font-bold mb-2 text-primary">{{ lg.game.away_team.name }}</div>
+                                        <div class="space-y-1 mb-3">
+                                            {% for stat in away_stats.mobile_stats %}
+                                            <div class="flex justify-between py-1 text-xs border-b border-base-300">
+                                                <span class="text-base-content/80">{{ stat.name }}</span>
+                                                <span class="font-semibold">{{ stat.value }}</span>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        
+                                        {% if away_stats.desktop_stats %}
+                                        <div class="divider my-1"></div>
+                                        <div class="space-y-1 mb-3">
+                                            {% for stat in away_stats.desktop_stats %}
+                                            <div class="flex justify-between py-1 text-xs border-b border-base-300">
+                                                <span class="text-base-content/80">{{ stat.name }}</span>
+                                                <span class="font-semibold">{{ stat.value }}</span>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                        
+                                        {% if away_stats.expandable_stats %}
+                                        <div class="collapse collapse-arrow bg-base-300 rounded-lg mt-2">
+                                            <input type="checkbox" />
+                                            <div class="collapse-title text-xs font-semibold p-1 min-h-0">Show More</div>
+                                            <div class="collapse-content p-1">
+                                                <div class="space-y-1">
+                                                    {% for stat in away_stats.expandable_stats %}
+                                                    <div class="flex justify-between py-0.5 text-xs border-b border-base-400">
+                                                        <span class="text-base-content/80">{{ stat.name }}</span>
+                                                        <span class="font-semibold">{{ stat.value }}</span>
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <!-- Home Team Stats -->
+                                    {% if home_stats.mobile_stats %}
+                                    <div>
+                                        <div class="text-xs font-bold mb-2 text-primary">{{ lg.game.home_team.name }}</div>
+                                        <div class="space-y-1 mb-3">
+                                            {% for stat in home_stats.mobile_stats %}
+                                            <div class="flex justify-between py-1 text-xs border-b border-base-300">
+                                                <span class="text-base-content/80">{{ stat.name }}</span>
+                                                <span class="font-semibold">{{ stat.value }}</span>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        
+                                        {% if home_stats.desktop_stats %}
+                                        <div class="divider my-1"></div>
+                                        <div class="space-y-1 mb-3">
+                                            {% for stat in home_stats.desktop_stats %}
+                                            <div class="flex justify-between py-1 text-xs border-b border-base-300">
+                                                <span class="text-base-content/80">{{ stat.name }}</span>
+                                                <span class="font-semibold">{{ stat.value }}</span>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                        
+                                        {% if home_stats.expandable_stats %}
+                                        <div class="collapse collapse-arrow bg-base-300 rounded-lg mt-2">
+                                            <input type="checkbox" />
+                                            <div class="collapse-title text-xs font-semibold p-1 min-h-0">Show More</div>
+                                            <div class="collapse-content p-1">
+                                                <div class="space-y-1">
+                                                    {% for stat in home_stats.expandable_stats %}
+                                                    <div class="flex justify-between py-0.5 text-xs border-b border-base-400">
+                                                        <span class="text-base-content/80">{{ stat.name }}</span>
+                                                        <span class="font-semibold">{{ stat.value }}</span>
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
                     <!-- Line Movement Chart Section -->
                     <div class="divider my-1">Game Info</div>
                     
                     <div class="collapse collapse-arrow bg-base-200 rounded-lg">
                         <input type="checkbox" class="spread-chart-toggle" data-game-id="{{ lg.game.id }}" />
-                        <div class="collapse-title text-sm font-medium flex items-center justify-center gap-2">
+                        <div class="collapse-title text-sm font-medium flex items-center justify-center gap-2 min-h-0">
                             <i class="fas fa-chart-line text-primary"></i>
                             View Line Movement
                         </div>
@@ -342,6 +486,14 @@
         width: 100% !important;
     }
     
+    /* Compact collapse titles - reduce bar height to just fit text */
+    .collapse-title {
+        padding-top: 0.25rem !important;
+        padding-bottom: 0.25rem !important;
+        min-height: auto !important;
+        line-height: 1.25 !important;
+    }
+    
     /* Mobile-specific chart improvements */
     @media (max-width: 768px) {
         .collapse-content {
@@ -352,6 +504,7 @@
             height: 250px !important;
         }
     }
+    
 </style>
 {% endblock %}
 

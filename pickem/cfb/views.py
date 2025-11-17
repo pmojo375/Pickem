@@ -335,9 +335,9 @@ def picks_view(request):
 
     # Get team records for all teams in the games
     team_records = {}
+    game_teams = set()
     if active_season:
         # Get all unique teams from the league games
-        game_teams = set()
         for lg, _ in games_with_picks:
             game_teams.add(lg.game.home_team_id)
             game_teams.add(lg.game.away_team_id)
@@ -355,6 +355,22 @@ def picks_view(request):
                 for team in teams_with_records
             }
 
+    # Get team stats for all teams in the games
+    from .models import TeamStat
+    team_stats = {}
+    if active_season and game_teams:
+        # Fetch all stats for teams in the games
+        stats_queryset = TeamStat.objects.filter(
+            season=active_season,
+            team_id__in=game_teams
+        ).select_related('team')
+        
+        # Organize stats by team_id
+        for stat in stats_queryset:
+            if stat.team_id not in team_stats:
+                team_stats[stat.team_id] = {}
+            team_stats[stat.team_id][stat.stat] = stat.value
+
     context = {
         "games_with_picks": games_with_picks,
         "current_league": league,
@@ -365,6 +381,7 @@ def picks_view(request):
         "total_points_pick": total_points_pick,
         "team_rankings": team_rankings,
         "team_records": team_records,
+        "team_stats": team_stats,
         "current_week": current_week,
     }
     return render(request, "cfb/picks.html", context)
