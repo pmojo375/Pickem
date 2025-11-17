@@ -497,6 +497,31 @@
     .game-card-content {
         transition: all 0.3s ease;
     }
+    
+    /* Fixed notification styling */
+    #limit-exceeded-notification {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        max-width: 90%;
+        width: auto;
+        min-width: 300px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        animation: slideDown 0.3s ease-out;
+    }
+    
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    }
 </style>
 {% endblock %}
 
@@ -657,8 +682,16 @@
     const pickLimit = {{ league_rules.pickable_games_per_week|default:0 }};
     const gameCheckboxes = document.querySelectorAll('.game-checkbox');
     const selectedCount = document.querySelectorAll('.game-checkbox:checked').length;
+    const gamesForm = document.getElementById('games-form');
+    const selectTop25Btn = document.getElementById('select-top25-btn');
     
-    // Update counter display
+    // Get all submit buttons
+    const submitButtons = gamesForm ? gamesForm.querySelectorAll('button[type="submit"]') : [];
+    
+    // Notification management
+    let notificationTimeout = null;
+    
+    // Update counter display and notification
     function updateCounter() {
       const selected = document.querySelectorAll('.game-checkbox:checked').length;
       const counter = document.getElementById('selection-counter');
@@ -666,10 +699,93 @@
         counter.textContent = `${selected}/${pickLimit} games selected`;
         counter.className = selected > pickLimit ? 'badge badge-error mt-2 mb-4' : 'badge badge-success mt-2 mb-4';
       }
+      
+      // Show/hide notification and enable/disable submit buttons
+      if (pickLimit > 0) {
+        const notification = document.getElementById('limit-exceeded-notification');
+        const isExceeded = selected > pickLimit;
+        
+        // Clear existing timeout
+        if (notificationTimeout) {
+          clearTimeout(notificationTimeout);
+          notificationTimeout = null;
+        }
+        
+        // Update notification
+        if (isExceeded) {
+          if (!notification) {
+            // Create notification - fixed position
+            const notif = document.createElement('div');
+            notif.id = 'limit-exceeded-notification';
+            notif.className = 'alert alert-error';
+            notif.innerHTML = `
+              <i class="fas fa-exclamation-triangle"></i>
+              <span>You have selected ${selected} games, which exceeds the limit of ${pickLimit} games. Please deselect ${selected - pickLimit} game${selected - pickLimit !== 1 ? 's' : ''} before submitting.</span>
+            `;
+            document.body.appendChild(notif);
+            
+            // Auto-dismiss after 12 seconds
+            notificationTimeout = setTimeout(() => {
+              const notifEl = document.getElementById('limit-exceeded-notification');
+              if (notifEl) {
+                notifEl.style.opacity = '0';
+                notifEl.style.transition = 'opacity 0.5s ease-out';
+                setTimeout(() => {
+                  if (notifEl.parentNode) {
+                    notifEl.remove();
+                  }
+                }, 500);
+              }
+            }, 4000);
+          } else {
+            // Update existing notification
+            notification.innerHTML = `
+              <i class="fas fa-exclamation-triangle"></i>
+              <span>You have selected ${selected} games, which exceeds the limit of ${pickLimit} games. Please deselect ${selected - pickLimit} game${selected - pickLimit !== 1 ? 's' : ''} before submitting.</span>
+            `;
+            
+            // Reset timeout
+            notificationTimeout = setTimeout(() => {
+              const notifEl = document.getElementById('limit-exceeded-notification');
+              if (notifEl) {
+                notifEl.style.opacity = '0';
+                notifEl.style.transition = 'opacity 0.5s ease-out';
+                setTimeout(() => {
+                  if (notifEl.parentNode) {
+                    notifEl.remove();
+                  }
+                }, 500);
+              }
+            }, 4000);
+          }
+          
+          // Disable submit buttons
+          submitButtons.forEach(btn => {
+            btn.disabled = true;
+            btn.classList.add('btn-disabled');
+          });
+        } else {
+          // Remove notification if it exists
+          if (notification) {
+            notification.style.opacity = '0';
+            notification.style.transition = 'opacity 0.5s ease-out';
+            setTimeout(() => {
+              if (notification.parentNode) {
+                notification.remove();
+              }
+            }, 500);
+          }
+          
+          // Enable submit buttons
+          submitButtons.forEach(btn => {
+            btn.disabled = false;
+            btn.classList.remove('btn-disabled');
+          });
+        }
+      }
     }
     
     // Add counter display after the Top 25 button
-    const selectTop25Btn = document.getElementById('select-top25-btn');
     if (selectTop25Btn && pickLimit > 0) {
       const counter = document.createElement('div');
       counter.id = 'selection-counter';
@@ -678,46 +794,35 @@
       selectTop25Btn.parentNode.insertAdjacentElement('afterend', counter);
     }
     
-    // Add validation to each checkbox
+    // Add validation to each checkbox - allow selection but notify and disable submit
     gameCheckboxes.forEach(checkbox => {
       checkbox.addEventListener('change', function() {
-        const selected = document.querySelectorAll('.game-checkbox:checked').length;
-        
-        // If trying to select more than the limit, prevent it (only if limit > 0)
-        if (this.checked && pickLimit > 0 && selected > pickLimit) {
-          this.checked = false;
-          
-          // Show warning
-          const warning = document.createElement('div');
-          warning.className = 'alert alert-warning mt-2';
-          warning.innerHTML = `
-            <i class="fas fa-exclamation-triangle"></i>
-            <span>You can only select up to ${pickLimit} games for this league. Please deselect a game first.</span>
-          `;
-          
-          // Remove any existing warnings
-          const existingWarning = document.querySelector('.alert-warning');
-          if (existingWarning) {
-            existingWarning.remove();
-          }
-          
-          // Add warning after the form
-          const form = document.getElementById('games-form');
-          if (form) {
-            form.appendChild(warning);
-            
-            // Remove warning after 5 seconds
-            setTimeout(() => {
-              if (warning.parentNode) {
-                warning.remove();
-              }
-            }, 5000);
-          }
-        }
-        
         updateCounter();
       });
     });
+    
+    // Prevent form submission if limit is exceeded
+    if (gamesForm && pickLimit > 0) {
+      gamesForm.addEventListener('submit', function(e) {
+        const selected = document.querySelectorAll('.game-checkbox:checked').length;
+        if (selected > pickLimit) {
+          e.preventDefault();
+          // Show error notification if not already visible
+          const notification = document.getElementById('limit-exceeded-notification');
+          if (!notification) {
+            const notif = document.createElement('div');
+            notif.id = 'limit-exceeded-notification';
+            notif.className = 'alert alert-error';
+            notif.innerHTML = `
+              <i class="fas fa-exclamation-triangle"></i>
+              <span>You have selected ${selected} games, which exceeds the limit of ${pickLimit} games. Please deselect ${selected - pickLimit} game${selected - pickLimit !== 1 ? 's' : ''} before submitting.</span>
+            `;
+            document.body.appendChild(notif);
+          }
+          return false;
+        }
+      });
+    }
     
     // Initial counter update
     updateCounter();
@@ -754,16 +859,10 @@
           }
         });
         
-        // Now select games in rank order
+        // Now select all games in rank order (allow exceeding limit)
         rankedGameCards.forEach(card => {
           const checkbox = card.querySelector('.game-checkbox');
           if (checkbox && !checkbox.checked) {
-            // Check if adding this would exceed the limit
-            const currentlySelected = document.querySelectorAll('.game-checkbox:checked').length;
-            if (pickLimit > 0 && currentlySelected >= pickLimit) {
-              skippedCount++;
-              return;
-            }
             checkbox.checked = true;
             selectedCount++;
           }
@@ -773,6 +872,8 @@
         
         // Show feedback message
         const feedback = document.createElement('div');
+        const finalSelected = document.querySelectorAll('.game-checkbox:checked').length;
+        const isExceeded = pickLimit > 0 && finalSelected > pickLimit;
         
         if (selectedCount === 0 && alreadySelected === totalRankedGames) {
           feedback.className = 'alert alert-info mt-2';
@@ -780,24 +881,20 @@
             <i class="fas fa-info-circle"></i>
             <span>All ${totalRankedGames} AP Top 25 game${totalRankedGames !== 1 ? 's are' : ' is'} already selected!</span>
           `;
-        } else if (selectedCount === 0 && pickLimit > 0) {
-          feedback.className = 'alert alert-warning mt-2';
-          feedback.innerHTML = `
-            <i class="fas fa-exclamation-triangle"></i>
-            <span>Pick limit reached. Cannot select more games.</span>
-          `;
-        } else if (selectedCount > 0 && skippedCount === 0) {
-          feedback.className = 'alert alert-success mt-2';
-          feedback.innerHTML = `
-            <i class="fas fa-check-circle"></i>
-            <span>Selected ${selectedCount} AP Top 25 game${selectedCount !== 1 ? 's' : ''} (prioritized by ranking)!</span>
-          `;
-        } else if (selectedCount > 0 && skippedCount > 0) {
-          feedback.className = 'alert alert-success mt-2';
-          feedback.innerHTML = `
-            <i class="fas fa-check-circle"></i>
-            <span>Selected top ${selectedCount} AP Top 25 game${selectedCount !== 1 ? 's' : ''} by ranking. ${skippedCount} lower-ranked game${skippedCount !== 1 ? 's' : ''} skipped due to pick limit.</span>
-          `;
+        } else if (selectedCount > 0) {
+          if (isExceeded) {
+            feedback.className = 'alert alert-warning mt-2';
+            feedback.innerHTML = `
+              <i class="fas fa-exclamation-triangle"></i>
+              <span>Selected ${selectedCount} AP Top 25 game${selectedCount !== 1 ? 's' : ''} (prioritized by ranking). You now have ${finalSelected} games selected, which exceeds the limit of ${pickLimit}. Please deselect ${finalSelected - pickLimit} game${finalSelected - pickLimit !== 1 ? 's' : ''} before submitting.</span>
+            `;
+          } else {
+            feedback.className = 'alert alert-success mt-2';
+            feedback.innerHTML = `
+              <i class="fas fa-check-circle"></i>
+              <span>Selected ${selectedCount} AP Top 25 game${selectedCount !== 1 ? 's' : ''} (prioritized by ranking)!</span>
+            `;
+          }
         } else {
           feedback.className = 'alert alert-info mt-2';
           feedback.innerHTML = `
