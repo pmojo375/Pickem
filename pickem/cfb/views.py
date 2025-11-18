@@ -939,6 +939,50 @@ def settings_view(request):
                 
                 # Get or create league rules for this season
                 try:
+                    # Parse payout structure data
+                    from decimal import Decimal
+                    import json
+                    
+                    entry_fee = request.POST.get("entry_fee", "").strip()
+                    entry_fee_value = Decimal(entry_fee) if entry_fee else None
+                    
+                    weekly_payout_percent = request.POST.get("weekly_payout_percent", "").strip()
+                    weekly_payout_percent_value = Decimal(weekly_payout_percent) if weekly_payout_percent else None
+                    
+                    season_payout_percent = request.POST.get("season_payout_percent", "").strip()
+                    season_payout_percent_value = Decimal(season_payout_percent) if season_payout_percent else None
+                    
+                    # Parse weekly payout structure
+                    weekly_payout_structure = {}
+                    weekly_spots = request.POST.get("weekly_payout_spots", "").strip()
+                    if weekly_spots:
+                        try:
+                            num_spots = int(weekly_spots)
+                            for i in range(1, num_spots + 1):
+                                spot_key = f"weekly_spot_{i}_percent"
+                                spot_value = request.POST.get(spot_key, "").strip()
+                                if spot_value:
+                                    weekly_payout_structure[str(i)] = float(spot_value)
+                        except (ValueError, TypeError):
+                            pass
+                    
+                    # Parse season payout structure
+                    season_payout_structure = {}
+                    season_spots = request.POST.get("season_payout_spots", "").strip()
+                    if season_spots:
+                        try:
+                            num_spots = int(season_spots)
+                            for i in range(1, num_spots + 1):
+                                spot_key = f"season_spot_{i}_percent"
+                                spot_value = request.POST.get(spot_key, "").strip()
+                                if spot_value:
+                                    season_payout_structure[str(i)] = float(spot_value)
+                        except (ValueError, TypeError):
+                            pass
+                    
+                    season_payout_last_percent = request.POST.get("season_payout_last_percent", "").strip()
+                    season_payout_last_percent_value = Decimal(season_payout_last_percent) if season_payout_last_percent else None
+                    
                     league_rules, created = LeagueRules.objects.get_or_create(
                         league=target_league,
                         season=target_season,
@@ -954,6 +998,12 @@ def settings_view(request):
                             'key_picks_enabled': request.POST.get("key_picks_enabled") == "on",
                             'number_of_key_picks': int(request.POST.get("number_of_key_picks", 1)),
                             'tiebreaker': int(request.POST.get("tiebreaker", 0)),
+                            'entry_fee': entry_fee_value,
+                            'weekly_payout_percent': weekly_payout_percent_value,
+                            'season_payout_percent': season_payout_percent_value,
+                            'weekly_payout_structure': weekly_payout_structure,
+                            'season_payout_structure': season_payout_structure,
+                            'season_payout_last_percent': season_payout_last_percent_value,
                         }
                     )
                     
@@ -970,6 +1020,12 @@ def settings_view(request):
                         league_rules.key_picks_enabled = request.POST.get("key_picks_enabled") == "on"
                         league_rules.number_of_key_picks = int(request.POST.get("number_of_key_picks", 1))
                         league_rules.tiebreaker = int(request.POST.get("tiebreaker", 0))
+                        league_rules.entry_fee = entry_fee_value
+                        league_rules.weekly_payout_percent = weekly_payout_percent_value
+                        league_rules.season_payout_percent = season_payout_percent_value
+                        league_rules.weekly_payout_structure = weekly_payout_structure
+                        league_rules.season_payout_structure = season_payout_structure
+                        league_rules.season_payout_last_percent = season_payout_last_percent_value
                         league_rules.save()
                     
                     action_word = "created" if created else "updated"
@@ -1248,6 +1304,21 @@ def settings_view(request):
             for team in teams_with_records
         }
     
+    # Serialize JSON fields for template
+    weekly_payout_structure_json = "{}"
+    season_payout_structure_json = "{}"
+    if league_rules:
+        import json
+        if league_rules.weekly_payout_structure:
+            weekly_payout_structure_json = json.dumps(league_rules.weekly_payout_structure)
+        if league_rules.season_payout_structure:
+            season_payout_structure_json = json.dumps(league_rules.season_payout_structure)
+    
+    # Get league member count for payout calculations
+    league_member_count = 0
+    if league:
+        league_member_count = LeagueMembership.objects.filter(league=league).count()
+    
     context = {
         "games_with_selection": games_with_selection,
         "current_league": league,
@@ -1255,6 +1326,9 @@ def settings_view(request):
         "league_rules": league_rules,
         "all_seasons": all_seasons,
         "active_season": active_season,
+        "weekly_payout_structure_json": weekly_payout_structure_json,
+        "season_payout_structure_json": season_payout_structure_json,
+        "league_member_count": league_member_count,
         "start": start,
         "end": end,
         "team_rankings": team_rankings,

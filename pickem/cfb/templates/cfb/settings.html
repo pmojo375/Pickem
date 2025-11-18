@@ -271,8 +271,268 @@
                 </div>
             </div>
             
+            <!-- Payout Structure Section -->
+            <div class="divider my-6">
+                <span class="text-xl font-bold">
+                    <i class="fas fa-dollar-sign text-success mr-2"></i>
+                    Payout Structure
+                </span>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Entry Fee -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">
+                            <i class="fas fa-money-bill text-success mr-1"></i>
+                            Entry Fee
+                        </span>
+                    </label>
+                    <input type="number" 
+                           name="entry_fee" 
+                           id="entry_fee"
+                           value="{% if league_rules.entry_fee %}{{ league_rules.entry_fee }}{% endif %}" 
+                           min="0"
+                           step="0.01"
+                           class="input input-bordered" />
+                    <label class="label">
+                        <span class="label-text-alt text-base-content/60">Entry fee amount (e.g., 25.00)</span>
+                    </label>
+                </div>
+                
+                <!-- Weekly Payout Percent -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">
+                            <i class="fas fa-calendar-week text-info mr-1"></i>
+                            Weekly Payout Percent
+                        </span>
+                    </label>
+                    <input type="number" 
+                           name="weekly_payout_percent" 
+                           id="weekly_payout_percent"
+                           value="{% if league_rules.weekly_payout_percent %}{{ league_rules.weekly_payout_percent }}{% endif %}" 
+                           min="0"
+                           max="100"
+                           step="0.01"
+                           class="input input-bordered" />
+                    <label class="label">
+                        <span class="label-text-alt text-base-content/60">Percent of pool allocated to weekly winners</span>
+                    </label>
+                </div>
+                
+                <!-- Season Payout Percent -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">
+                            <i class="fas fa-trophy text-warning mr-1"></i>
+                            Season Payout Percent
+                        </span>
+                    </label>
+                    <input type="number" 
+                           name="season_payout_percent" 
+                           id="season_payout_percent"
+                           value="{% if league_rules.season_payout_percent %}{{ league_rules.season_payout_percent }}{% endif %}" 
+                           min="0"
+                           max="100"
+                           step="0.01"
+                           class="input input-bordered" />
+                    <label class="label">
+                        <span class="label-text-alt text-base-content/60">Percent of pool allocated to season winners</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Weekly Payout Structure -->
+            <div id="weekly-payout-structure-section" class="mt-4" style="display: none;">
+                <div class="card bg-base-200 border-2 border-info">
+                    <div class="card-body p-4">
+                        <h3 class="font-bold text-lg flex items-center gap-2 mb-2">
+                            <i class="fas fa-calendar-week text-info"></i>
+                            Weekly Payout Structure
+                        </h3>
+                        <p class="text-sm text-base-content/70 mb-3">
+                            Define how the weekly payout is distributed among winners.
+                        </p>
+                        
+                        <div class="form-control mb-4">
+                            <label class="label">
+                                <span class="label-text font-semibold">Number of Payout Spots</span>
+                            </label>
+                            <input type="number" 
+                                   name="weekly_payout_spots" 
+                                   id="weekly_payout_spots"
+                                   min="1"
+                                   max="20"
+                                   class="input input-bordered" />
+                            <label class="label">
+                                <span class="label-text-alt text-base-content/60">How many positions get paid out weekly</span>
+                            </label>
+                        </div>
+                        
+                        <div id="weekly-spots-container" class="space-y-2">
+                            <!-- Dynamic inputs will be added here -->
+                        </div>
+                        
+                        <div class="mt-4">
+                            <div class="alert" id="weekly-total-alert">
+                                <span class="font-semibold">Total: <span id="weekly-total-percent">0</span>%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Season Payout Structure -->
+            <div id="season-payout-structure-section" class="mt-4" style="display: none;">
+                <div class="card bg-base-200 border-2 border-warning">
+                    <div class="card-body p-4">
+                        <h3 class="font-bold text-lg flex items-center gap-2 mb-2">
+                            <i class="fas fa-trophy text-warning"></i>
+                            Season Payout Structure
+                        </h3>
+                        <p class="text-sm text-base-content/70 mb-3">
+                            Define how the season payout is distributed among winners.
+                        </p>
+                        
+                        <div class="form-control mb-4">
+                            <label class="label">
+                                <span class="label-text font-semibold">Number of Payout Spots</span>
+                            </label>
+                            <input type="number" 
+                                   name="season_payout_spots" 
+                                   id="season_payout_spots"
+                                   min="1"
+                                   max="20"
+                                   class="input input-bordered" />
+                            <label class="label">
+                                <span class="label-text-alt text-base-content/60">How many positions get paid out for season</span>
+                            </label>
+                        </div>
+                        
+                        <div id="season-spots-container" class="space-y-2">
+                            <!-- Dynamic inputs will be added here -->
+                        </div>
+                        
+                        <div class="mt-4">
+                            <div class="alert" id="season-total-alert">
+                                <span class="font-semibold">Total: <span id="season-total-percent">0</span>%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Season Payout Last Percent -->
+            <div id="season-last-percent-section" class="mt-4" style="display: none;">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">
+                            <i class="fas fa-arrow-down text-error mr-1"></i>
+                            Last Place Payout Percent (Optional)
+                        </span>
+                    </label>
+                    <input type="number" 
+                           name="season_payout_last_percent" 
+                           id="season_payout_last_percent"
+                           value="{% if league_rules.season_payout_last_percent %}{{ league_rules.season_payout_last_percent }}{% endif %}" 
+                           min="0"
+                           max="100"
+                           step="0.01"
+                           class="input input-bordered" />
+                    <label class="label">
+                        <span class="label-text-alt text-base-content/60">Optional: Percent of season payout allocated to last place</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Payout Calculator -->
+            <div class="divider my-6">
+                <span class="text-xl font-bold">
+                    <i class="fas fa-calculator text-primary mr-2"></i>
+                    Payout Calculator
+                </span>
+            </div>
+            
+            <div id="payout-calculator-section" class="card bg-base-200 border-2 border-primary">
+                <div class="card-body p-4">
+                    <p class="text-sm text-base-content/70 mb-4">
+                        This calculator shows the actual dollar amounts based on your payout structure, entry fee, and league size.
+                    </p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div class="stat bg-base-100 rounded-lg p-4">
+                            <div class="stat-title">League Members</div>
+                            <div class="stat-value text-2xl" id="calc-member-count">{{ league_member_count }}</div>
+                            <div class="stat-desc">Total players</div>
+                        </div>
+                        <div class="stat bg-base-100 rounded-lg p-4">
+                            <div class="stat-title">Entry Fee</div>
+                            <div class="stat-value text-2xl" id="calc-entry-fee">$0.00</div>
+                            <div class="stat-desc">Per player</div>
+                        </div>
+                        <div class="stat bg-base-100 rounded-lg p-4">
+                            <div class="stat-title">Total Pool</div>
+                            <div class="stat-value text-2xl text-primary" id="calc-total-pool">$0.00</div>
+                            <div class="stat-desc">Entry fees collected</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Weekly Payout Breakdown -->
+                    <div id="weekly-payout-calc" class="mb-4" style="display: none;">
+                        <h3 class="font-bold text-lg mb-2 flex items-center gap-2">
+                            <i class="fas fa-calendar-week text-info"></i>
+                            Weekly Payouts (per week)
+                        </h3>
+                        <div class="bg-base-100 rounded-lg p-4 mb-2">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-semibold">Weekly Pool:</span>
+                                <span class="text-lg font-bold text-info" id="calc-weekly-pool">$0.00</span>
+                            </div>
+                            <div class="text-sm text-base-content/70 mb-3" id="weekly-pool-description">
+                                (0% of total pool ÷ 12 weeks)
+                            </div>
+                            <div id="weekly-payout-breakdown" class="space-y-2">
+                                <!-- Dynamic breakdown will be added here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Season Payout Breakdown -->
+                    <div id="season-payout-calc" class="mb-4" style="display: none;">
+                        <h3 class="font-bold text-lg mb-2 flex items-center gap-2">
+                            <i class="fas fa-trophy text-warning"></i>
+                            Season Payouts
+                        </h3>
+                        <div class="bg-base-100 rounded-lg p-4 mb-2">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-semibold">Season Pool:</span>
+                                <span class="text-lg font-bold text-warning" id="calc-season-pool">$0.00</span>
+                            </div>
+                            <div class="text-sm text-base-content/70 mb-3" id="season-pool-description">
+                                (0% of total pool)
+                            </div>
+                            <div id="season-payout-breakdown" class="space-y-2">
+                                <!-- Dynamic breakdown will be added here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Remaining Pool -->
+                    <div class="bg-base-100 rounded-lg p-4">
+                        <div class="flex justify-between items-center">
+                            <span class="font-semibold">Remaining Pool:</span>
+                            <span class="text-lg font-bold" id="calc-remaining-pool">$0.00</span>
+                        </div>
+                        <div class="text-sm text-base-content/70 mt-1">
+                            (Not allocated to payouts)
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <div class="card-actions justify-end mt-6">
-                <button type="submit" class="btn btn-primary btn-lg gap-2">
+                <button type="submit" class="btn btn-primary btn-lg gap-2" id="save-rules-btn">
                     <i class="fas fa-save"></i>
                     Save League Rules
                 </button>
@@ -521,6 +781,17 @@
             opacity: 1;
             transform: translateX(-50%) translateY(0);
         }
+    }
+    
+    /* Input error styling for payout structure */
+    .input-error {
+        border-color: hsl(var(--er)) !important;
+        background-color: hsl(var(--er) / 0.1) !important;
+    }
+    
+    .input-error:focus {
+        outline-color: hsl(var(--er)) !important;
+        box-shadow: 0 0 0 3px hsl(var(--er) / 0.3) !important;
     }
 </style>
 {% endblock %}
@@ -920,6 +1191,894 @@
         }, 5000);
       });
     }
+    
+    // Payout Structure Management
+    const weeklyPayoutPercent = document.getElementById('weekly_payout_percent');
+    const seasonPayoutPercent = document.getElementById('season_payout_percent');
+    const weeklyPayoutStructureSection = document.getElementById('weekly-payout-structure-section');
+    const seasonPayoutStructureSection = document.getElementById('season-payout-structure-section');
+    const seasonLastPercentSection = document.getElementById('season-last-percent-section');
+    const weeklyPayoutSpots = document.getElementById('weekly_payout_spots');
+    const seasonPayoutSpots = document.getElementById('season_payout_spots');
+    const weeklySpotsContainer = document.getElementById('weekly-spots-container');
+    const seasonSpotsContainer = document.getElementById('season-spots-container');
+    // leagueRulesForm is already declared above in the tiebreaker section
+    const saveRulesBtn = document.getElementById('save-rules-btn');
+    
+    // Debug: Check if elements are found
+    console.log('Payout structure elements:', {
+      weeklyPayoutPercent: !!weeklyPayoutPercent,
+      seasonPayoutPercent: !!seasonPayoutPercent,
+      weeklyPayoutStructureSection: !!weeklyPayoutStructureSection,
+      seasonPayoutStructureSection: !!seasonPayoutStructureSection
+    });
+    
+    // Load existing payout structures if they exist
+    let existingWeeklyStructure = {};
+    let existingSeasonStructure = {};
+    try {
+        const weeklyJson = '{{ weekly_payout_structure_json|safe }}';
+        if (weeklyJson && weeklyJson !== '{}') {
+            existingWeeklyStructure = JSON.parse(weeklyJson);
+        }
+    } catch (e) {
+        existingWeeklyStructure = {};
+    }
+    try {
+        const seasonJson = '{{ season_payout_structure_json|safe }}';
+        if (seasonJson && seasonJson !== '{}') {
+            existingSeasonStructure = JSON.parse(seasonJson);
+        }
+    } catch (e) {
+        existingSeasonStructure = {};
+    }
+    
+    // Function to create spot input
+    function createSpotInput(container, spotNumber, type, existingValue = null) {
+      const div = document.createElement('div');
+      div.className = 'form-control';
+      div.innerHTML = `
+        <label class="label">
+          <span class="label-text font-semibold">${spotNumber}${spotNumber === 1 ? 'st' : spotNumber === 2 ? 'nd' : spotNumber === 3 ? 'rd' : 'th'} Place Percent</span>
+        </label>
+        <input type="number" 
+               name="${type}_spot_${spotNumber}_percent" 
+               id="${type}_spot_${spotNumber}_percent"
+               value="${existingValue || ''}" 
+               min="0"
+               max="100"
+               step="0.01"
+               class="input input-bordered spot-percent-input"
+               data-type="${type}" />
+        <label class="label">
+          <span class="label-text-alt text-base-content/60">Percentage for ${spotNumber}${spotNumber === 1 ? 'st' : spotNumber === 2 ? 'nd' : spotNumber === 3 ? 'rd' : 'th'} place</span>
+        </label>
+      `;
+      container.appendChild(div);
+      
+      // Add event listener for validation
+      const input = div.querySelector('input');
+      input.addEventListener('input', function() {
+        // Get current total
+        const container = type === 'weekly' ? weeklySpotsContainer : seasonSpotsContainer;
+        const inputs = container.querySelectorAll('.spot-percent-input');
+        let currentTotal = 0;
+        inputs.forEach(inp => {
+          if (inp !== this) {
+            currentTotal += parseFloat(inp.value) || 0;
+          }
+        });
+        
+        // Get this input's value
+        const thisValue = parseFloat(this.value) || 0;
+        const newTotal = currentTotal + thisValue;
+        
+        // Warn if over 100%
+        if (newTotal > 100.01) {
+          this.classList.add('input-error');
+          this.setAttribute('title', `Warning: Total would be ${newTotal.toFixed(2)}%, which exceeds 100%`);
+        } else {
+          this.classList.remove('input-error');
+          this.removeAttribute('title');
+        }
+        
+        updateTotal(type);
+        validatePayoutStructure();
+        // Immediately update the breakdown for this type
+        updateBreakdownForType(type);
+        // Also update remaining pool since spot percentages affect it
+        updatePayoutCalculator();
+      });
+      
+      // Also validate on blur
+      input.addEventListener('blur', function() {
+        updateTotal(type);
+        validatePayoutStructure();
+        // Immediately update the breakdown for this type
+        updateBreakdownForType(type);
+        // Also update remaining pool since spot percentages affect it
+        updatePayoutCalculator();
+      });
+    }
+    
+    // Function to update total percentage
+    function updateTotal(type) {
+      const container = type === 'weekly' ? weeklySpotsContainer : seasonSpotsContainer;
+      const totalSpan = type === 'weekly' ? document.getElementById('weekly-total-percent') : document.getElementById('season-total-percent');
+      const alertDiv = type === 'weekly' ? document.getElementById('weekly-total-alert') : document.getElementById('season-total-alert');
+      
+      if (!container || !totalSpan || !alertDiv) {
+        console.log('Missing elements for updateTotal:', { container: !!container, totalSpan: !!totalSpan, alertDiv: !!alertDiv, type });
+        return;
+      }
+      
+      const inputs = container.querySelectorAll('.spot-percent-input');
+      let total = 0;
+      inputs.forEach(input => {
+        const value = parseFloat(input.value) || 0;
+        total += value;
+      });
+      
+      // For season, also include last place percent if it exists
+      if (type === 'season') {
+        const lastPlaceInput = document.getElementById('season_payout_last_percent');
+        if (lastPlaceInput && lastPlaceInput.value) {
+          const lastPlaceValue = parseFloat(lastPlaceInput.value) || 0;
+          total += lastPlaceValue;
+        }
+      }
+      
+      // Update the span text content directly
+      const totalText = total.toFixed(2);
+      totalSpan.textContent = totalText;
+      
+      // Update alert styling and message
+      // Use a more lenient tolerance (0.1%) to account for floating point precision
+      let iconClass, iconText, messageText;
+      if (Math.abs(total - 100) < 0.1) {
+        alertDiv.className = 'alert alert-success';
+        iconClass = 'fas fa-check-circle';
+        iconText = '✓';
+        messageText = '';
+      } else if (total > 100.1) {
+        alertDiv.className = 'alert alert-error';
+        iconClass = 'fas fa-exclamation-triangle';
+        iconText = '';
+        messageText = ' - EXCEEDS 100%!';
+      } else {
+        alertDiv.className = 'alert alert-warning';
+        iconClass = 'fas fa-info-circle';
+        iconText = '';
+        messageText = ' (needs to be 100%)';
+      }
+      
+      // Update the alert content while preserving the span
+      const existingSpan = alertDiv.querySelector(`#${type === 'weekly' ? 'weekly' : 'season'}-total-percent`);
+      if (existingSpan) {
+        // Span exists, just update the alert content around it
+        alertDiv.innerHTML = `<i class="${iconClass}"></i> <span class="font-semibold">Total: <span id="${type === 'weekly' ? 'weekly' : 'season'}-total-percent">${totalText}</span>%${messageText} ${iconText}</span>`;
+        // Update the span text again after innerHTML
+        const updatedSpan = document.getElementById(`${type === 'weekly' ? 'weekly' : 'season'}-total-percent`);
+        if (updatedSpan) {
+          updatedSpan.textContent = totalText;
+        }
+      } else {
+        // Span doesn't exist, create it
+        alertDiv.innerHTML = `<i class="${iconClass}"></i> <span class="font-semibold">Total: <span id="${type === 'weekly' ? 'weekly' : 'season'}-total-percent">${totalText}</span>%${messageText} ${iconText}</span>`;
+      }
+    }
+    
+    // Function to validate payout structure
+    function validatePayoutStructure() {
+      let isValid = true;
+      let errorMessage = '';
+      
+      // Check weekly payout structure
+      if (weeklyPayoutPercent && weeklyPayoutPercent.value && parseFloat(weeklyPayoutPercent.value) > 0) {
+        const weeklySpotsValue = weeklyPayoutSpots ? weeklyPayoutSpots.value : '';
+        
+        // Only validate if spots are configured
+        if (weeklySpotsValue && parseInt(weeklySpotsValue) > 0) {
+          // Calculate total directly from inputs to avoid precision issues
+          let weeklyTotal = 0;
+          if (weeklySpotsContainer) {
+            const inputs = weeklySpotsContainer.querySelectorAll('.spot-percent-input');
+            inputs.forEach(input => {
+              const value = parseFloat(input.value) || 0;
+              weeklyTotal += value;
+            });
+          }
+          
+          // Use a more lenient tolerance (0.1%) to account for floating point precision
+          if (Math.abs(weeklyTotal - 100) > 0.1) {
+            isValid = false;
+            if (weeklyTotal > 100.1) {
+              errorMessage += `Weekly payout structure totals ${weeklyTotal.toFixed(2)}%, which EXCEEDS 100%. Please reduce the percentages. `;
+            } else {
+              errorMessage += `Weekly payout structure must total 100% (currently ${weeklyTotal.toFixed(2)}%). `;
+            }
+          }
+        } else {
+          // Spots not configured yet, but percent is set - this is okay for now
+          isValid = true; // Don't block submission if spots aren't configured yet
+        }
+      }
+      
+      // Check season payout structure
+      if (seasonPayoutPercent && seasonPayoutPercent.value && parseFloat(seasonPayoutPercent.value) > 0) {
+        const seasonSpotsValue = seasonPayoutSpots ? seasonPayoutSpots.value : '';
+        
+        // Only validate if spots are configured
+        if (seasonSpotsValue && parseInt(seasonSpotsValue) > 0) {
+          // Calculate total directly from inputs to avoid precision issues
+          let seasonTotal = 0;
+          if (seasonSpotsContainer) {
+            const inputs = seasonSpotsContainer.querySelectorAll('.spot-percent-input');
+            inputs.forEach(input => {
+              const value = parseFloat(input.value) || 0;
+              seasonTotal += value;
+            });
+          }
+          
+          // Include last place percent in the total
+          const lastPlaceInput = document.getElementById('season_payout_last_percent');
+          if (lastPlaceInput && lastPlaceInput.value) {
+            const lastPlaceValue = parseFloat(lastPlaceInput.value) || 0;
+            seasonTotal += lastPlaceValue;
+          }
+          
+          // Use a more lenient tolerance (0.1%) to account for floating point precision
+          if (Math.abs(seasonTotal - 100) > 0.1) {
+            isValid = false;
+            if (seasonTotal > 100.1) {
+              errorMessage += `Season payout structure totals ${seasonTotal.toFixed(2)}%, which EXCEEDS 100%. Please reduce the percentages. `;
+            } else {
+              errorMessage += `Season payout structure must total 100% (currently ${seasonTotal.toFixed(2)}%). `;
+            }
+          }
+        } else {
+          // Spots not configured yet, but percent is set - this is okay for now
+          isValid = true; // Don't block submission if spots aren't configured yet
+        }
+      }
+      
+      // Update submit button
+      if (saveRulesBtn) {
+        if (isValid) {
+          saveRulesBtn.disabled = false;
+          saveRulesBtn.classList.remove('btn-disabled');
+        } else {
+          saveRulesBtn.disabled = true;
+          saveRulesBtn.classList.add('btn-disabled');
+        }
+      }
+      
+      return { isValid, errorMessage };
+    }
+    
+    // Function to handle weekly payout percent change
+    function handleWeeklyPayoutPercentChange() {
+      console.log('handleWeeklyPayoutPercentChange called', weeklyPayoutPercent?.value);
+      if (!weeklyPayoutPercent || !weeklyPayoutStructureSection) {
+        console.error('Missing elements for weekly payout');
+        return;
+      }
+      
+      const value = weeklyPayoutPercent.value;
+      console.log('Weekly payout percent value:', value);
+      
+      if (value && parseFloat(value) > 0) {
+        console.log('Showing weekly payout structure section');
+        weeklyPayoutStructureSection.style.display = 'block';
+        // Load existing spots if available
+        if (Object.keys(existingWeeklyStructure).length > 0) {
+          const numSpots = Math.max(...Object.keys(existingWeeklyStructure).map(k => parseInt(k)));
+          if (weeklyPayoutSpots) {
+            weeklyPayoutSpots.value = numSpots;
+            generateSpotInputs('weekly', numSpots);
+          }
+        }
+      } else {
+        console.log('Hiding weekly payout structure section');
+        weeklyPayoutStructureSection.style.display = 'none';
+        if (weeklySpotsContainer) {
+          weeklySpotsContainer.innerHTML = '';
+        }
+        if (weeklyPayoutSpots) {
+          weeklyPayoutSpots.value = '';
+        }
+        // Reset total display
+        const weeklyTotalSpan = document.getElementById('weekly-total-percent');
+        if (weeklyTotalSpan) {
+          weeklyTotalSpan.textContent = '0';
+        }
+        const weeklyAlert = document.getElementById('weekly-total-alert');
+        if (weeklyAlert) {
+          weeklyAlert.className = 'alert';
+        }
+      }
+      validatePayoutStructure();
+    }
+    
+    // Function to handle season payout percent change
+    function handleSeasonPayoutPercentChange() {
+      console.log('handleSeasonPayoutPercentChange called', seasonPayoutPercent?.value);
+      if (!seasonPayoutPercent || !seasonPayoutStructureSection) {
+        console.error('Missing elements for season payout');
+        return;
+      }
+      
+      const value = seasonPayoutPercent.value;
+      console.log('Season payout percent value:', value);
+      
+      if (value && parseFloat(value) > 0) {
+        console.log('Showing season payout structure section');
+        seasonPayoutStructureSection.style.display = 'block';
+        if (seasonLastPercentSection) {
+          seasonLastPercentSection.style.display = 'block';
+        }
+        // Load existing spots if available
+        if (Object.keys(existingSeasonStructure).length > 0) {
+          const numSpots = Math.max(...Object.keys(existingSeasonStructure).map(k => parseInt(k)));
+          if (seasonPayoutSpots) {
+            seasonPayoutSpots.value = numSpots;
+            generateSpotInputs('season', numSpots);
+          }
+        }
+      } else {
+        console.log('Hiding season payout structure section');
+        seasonPayoutStructureSection.style.display = 'none';
+        if (seasonLastPercentSection) {
+          seasonLastPercentSection.style.display = 'none';
+        }
+        if (seasonSpotsContainer) {
+          seasonSpotsContainer.innerHTML = '';
+        }
+        if (seasonPayoutSpots) {
+          seasonPayoutSpots.value = '';
+        }
+        // Reset total display
+        const seasonTotalSpan = document.getElementById('season-total-percent');
+        if (seasonTotalSpan) {
+          seasonTotalSpan.textContent = '0';
+        }
+        const seasonAlert = document.getElementById('season-total-alert');
+        if (seasonAlert) {
+          seasonAlert.className = 'alert';
+        }
+      }
+      validatePayoutStructure();
+    }
+    
+    // Function to generate spot inputs
+    function generateSpotInputs(type, numSpots) {
+      const container = type === 'weekly' ? weeklySpotsContainer : seasonSpotsContainer;
+      const existingStructure = type === 'weekly' ? existingWeeklyStructure : existingSeasonStructure;
+      
+      container.innerHTML = '';
+      
+      for (let i = 1; i <= numSpots; i++) {
+        const existingValue = existingStructure[i.toString()] || existingStructure[i] || null;
+        createSpotInput(container, i, type, existingValue);
+      }
+      
+      updateTotal(type);
+      validatePayoutStructure();
+      // Update calculator when spots are generated
+      setTimeout(updatePayoutCalculator, 50);
+    }
+    
+    // Event listeners - use multiple event types for better compatibility
+    if (weeklyPayoutPercent) {
+      console.log('Attaching event listener to weekly payout percent');
+      // Use multiple event types
+      ['input', 'change', 'keyup', 'blur'].forEach(eventType => {
+        weeklyPayoutPercent.addEventListener(eventType, function(e) {
+          console.log('Weekly payout percent event:', eventType, this.value);
+          handleWeeklyPayoutPercentChange();
+        });
+      });
+      // Trigger on load if value exists
+      setTimeout(() => {
+        if (weeklyPayoutPercent.value) {
+          console.log('Triggering initial weekly payout percent change');
+          handleWeeklyPayoutPercentChange();
+        }
+      }, 100);
+    } else {
+      console.error('weeklyPayoutPercent element not found!');
+    }
+    
+    if (seasonPayoutPercent) {
+      console.log('Attaching event listener to season payout percent');
+      // Use multiple event types
+      ['input', 'change', 'keyup', 'blur'].forEach(eventType => {
+        seasonPayoutPercent.addEventListener(eventType, function(e) {
+          console.log('Season payout percent event:', eventType, this.value);
+          handleSeasonPayoutPercentChange();
+        });
+      });
+      // Trigger on load if value exists
+      setTimeout(() => {
+        if (seasonPayoutPercent.value) {
+          console.log('Triggering initial season payout percent change');
+          handleSeasonPayoutPercentChange();
+        }
+      }, 100);
+    } else {
+      console.error('seasonPayoutPercent element not found!');
+    }
+    
+    // Also use event delegation as a fallback
+    if (leagueRulesForm) {
+      leagueRulesForm.addEventListener('input', function(e) {
+        if (e.target && e.target.id === 'weekly_payout_percent') {
+          console.log('Delegated event for weekly payout percent');
+          handleWeeklyPayoutPercentChange();
+        } else if (e.target && e.target.id === 'season_payout_percent') {
+          console.log('Delegated event for season payout percent');
+          handleSeasonPayoutPercentChange();
+        }
+      });
+    }
+    
+    if (weeklyPayoutSpots) {
+      weeklyPayoutSpots.addEventListener('input', function() {
+        const numSpots = parseInt(this.value) || 0;
+        if (numSpots > 0 && numSpots <= 20) {
+          generateSpotInputs('weekly', numSpots);
+        } else if (numSpots === 0 || !this.value) {
+          weeklySpotsContainer.innerHTML = '';
+          const weeklyTotalSpan = document.getElementById('weekly-total-percent');
+          if (weeklyTotalSpan) {
+            weeklyTotalSpan.textContent = '0';
+          }
+          const weeklyAlert = document.getElementById('weekly-total-alert');
+          if (weeklyAlert) {
+            weeklyAlert.className = 'alert';
+            weeklyAlert.innerHTML = '<span class="font-semibold">Total: <span id="weekly-total-percent">0</span>%</span>';
+          }
+          validatePayoutStructure();
+        }
+      });
+      
+      // Also trigger on change for better compatibility
+      weeklyPayoutSpots.addEventListener('change', function() {
+        const numSpots = parseInt(this.value) || 0;
+        if (numSpots > 0 && numSpots <= 20) {
+          generateSpotInputs('weekly', numSpots);
+        }
+      });
+    }
+    
+    if (seasonPayoutSpots) {
+      seasonPayoutSpots.addEventListener('input', function() {
+        const numSpots = parseInt(this.value) || 0;
+        if (numSpots > 0 && numSpots <= 20) {
+          generateSpotInputs('season', numSpots);
+        } else if (numSpots === 0 || !this.value) {
+          seasonSpotsContainer.innerHTML = '';
+          const seasonTotalSpan = document.getElementById('season-total-percent');
+          if (seasonTotalSpan) {
+            seasonTotalSpan.textContent = '0';
+          }
+          const seasonAlert = document.getElementById('season-total-alert');
+          if (seasonAlert) {
+            seasonAlert.className = 'alert';
+            seasonAlert.innerHTML = '<span class="font-semibold">Total: <span id="season-total-percent">0</span>%</span>';
+          }
+          validatePayoutStructure();
+        }
+      });
+      
+      // Also trigger on change for better compatibility
+      seasonPayoutSpots.addEventListener('change', function() {
+        const numSpots = parseInt(this.value) || 0;
+        if (numSpots > 0 && numSpots <= 20) {
+          generateSpotInputs('season', numSpots);
+        }
+      });
+    }
+    
+    // Add event listener for last place percent input
+    const lastPlacePercentInput = document.getElementById('season_payout_last_percent');
+    if (lastPlacePercentInput) {
+      ['input', 'change', 'keyup', 'blur'].forEach(eventType => {
+        lastPlacePercentInput.addEventListener(eventType, function() {
+          console.log('Last place percent changed:', this.value);
+          updateTotal('season');
+          validatePayoutStructure();
+        });
+      });
+    }
+    
+    // Form submission validation
+    if (leagueRulesForm) {
+      leagueRulesForm.addEventListener('submit', function(e) {
+        const validation = validatePayoutStructure();
+        if (!validation.isValid) {
+          e.preventDefault();
+          alert('Please fix the following errors before submitting:\n\n' + validation.errorMessage);
+          return false;
+        }
+      });
+    }
+    
+    // Initial validation
+    validatePayoutStructure();
+    
+    // Payout Calculator
+    const WEEKS_IN_SEASON = 12; // Constant for number of weeks
+    const memberCount = {{ league_member_count }};
+    
+    function updatePayoutCalculator() {
+      const entryFeeInput = document.getElementById('entry_fee');
+      const weeklyPercentInput = document.getElementById('weekly_payout_percent');
+      const seasonPercentInput = document.getElementById('season_payout_percent');
+      const weeklyPayoutCalc = document.getElementById('weekly-payout-calc');
+      const seasonPayoutCalc = document.getElementById('season-payout-calc');
+      
+      const entryFee = parseFloat(entryFeeInput?.value || 0) || 0;
+      const weeklyPercent = parseFloat(weeklyPercentInput?.value || 0) || 0;
+      const seasonPercent = parseFloat(seasonPercentInput?.value || 0) || 0;
+      
+      // Calculate total pool
+      const totalPool = entryFee * memberCount;
+      
+      console.log('Payout Calculator Update:', {
+        entryFee,
+        memberCount,
+        totalPool,
+        weeklyPercent,
+        seasonPercent
+      });
+      
+      // Update basic stats
+      const calcEntryFee = document.getElementById('calc-entry-fee');
+      const calcTotalPool = document.getElementById('calc-total-pool');
+      if (calcEntryFee) calcEntryFee.textContent = '$' + entryFee.toFixed(2);
+      if (calcTotalPool) calcTotalPool.textContent = '$' + totalPool.toFixed(2);
+      
+      // Calculate weekly pool (percent of total pool divided by weeks)
+      const weeklyPool = (totalPool * weeklyPercent / 100) / WEEKS_IN_SEASON;
+      const calcWeeklyPool = document.getElementById('calc-weekly-pool');
+      const weeklyPoolDesc = document.getElementById('weekly-pool-description');
+      if (calcWeeklyPool) calcWeeklyPool.textContent = '$' + weeklyPool.toFixed(2);
+      if (weeklyPoolDesc) weeklyPoolDesc.textContent = `(${weeklyPercent.toFixed(2)}% of total pool ÷ ${WEEKS_IN_SEASON} weeks)`;
+      
+      // Calculate season pool
+      const seasonPool = totalPool * seasonPercent / 100;
+      const calcSeasonPool = document.getElementById('calc-season-pool');
+      const seasonPoolDesc = document.getElementById('season-pool-description');
+      if (calcSeasonPool) calcSeasonPool.textContent = '$' + seasonPool.toFixed(2);
+      if (seasonPoolDesc) seasonPoolDesc.textContent = `(${seasonPercent.toFixed(2)}% of total pool)`;
+      
+      // Calculate remaining pool
+      // First, calculate what's not allocated to weekly/season at all
+      const baseAllocatedPercent = weeklyPercent + seasonPercent;
+      const baseRemainingPercent = 100 - baseAllocatedPercent;
+      
+      // Then, calculate what's allocated to weekly/season but not distributed to spots
+      let weeklyUnallocatedPercent = 0;
+      if (weeklyPercent > 0 && weeklyPayoutSpots && weeklyPayoutSpots.value) {
+        const numWeeklySpots = parseInt(weeklyPayoutSpots.value) || 0;
+        if (numWeeklySpots > 0) {
+          let weeklySpotsTotal = 0;
+          for (let i = 1; i <= numWeeklySpots; i++) {
+            const spotInput = document.getElementById(`weekly_spot_${i}_percent`);
+            if (spotInput) {
+              weeklySpotsTotal += parseFloat(spotInput.value || 0) || 0;
+            }
+          }
+          // If spots don't add up to 100%, the difference is unallocated
+          const weeklyUnallocated = 100 - weeklySpotsTotal;
+          if (weeklyUnallocated > 0) {
+            // This is a percentage of the weekly pool, so convert to percentage of total pool
+            weeklyUnallocatedPercent = (weeklyPercent * weeklyUnallocated) / 100;
+          }
+        }
+      }
+      
+      let seasonUnallocatedPercent = 0;
+      if (seasonPercent > 0 && seasonPayoutSpots && seasonPayoutSpots.value) {
+        const numSeasonSpots = parseInt(seasonPayoutSpots.value) || 0;
+        if (numSeasonSpots > 0) {
+          let seasonSpotsTotal = 0;
+          for (let i = 1; i <= numSeasonSpots; i++) {
+            const spotInput = document.getElementById(`season_spot_${i}_percent`);
+            if (spotInput) {
+              seasonSpotsTotal += parseFloat(spotInput.value || 0) || 0;
+            }
+          }
+          // Add last place if configured
+          const lastPlaceInput = document.getElementById('season_payout_last_percent');
+          if (lastPlaceInput && lastPlaceInput.value) {
+            seasonSpotsTotal += parseFloat(lastPlaceInput.value || 0) || 0;
+          }
+          // If spots don't add up to 100%, the difference is unallocated
+          const seasonUnallocated = 100 - seasonSpotsTotal;
+          if (seasonUnallocated > 0) {
+            // This is a percentage of the season pool, so convert to percentage of total pool
+            seasonUnallocatedPercent = (seasonPercent * seasonUnallocated) / 100;
+          }
+        }
+      }
+      
+      // Total remaining = base remaining + unallocated within weekly + unallocated within season
+      const totalRemainingPercent = baseRemainingPercent + weeklyUnallocatedPercent + seasonUnallocatedPercent;
+      const remainingPool = totalPool > 0 ? (totalPool * totalRemainingPercent / 100) : 0;
+      const calcRemainingPool = document.getElementById('calc-remaining-pool');
+      
+      console.log('Remaining Pool Calculation:', {
+        entryFee,
+        memberCount,
+        totalPool,
+        weeklyPercent,
+        seasonPercent,
+        baseAllocatedPercent,
+        baseRemainingPercent,
+        weeklyUnallocatedPercent,
+        seasonUnallocatedPercent,
+        totalRemainingPercent,
+        remainingPool,
+        calcRemainingPool: !!calcRemainingPool
+      });
+      
+      if (calcRemainingPool) {
+        const formattedAmount = '$' + remainingPool.toFixed(2);
+        calcRemainingPool.textContent = formattedAmount;
+        console.log('Updated remaining pool to:', formattedAmount);
+        
+        // Update description to show the percentage breakdown
+        const remainingContainer = calcRemainingPool.closest('.bg-base-100');
+        const remainingDesc = remainingContainer ? remainingContainer.querySelector('.text-sm') : null;
+        if (remainingDesc) {
+          if (totalPool > 0) {
+            let descParts = [];
+            if (baseRemainingPercent > 0) {
+              descParts.push(`${baseRemainingPercent.toFixed(2)}% not allocated to weekly/season`);
+            }
+            if (weeklyUnallocatedPercent > 0) {
+              descParts.push(`${weeklyUnallocatedPercent.toFixed(2)}% unallocated within weekly`);
+            }
+            if (seasonUnallocatedPercent > 0) {
+              descParts.push(`${seasonUnallocatedPercent.toFixed(2)}% unallocated within season`);
+            }
+            
+            if (descParts.length > 0) {
+              remainingDesc.textContent = `(${totalRemainingPercent.toFixed(2)}% total: ${descParts.join(', ')})`;
+            } else {
+              remainingDesc.textContent = '(0% - All pool fully allocated)';
+            }
+          } else {
+            remainingDesc.textContent = '(Enter entry fee to calculate)';
+          }
+        } else {
+          console.warn('Remaining pool description element not found');
+        }
+      } else {
+        console.error('calc-remaining-pool element not found! Searching for it...');
+        // Try alternative selector
+        const altElement = document.querySelector('#calc-remaining-pool');
+        if (altElement) {
+          console.log('Found with alternative selector');
+          altElement.textContent = '$' + remainingPool.toFixed(2);
+        } else {
+          console.error('Still not found with alternative selector');
+        }
+      }
+      
+      // Show/hide and update weekly payout breakdown
+      if (weeklyPercent > 0 && weeklyPool > 0) {
+        if (weeklyPayoutCalc) weeklyPayoutCalc.style.display = 'block';
+        updateWeeklyPayoutBreakdown(weeklyPool);
+      } else {
+        if (weeklyPayoutCalc) weeklyPayoutCalc.style.display = 'none';
+      }
+      
+      // Show/hide and update season payout breakdown
+      if (seasonPercent > 0 && seasonPool > 0) {
+        if (seasonPayoutCalc) seasonPayoutCalc.style.display = 'block';
+        updateSeasonPayoutBreakdown(seasonPool);
+      } else {
+        if (seasonPayoutCalc) seasonPayoutCalc.style.display = 'none';
+      }
+    }
+    
+    function updateWeeklyPayoutBreakdown(weeklyPool) {
+      const breakdownContainer = document.getElementById('weekly-payout-breakdown');
+      if (!breakdownContainer) return;
+      
+      const weeklySpotsValue = weeklyPayoutSpots ? weeklyPayoutSpots.value : '';
+      if (!weeklySpotsValue || parseInt(weeklySpotsValue) <= 0) {
+        breakdownContainer.innerHTML = '<p class="text-sm text-base-content/70">Enter number of payout spots above</p>';
+        return;
+      }
+      
+      let html = '<div class="space-y-1">';
+      const numSpots = parseInt(weeklySpotsValue);
+      
+      for (let i = 1; i <= numSpots; i++) {
+        const spotInput = document.getElementById(`weekly_spot_${i}_percent`);
+        const spotPercent = parseFloat(spotInput?.value || 0) || 0;
+        const spotAmount = weeklyPool * spotPercent / 100;
+        
+        const placeSuffix = i === 1 ? 'st' : i === 2 ? 'nd' : i === 3 ? 'rd' : 'th';
+        html += `
+          <div class="flex justify-between items-center py-1 border-b border-base-300">
+            <span class="text-sm">${i}${placeSuffix} Place (${spotPercent.toFixed(2)}%):</span>
+            <span class="font-semibold text-info">$${spotAmount.toFixed(2)}</span>
+          </div>
+        `;
+      }
+      
+      html += '</div>';
+      breakdownContainer.innerHTML = html;
+    }
+    
+    // Helper function to update breakdown when spot percentages change
+    function updateBreakdownForType(type) {
+      // Get current values
+      const entryFee = parseFloat(document.getElementById('entry_fee')?.value || 0) || 0;
+      const totalPool = entryFee * memberCount;
+      
+      if (type === 'weekly') {
+        const weeklyPercent = parseFloat(document.getElementById('weekly_payout_percent')?.value || 0) || 0;
+        const weeklyPool = (totalPool * weeklyPercent / 100) / WEEKS_IN_SEASON;
+        if (weeklyPercent > 0 && weeklyPool > 0) {
+          updateWeeklyPayoutBreakdown(weeklyPool);
+        }
+      } else if (type === 'season') {
+        const seasonPercent = parseFloat(document.getElementById('season_payout_percent')?.value || 0) || 0;
+        const seasonPool = totalPool * seasonPercent / 100;
+        if (seasonPercent > 0 && seasonPool > 0) {
+          updateSeasonPayoutBreakdown(seasonPool);
+        }
+      }
+    }
+    
+    function updateSeasonPayoutBreakdown(seasonPool) {
+      const breakdownContainer = document.getElementById('season-payout-breakdown');
+      if (!breakdownContainer) {
+        console.warn('season-payout-breakdown container not found');
+        return;
+      }
+      
+      const seasonSpotsValue = seasonPayoutSpots ? seasonPayoutSpots.value : '';
+      if (!seasonSpotsValue || parseInt(seasonSpotsValue) <= 0) {
+        breakdownContainer.innerHTML = '<p class="text-sm text-base-content/70">Enter number of payout spots above</p>';
+        return;
+      }
+      
+      let html = '<div class="space-y-1">';
+      const numSpots = parseInt(seasonSpotsValue);
+      
+      console.log('Updating season payout breakdown:', { seasonPool, numSpots });
+      
+      // Calculate regular season spots
+      for (let i = 1; i <= numSpots; i++) {
+        const spotInput = document.getElementById(`season_spot_${i}_percent`);
+        const spotPercent = parseFloat(spotInput?.value || 0) || 0;
+        const spotAmount = seasonPool * spotPercent / 100;
+        
+        console.log(`Spot ${i}: input=${spotInput?.value}, percent=${spotPercent}, amount=${spotAmount}`);
+        
+        const placeSuffix = i === 1 ? 'st' : i === 2 ? 'nd' : i === 3 ? 'rd' : 'th';
+        html += `
+          <div class="flex justify-between items-center py-1 border-b border-base-300">
+            <span class="text-sm">${i}${placeSuffix} Place (${spotPercent.toFixed(2)}%):</span>
+            <span class="font-semibold text-warning">$${spotAmount.toFixed(2)}</span>
+          </div>
+        `;
+      }
+      
+      // Add last place if configured
+      const lastPlaceInput = document.getElementById('season_payout_last_percent');
+      if (lastPlaceInput && lastPlaceInput.value) {
+        const lastPlacePercent = parseFloat(lastPlaceInput.value) || 0;
+        const lastPlaceAmount = seasonPool * lastPlacePercent / 100;
+        if (lastPlacePercent > 0) {
+          html += `
+            <div class="flex justify-between items-center py-1 border-b border-base-300 border-error/30">
+              <span class="text-sm text-error">Last Place (${lastPlacePercent.toFixed(2)}%):</span>
+              <span class="font-semibold text-error">$${lastPlaceAmount.toFixed(2)}</span>
+            </div>
+          `;
+        }
+      }
+      
+      html += '</div>';
+      breakdownContainer.innerHTML = html;
+      console.log('Season breakdown updated');
+    }
+    
+    // Add event listeners for calculator updates
+    const entryFeeInput = document.getElementById('entry_fee');
+    if (entryFeeInput) {
+      ['input', 'change'].forEach(eventType => {
+        entryFeeInput.addEventListener(eventType, updatePayoutCalculator);
+      });
+    }
+    
+    if (weeklyPayoutPercent) {
+      weeklyPayoutPercent.addEventListener('input', updatePayoutCalculator);
+      weeklyPayoutPercent.addEventListener('change', updatePayoutCalculator);
+    }
+    
+    if (seasonPayoutPercent) {
+      seasonPayoutPercent.addEventListener('input', updatePayoutCalculator);
+      seasonPayoutPercent.addEventListener('change', updatePayoutCalculator);
+    }
+    
+    if (weeklyPayoutSpots) {
+      weeklyPayoutSpots.addEventListener('input', function() {
+        updatePayoutCalculator();
+        // Also update when spots change
+        setTimeout(updatePayoutCalculator, 100);
+      });
+    }
+    
+    if (seasonPayoutSpots) {
+      seasonPayoutSpots.addEventListener('input', function() {
+        updatePayoutCalculator();
+        // Also update when spots change
+        setTimeout(updatePayoutCalculator, 100);
+      });
+    }
+    
+    if (lastPlacePercentInput) {
+      ['input', 'change', 'keyup', 'blur'].forEach(eventType => {
+        lastPlacePercentInput.addEventListener(eventType, function() {
+          console.log('Last place percent changed, updating calculator');
+          // Update season breakdown immediately since last place is part of season
+          updateBreakdownForType('season');
+          // Update remaining pool since last place affects season allocation
+          updatePayoutCalculator();
+        });
+      });
+    }
+    
+    // Update calculator when spot percentages change (for breakdown display)
+    // Note: Remaining pool won't change when spot percentages change, only breakdowns will update
+    if (leagueRulesForm) {
+      leagueRulesForm.addEventListener('input', function(e) {
+        if (e.target && e.target.classList.contains('spot-percent-input')) {
+          console.log('Spot percentage input changed, updating calculator breakdown', e.target.id, e.target.value);
+          // Force update of calculator to refresh breakdown displays
+          // Get current pool values first
+          const entryFee = parseFloat(document.getElementById('entry_fee')?.value || 0) || 0;
+          const totalPool = entryFee * memberCount;
+          const weeklyPercent = parseFloat(document.getElementById('weekly_payout_percent')?.value || 0) || 0;
+          const seasonPercent = parseFloat(document.getElementById('season_payout_percent')?.value || 0) || 0;
+          const weeklyPool = (totalPool * weeklyPercent / 100) / WEEKS_IN_SEASON;
+          const seasonPool = totalPool * seasonPercent / 100;
+          
+          // Update breakdowns directly
+          if (e.target.id && e.target.id.startsWith('weekly_spot_')) {
+            if (weeklyPercent > 0 && weeklyPool > 0) {
+              updateWeeklyPayoutBreakdown(weeklyPool);
+            }
+          } else if (e.target.id && e.target.id.startsWith('season_spot_')) {
+            if (seasonPercent > 0 && seasonPool > 0) {
+              updateSeasonPayoutBreakdown(seasonPool);
+            }
+          }
+          
+          // Also call full calculator update
+          setTimeout(updatePayoutCalculator, 50);
+        }
+      });
+      // Also listen for change events
+      leagueRulesForm.addEventListener('change', function(e) {
+        if (e.target && e.target.classList.contains('spot-percent-input')) {
+          console.log('Spot percentage changed, updating calculator breakdown', e.target.id, e.target.value);
+          setTimeout(updatePayoutCalculator, 50);
+        }
+      });
+    }
+    
+    // Initial calculator update
+    setTimeout(updatePayoutCalculator, 200);
   });
 </script>
 {% endblock %}
