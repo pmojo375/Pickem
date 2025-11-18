@@ -94,6 +94,50 @@ class LeagueRules(models.Model):
         help_text="Number of key picks allowed per week"
     )
     
+    # Payout Structure
+    entry_fee = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.00,
+        null=True,
+        blank=True,
+        help_text="Entry fee for the league"
+    )
+    weekly_payout_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0.00,
+        null=True,
+        blank=True,
+        help_text="Percentage of total pool allocated to weekly winners"
+    )
+    season_payout_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0.00,
+        null=True,
+        blank=True,
+        help_text="Percentage of total pool allocated to season winners"
+    )
+    weekly_payout_structure = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="JSON structure defining percentage payout for each weekly position (e.g., {'1': 50, '2': 30, '3': 20})"
+    )
+    season_payout_structure = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="JSON structure defining percentage payout for each season position (e.g., {'1': 60, '2': 30, '3': 10})"
+    )
+    season_payout_last_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0.00,
+        null=True,
+        blank=True,
+        help_text="Optional: Percentage of season payout allocated to last place"
+    )
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

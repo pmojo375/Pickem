@@ -114,12 +114,16 @@ class LeagueRulesAdmin(admin.ModelAdmin):
         "points_per_correct_pick",
         "key_pick_extra_points",
         "drop_weeks",
+        "against_the_spread_enabled",
+        "force_hooks",
+        "tiebreaker",
         "spread_lock_weekday",
         "pickable_games_per_week",
         "key_picks_enabled",
+        "entry_fee",
         "updated_at",
     )
-    list_filter = ("league", "season", "key_picks_enabled")
+    list_filter = ("league", "season", "key_picks_enabled", "against_the_spread_enabled", "force_hooks", "tiebreaker")
     search_fields = ("league__name", "season__year")
     autocomplete_fields = ("league", "season")
     readonly_fields = ("created_at", "updated_at")
@@ -131,11 +135,25 @@ class LeagueRulesAdmin(admin.ModelAdmin):
         ("Scoring Rules", {
             "fields": ("points_per_correct_pick", "key_pick_extra_points", "drop_weeks")
         }),
+        ("Game Mode", {
+            "fields": ("against_the_spread_enabled", "force_hooks", "tiebreaker")
+        }),
         ("Game Selection Rules", {
             "fields": ("spread_lock_weekday", "pickable_games_per_week", "picks_per_week")
         }),
         ("Key Pick Rules", {
             "fields": ("key_picks_enabled", "number_of_key_picks")
+        }),
+        ("Payout Structure", {
+            "fields": (
+                "entry_fee",
+                "weekly_payout_percent",
+                "season_payout_percent",
+                "weekly_payout_structure",
+                "season_payout_structure",
+                "season_payout_last_percent",
+            ),
+            "classes": ("collapse",)
         }),
         ("Timestamps", {
             "fields": ("created_at", "updated_at"),
