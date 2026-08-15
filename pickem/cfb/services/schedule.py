@@ -40,7 +40,16 @@ def get_current_week(season: Optional[Season] = None, now: Optional[datetime] = 
             start_date__lte=current_date,
             end_date__gte=current_date
         ).exclude(start_date=current_date).first()
-    
+
+    # Before week 1 (or between seasons), use the next upcoming week so Settings/Picks
+    # are not empty just because kickoff hasn't arrived yet.
+    if not week:
+        week = (
+            Week.objects.filter(season=season, start_date__gt=current_date)
+            .order_by("start_date")
+            .first()
+        )
+
     return week
 
 

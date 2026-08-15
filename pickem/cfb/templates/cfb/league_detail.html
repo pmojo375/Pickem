@@ -87,7 +87,7 @@
                 <i class="fas fa-football text-3xl"></i>
             </div>
             <div class="stat-title">Season</div>
-            <div class="stat-value text-2xl">2024</div>
+            <div class="stat-value text-2xl">{% if active_season %}{{ active_season.year }}{% else %}—{% endif %}</div>
         </div>
     </div>
 

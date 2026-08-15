@@ -15,20 +15,25 @@
             <p class="text-base-content/70">Manage games, spreads, and week settings</p>
         </div>
         
-        <!-- League Selector -->
-        {% if manageable_leagues.count > 1 %}
-        <div class="form-control w-full md:w-auto">
-            <select class="select select-bordered select-primary" onchange="window.location.href='?league_id=' + this.value">
-                {% for league in manageable_leagues %}
-                <option value="{{ league.id }}" {% if league.id == current_league.id %}selected{% endif %}>
-                    {{ league.name }}
-                </option>
-                {% endfor %}
-            </select>
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+            <a href="{% url 'start_new_season' %}" class="btn btn-secondary">
+                <i class="fas fa-flag-checkered mr-2"></i>Start New Season
+            </a>
+            <!-- League Selector -->
+            {% if manageable_leagues.count > 1 %}
+            <div class="form-control w-full md:w-auto">
+                <select class="select select-bordered select-primary" onchange="window.location.href='?league_id=' + this.value">
+                    {% for league in manageable_leagues %}
+                    <option value="{{ league.id }}" {% if current_league and league.id == current_league.id %}selected{% endif %}>
+                        {{ league.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% elif current_league %}
+            <div class="badge badge-primary badge-lg">{{ current_league.name }}</div>
+            {% endif %}
         </div>
-        {% else %}
-        <div class="badge badge-primary badge-lg">{{ current_league.name }}</div>
-        {% endif %}
     </div>
 </div>
 
@@ -50,7 +55,7 @@
         {% if not active_season %}
         <div class="alert alert-warning">
             <i class="fas fa-exclamation-triangle"></i>
-            <span>No active season found. Please create a season first.</span>
+            <span>No active season found. <a href="{% url 'start_new_season' %}" class="link font-semibold">Start a new season</a> first.</span>
         </div>
         {% else %}
         <form method="post" action="" id="league-rules-form">

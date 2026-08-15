@@ -42,18 +42,21 @@ def home_view(request):
                     game__kickoff__range=(start, end)
                 ).count()
             
-            # Total correct picks
+            # Total correct picks (active season only)
+            active_season = Season.objects.filter(is_active=True).first()
             total_picks = Pick.objects.filter(user=request.user, league=league, is_correct__isnull=False)
+            rankings_qs = Pick.objects.filter(league=league, is_correct__isnull=False)
+            if active_season:
+                total_picks = total_picks.filter(game__season=active_season)
+                rankings_qs = rankings_qs.filter(game__season=active_season)
+
             correct_picks = total_picks.filter(is_correct=True).count()
             total_picks_count = total_picks.count()
             win_rate = round((correct_picks / total_picks_count * 100) if total_picks_count > 0 else 0, 1)
             
             # User ranking in league (by correct picks)
             from django.db.models import Count, Q
-            rankings = Pick.objects.filter(
-                league=league, 
-                is_correct__isnull=False
-            ).values('user').annotate(
+            rankings = rankings_qs.values('user').annotate(
                 correct_count=Count('id', filter=Q(is_correct=True))
             ).order_by('-correct_count')
             
@@ -256,16 +259,21 @@ def picks_view(request):
     # Get current week and its date range
     current_week = services.schedule.get_current_week()
     
-    # Get league games for this league - filter by current week only
+    # Get league games for this league - current week of the active season only
+    active_season = Season.objects.filter(is_active=True).first()
     league_games = LeagueGame.objects.filter(
         league=league, 
         is_active=True
     ).select_related("game__home_team", "game__away_team")
+    if active_season:
+        league_games = league_games.filter(game__season=active_season)
     
-    # Filter to only show games from the current week
+    # Filter to only show games from the current week; do not fall back to other seasons
     if current_week:
         start, end = services.schedule.get_week_datetime_range(current_week)
         league_games = league_games.filter(game__kickoff__range=(start, end))
+    else:
+        league_games = league_games.none()
     
     league_games = league_games.order_by("game__kickoff")
     
@@ -275,8 +283,7 @@ def picks_view(request):
         for p in Pick.objects.filter(user=request.user, league=league, game__in=[lg.game for lg in league_games])
     }
     
-    # Get active season and league rules
-    active_season = Season.objects.filter(is_active=True).first()
+    # Get league rules for the active season
     league_rules = None
     if active_season:
         league_rules = LeagueRules.objects.filter(league=league, season=active_season).first()
@@ -1339,6 +1346,79 @@ def settings_view(request):
 
 
 @login_required
+def start_new_season_view(request):
+    if not request.user.is_staff:
+        return redirect("home")
+
+    active_season = Season.objects.filter(is_active=True).first()
+    default_year = (active_season.year + 1) if active_season else timezone.now().year
+
+    def _context(year=None, name=""):
+        return {
+            "active_season": active_season,
+            "year": year if year is not None else default_year,
+            "name": name,
+        }
+
+    if request.method == "POST":
+        year_raw = request.POST.get("year", "").strip()
+        name = request.POST.get("name", "").strip()
+        confirmed = request.POST.get("confirm") == "on"
+
+        if not confirmed:
+            messages.error(request, "You must confirm before starting a new season.")
+            return render(request, "cfb/start_new_season.html", _context(year_raw, name))
+
+        try:
+            year = int(year_raw)
+        except (TypeError, ValueError):
+            messages.error(request, "Enter a valid season year.")
+            return render(request, "cfb/start_new_season.html", _context(year_raw, name))
+
+        if year < 1900 or year > 2100:
+            messages.error(request, "Season year must be between 1900 and 2100.")
+            return render(request, "cfb/start_new_season.html", _context(year, name))
+
+        try:
+            result = services.season.start_new_season(year, name=name)
+        except services.season.SeasonAlreadyExistsError as exc:
+            messages.error(request, str(exc))
+            return render(request, "cfb/start_new_season.html", _context(year, name))
+
+        season = result["season"]
+        previous = result["previous_season"]
+        rules_copied = result["rules_copied"]
+
+        if previous:
+            messages.success(
+                request,
+                f"Started {season.name} ({season.year}). {previous.year} is no longer active. "
+                f"Copied rules for {rules_copied} league{'s' if rules_copied != 1 else ''}.",
+            )
+        else:
+            messages.success(request, f"Started {season.name} ({season.year}) and set it as the active season.")
+
+        if result.get("initialize_mode") == "queued":
+            messages.info(request, f"CFBD data pull for {season.year} has been queued.")
+        elif result.get("initialize_mode") == "background":
+            messages.info(
+                request,
+                f"CFBD data pull for {season.year} started in the background. "
+                f"Teams and games will show up shortly.",
+            )
+        else:
+            messages.warning(
+                request,
+                f"Season created, but the CFBD data pull did not start. "
+                f"Run: python manage.py initialize_season {season.year}",
+            )
+
+        return redirect("settings")
+
+    return render(request, "cfb/start_new_season.html", _context())
+
+
+@login_required
 def roster_view(request):
     # Get user's leagues
     user_leagues = League.objects.filter(memberships__user=request.user).distinct()
@@ -1367,8 +1447,11 @@ def roster_view(request):
         memberships = LeagueMembership.objects.filter(league=league).select_related('user').order_by('-role', 'joined_at')
         
         roster = []
+        active_season = Season.objects.filter(is_active=True).first()
         for membership in memberships:
             picks = Pick.objects.filter(user=membership.user, league=league, is_correct__isnull=False)
+            if active_season:
+                picks = picks.filter(game__season=active_season)
             total = picks.count()
             wins = picks.filter(is_correct=True).count()
             losses = total - wins
@@ -1570,6 +1653,7 @@ def league_detail_view(request, league_id):
         "memberships": memberships,
         "is_owner": user_role == "owner",
         "is_admin": user_role in ["owner", "admin"],
+        "active_season": Season.objects.filter(is_active=True).first(),
     }
     return render(request, "cfb/league_detail.html", context)
 

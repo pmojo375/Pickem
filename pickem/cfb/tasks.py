@@ -19,7 +19,6 @@ from .services.live import grade_picks_for_game, fetch_and_store_live_scores, fe
 
 logger = logging.getLogger(__name__)
 
-logger.info("Logger initialized")
 
 @shared_task(name='cfb.tasks.update_single_game')
 def update_single_game(game_id: int) -> bool:
@@ -1053,9 +1052,11 @@ def initialize_season(season_year: int, force: bool = False):
         pull_calendar(season_year, force=force)
         
         # Step 2: Pull teams
+        season.refresh_from_db()
         if not season.teams_pulled or force:
             logger.info("Step 2: Pulling teams...")
             pull_season_teams(season_year, force=force)
+            season.refresh_from_db()
         else:
             logger.info("Step 2: Teams already pulled, skipping")
         

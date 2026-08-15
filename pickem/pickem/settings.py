@@ -121,7 +121,7 @@ LOGGING = {
 
         # --- Your app logs ---
         "app_file": {
-            "class": "logging.handlers.RotatingFileHandler",
+            "class": "pickem.log.SafeRotatingFileHandler",
             "filename": str(LOG_DIR / "app.log"),
             "maxBytes": 5 * 1024 * 1024,  # 5 MB
             "backupCount": 5,
@@ -131,7 +131,7 @@ LOGGING = {
 
         # --- Django internal logs ---
         "django_file": {
-            "class": "logging.handlers.RotatingFileHandler",
+            "class": "pickem.log.SafeRotatingFileHandler",
             "filename": str(LOG_DIR / "django.log"),
             "maxBytes": 5 * 1024 * 1024,
             "backupCount": 5,
@@ -141,7 +141,7 @@ LOGGING = {
 
         # --- Errors (ERROR level only) ---
         "error_file": {
-            "class": "logging.handlers.RotatingFileHandler",
+            "class": "pickem.log.SafeRotatingFileHandler",
             "filename": str(LOG_DIR / "errors.log"),
             "maxBytes": 5 * 1024 * 1024,
             "backupCount": 5,
@@ -152,7 +152,7 @@ LOGGING = {
 
         # --- Celery infrastructure logs (worker/beat) ---
         "celery_file": {
-            "class": "logging.handlers.RotatingFileHandler",
+            "class": "pickem.log.SafeRotatingFileHandler",
             "filename": str(LOG_DIR / "celery.log"),
             "maxBytes": 5 * 1024 * 1024,
             "backupCount": 5,

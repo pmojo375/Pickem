@@ -13,6 +13,7 @@ urlpatterns = [
     path('live/', views.live_view, name='live'),
     path('standings/', views.standings_view, name='standings'),
     path('settings/', views.settings_view, name='settings'),
+    path('settings/new-season/', views.start_new_season_view, name='start_new_season'),
     path('roster/', views.roster_view, name='roster'),
     # League URLs
     path('leagues/', views.leagues_list_view, name='leagues_list'),
