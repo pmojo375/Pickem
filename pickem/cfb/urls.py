@@ -21,6 +21,7 @@ urlpatterns = [
     path('leagues/<int:league_id>/', views.league_detail_view, name='league_detail'),
     path('leagues/<int:league_id>/join/', views.league_join_view, name='league_join'),
     path('leagues/<int:league_id>/leave/', views.league_leave_view, name='league_leave'),
+    path('leagues/<int:league_id>/members/<int:membership_id>/status/', views.league_member_status_view, name='league_member_status'),
     # App utility endpoints (avoid Django admin path)
     path('cfb-admin/import-schedule/', views.admin_import_schedule, name='admin_import_schedule'),
     path('cfb-admin/update-live/', views.admin_update_live, name='admin_update_live'),

@@ -161,6 +161,10 @@ class LeagueMembership(models.Model):
     league = models.ForeignKey(League, on_delete=models.CASCADE, related_name="memberships")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="league_memberships")
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default="member")
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Inactive members cannot make picks and are excluded from standings.",
+    )
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -171,7 +175,8 @@ class LeagueMembership(models.Model):
         verbose_name_plural = "League Memberships"
 
     def __str__(self) -> str:
-        return f"{self.user.username} in {self.league.name} ({self.role})"
+        status = "active" if self.is_active else "inactive"
+        return f"{self.user.username} in {self.league.name} ({self.role}, {status})"
 
 
 class Season(models.Model):

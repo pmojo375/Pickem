@@ -9,7 +9,7 @@ from math import ceil
 
 from django.db import transaction
 from django.db.models import Sum, Count, Q, F, Max
-from ..models import Game, Pick, League, LeagueRules, MemberWeek, MemberSeason, Week, LeagueGame
+from ..models import Game, Pick, League, LeagueRules, MemberWeek, MemberSeason, Week, LeagueGame, LeagueMembership
 
 logger = logging.getLogger(__name__)
 
@@ -409,7 +409,8 @@ def update_member_week_for_game(game: Game) -> int:
         # After updating all picks for this league/week, calculate ranks and update MemberSeason
         week_member_weeks = MemberWeek.objects.filter(
             league=league,
-            week=game.week
+            week=game.week,
+            user_id__in=LeagueMembership.objects.filter(league=league, is_active=True).values_list('user_id', flat=True),
         )
         
         if week_member_weeks.exists():
@@ -438,7 +439,7 @@ def update_member_season_for_league(league: League, season) -> int:
     
     # Get all members of this league
     from django.contrib.auth.models import User
-    from ..models import LeagueMembership, LeagueGame
+    from ..models import LeagueGame
     
     try:
         league_rules = LeagueRules.objects.get(league=league, season=season)
@@ -446,7 +447,7 @@ def update_member_season_for_league(league: League, season) -> int:
         logger.warning(f"No rules found for league {league.id} season {season.id}")
         return 0
     
-    members = LeagueMembership.objects.filter(league=league).values_list('user_id', flat=True)
+    members = LeagueMembership.objects.filter(league=league, is_active=True).values_list('user_id', flat=True)
     
     # Get weeks that have finalized games for this league
     weeks_with_finalized_games = set(
@@ -563,7 +564,8 @@ def update_member_season_for_league(league: League, season) -> int:
     # Calculate and assign season ranks
     season_member_seasons = MemberSeason.objects.filter(
         league=league,
-        season=season
+        season=season,
+        user_id__in=LeagueMembership.objects.filter(league=league, is_active=True).values_list('user_id', flat=True),
     )
     
     if season_member_seasons.exists():
@@ -616,8 +618,7 @@ def recalculate_all_member_stats(season) -> dict:
             ).delete()
             
             # Get all members
-            from ..models import LeagueMembership
-            members = LeagueMembership.objects.filter(league=league)
+            members = LeagueMembership.objects.filter(league=league, is_active=True)
             
             try:
                 league_rules = LeagueRules.objects.get(league=league, season=season)
@@ -819,7 +820,8 @@ def recalculate_all_member_stats(season) -> dict:
                 # Calculate and assign week ranks for this week across all members
                 week_member_weeks = MemberWeek.objects.filter(
                     league=league,
-                    week=week
+                    week=week,
+                    user_id__in=LeagueMembership.objects.filter(league=league, is_active=True).values_list('user_id', flat=True),
                 )
                 if week_member_weeks.exists():
                     rank_map = assign_ranks_for_week(list(week_member_weeks), league_rules)
@@ -831,7 +833,8 @@ def recalculate_all_member_stats(season) -> dict:
             # Calculate and assign season ranks across all members
             season_member_seasons = MemberSeason.objects.filter(
                 league=league,
-                season=season
+                season=season,
+                user_id__in=LeagueMembership.objects.filter(league=league, is_active=True).values_list('user_id', flat=True),
             )
             if season_member_seasons.exists():
                 rank_map = assign_ranks_for_season(list(season_member_seasons), league_rules)

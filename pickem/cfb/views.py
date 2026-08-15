@@ -4,10 +4,20 @@ from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.core.exceptions import ValidationError
 from django.db.models import Q
+from django.views.decorators.http import require_POST
 from .models import Game, Pick, Team, League, LeagueMembership, LeagueGame, LeagueRules, Season, Ranking, Week, MemberSeason, MemberWeek
 from django.utils import timezone
 from . import services
 from django.conf import settings
+
+
+def _active_member_user_ids(league):
+    return LeagueMembership.objects.filter(league=league, is_active=True).values_list("user_id", flat=True)
+
+
+def _user_is_active_member(league, user):
+    return LeagueMembership.objects.filter(league=league, user=user, is_active=True).exists()
+
 
 def home_view(request):
     context = {}
@@ -72,7 +82,7 @@ def home_view(request):
                 'week_picks_count': week_picks_count,
                 'win_rate': win_rate,
                 'user_rank': user_rank,
-                'total_players': league.memberships.count(),
+                'total_players': league.memberships.filter(is_active=True).count(),
             })
     
     return render(request, "cfb/home.html", context)
@@ -112,6 +122,10 @@ def picks_view(request):
         form_league_id = request.POST.get("league_id")
         if form_league_id:
             league = get_object_or_404(League, pk=form_league_id, memberships__user=request.user)
+
+        if not _user_is_active_member(league, request.user):
+            messages.error(request, "Your membership in this league is inactive, so you cannot make picks.")
+            return redirect(f"/picks/?league_id={league.id}")
         
         # Find all game IDs in the POST data (format: game_123_id)
         game_ids = []
@@ -390,6 +404,7 @@ def picks_view(request):
         "team_records": team_records,
         "team_stats": team_stats,
         "current_week": current_week,
+        "membership_is_active": _user_is_active_member(league, request.user),
     }
     return render(request, "cfb/picks.html", context)
 
@@ -670,7 +685,8 @@ def standings_view(request):
                         # Get member weeks for this week
                         member_weeks = MemberWeek.objects.filter(
                             league=league,
-                            week=selected_week
+                            week=selected_week,
+                            user_id__in=_active_member_user_ids(league),
                         ).select_related('user', 'week')
                         
                         standings = []
@@ -715,7 +731,8 @@ def standings_view(request):
                 # Get all member seasons for this league/season
                 member_seasons = MemberSeason.objects.filter(
                     league=league,
-                    season=active_season
+                    season=active_season,
+                    user_id__in=_active_member_user_ids(league),
                 ).select_related('user')
                 
                 standings = []
@@ -801,7 +818,10 @@ def standings_view(request):
                     pass
             
             # Get all members of the league
-            members = User.objects.filter(league_memberships__league=league).distinct()
+            members = User.objects.filter(
+                league_memberships__league=league,
+                league_memberships__is_active=True,
+            ).distinct()
             
             # Calculate max possible key picks for fallback case
             max_total_key_picks_fallback = 0
@@ -1324,7 +1344,7 @@ def settings_view(request):
     # Get league member count for payout calculations
     league_member_count = 0
     if league:
-        league_member_count = LeagueMembership.objects.filter(league=league).count()
+        league_member_count = LeagueMembership.objects.filter(league=league, is_active=True).count()
     
     context = {
         "games_with_selection": games_with_selection,
@@ -1486,7 +1506,10 @@ def get_league_picks_data(league, week, show_unstarted_picks=False):
     User = get_user_model()
     
     # Get all league members
-    members = User.objects.filter(league_memberships__league=league).distinct()
+    members = User.objects.filter(
+        league_memberships__league=league,
+        league_memberships__is_active=True,
+    ).distinct()
     
     # Get games for this week that are selected for this league
     start, end = services.schedule.get_week_datetime_range(week)
@@ -1639,12 +1662,15 @@ def league_detail_view(request, league_id):
         membership = LeagueMembership.objects.get(league=league, user=request.user)
         is_member = True
         user_role = membership.role
+        membership_is_active = membership.is_active
     except LeagueMembership.DoesNotExist:
         is_member = False
         user_role = None
+        membership_is_active = False
     
     # Get all members
     memberships = LeagueMembership.objects.filter(league=league).select_related("user").order_by("-role", "joined_at")
+    active_member_count = memberships.filter(is_active=True).count()
     
     context = {
         "league": league,
@@ -1652,7 +1678,10 @@ def league_detail_view(request, league_id):
         "user_role": user_role,
         "memberships": memberships,
         "is_owner": user_role == "owner",
-        "is_admin": user_role in ["owner", "admin"],
+        "is_admin": user_role in ["owner", "admin"] and membership_is_active,
+        "membership_is_active": membership_is_active,
+        "active_member_count": active_member_count,
+        "inactive_member_count": memberships.count() - active_member_count,
         "active_season": Season.objects.filter(is_active=True).first(),
     }
     return render(request, "cfb/league_detail.html", context)
@@ -1664,8 +1693,15 @@ def league_join_view(request, league_id):
     league = get_object_or_404(League, pk=league_id)
     
     # Check if already a member
-    if LeagueMembership.objects.filter(league=league, user=request.user).exists():
-        messages.info(request, f"You are already a member of '{league.name}'.")
+    existing = LeagueMembership.objects.filter(league=league, user=request.user).first()
+    if existing:
+        if existing.is_active:
+            messages.info(request, f"You are already a member of '{league.name}'.")
+        else:
+            messages.warning(
+                request,
+                f"You are already a member of '{league.name}', but your membership is inactive. Ask a league admin to reactivate you.",
+            )
         return redirect("league_detail", league_id=league.id)
     
     # Add user to league
@@ -1699,4 +1735,44 @@ def league_leave_view(request, league_id):
     except LeagueMembership.DoesNotExist:
         messages.error(request, "You are not a member of this league.")
         return redirect("leagues_list")
+
+
+@login_required
+@require_POST
+def league_member_status_view(request, league_id, membership_id):
+    """Allow league owners and admins to set a member active or inactive."""
+    league = get_object_or_404(League, pk=league_id)
+    actor = LeagueMembership.objects.filter(
+        league=league, user=request.user, is_active=True
+    ).first()
+
+    if not actor or actor.role not in ("owner", "admin"):
+        messages.error(request, "You do not have permission to manage members in this league.")
+        return redirect("league_detail", league_id=league.id)
+
+    membership = get_object_or_404(LeagueMembership, pk=membership_id, league=league)
+
+    if membership.user_id == request.user.id:
+        messages.error(request, "You cannot change your own membership status.")
+        return redirect("league_detail", league_id=league.id)
+
+    if membership.role == "owner":
+        messages.error(request, "The league owner's status cannot be changed.")
+        return redirect("league_detail", league_id=league.id)
+
+    if membership.role == "admin" and actor.role != "owner":
+        messages.error(request, "Only the league owner can change an admin's status.")
+        return redirect("league_detail", league_id=league.id)
+
+    status = request.POST.get("status")
+    if status not in ("active", "inactive"):
+        messages.error(request, "Invalid membership status.")
+        return redirect("league_detail", league_id=league.id)
+
+    membership.is_active = status == "active"
+    membership.save(update_fields=["is_active"])
+
+    label = "active" if membership.is_active else "inactive"
+    messages.success(request, f"{membership.user.username} is now {label} in '{league.name}'.")
+    return redirect("league_detail", league_id=league.id)
 

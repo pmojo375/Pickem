@@ -36,7 +36,7 @@
 <!-- Player Roster -->
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
     {% for player in roster %}
-    <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow {% if player.user == request.user %}ring-2 ring-primary{% endif %}">
+    <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow {% if player.user == request.user %}ring-2 ring-primary{% endif %} {% if not player.membership.is_active %}opacity-60{% endif %}">
         <div class="card-body">
             <div class="flex items-center gap-4 mb-4">
                 <div class="avatar placeholder">
@@ -65,7 +65,7 @@
                         <span class="text-xs text-primary">(You)</span>
                         {% endif %}
                     </h3>
-                    <div class="flex gap-2 items-center mt-1">
+                    <div class="flex gap-2 items-center mt-1 flex-wrap">
                         {% if player.role == "owner" %}
                         <div class="badge badge-primary badge-sm gap-1">
                             <i class="fas fa-crown text-xs"></i>Owner
@@ -76,6 +76,11 @@
                         </div>
                         {% else %}
                         <div class="badge badge-ghost badge-sm">Member</div>
+                        {% endif %}
+                        {% if not player.membership.is_active %}
+                        <div class="badge badge-warning badge-sm gap-1">
+                            <i class="fas fa-user-slash text-xs"></i>Inactive
+                        </div>
                         {% endif %}
                     </div>
                     <p class="text-xs text-base-content/70 mt-1">Joined {{ player.joined_at|date:"M d, Y" }}</p>

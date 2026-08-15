@@ -92,15 +92,15 @@ class LeagueAdmin(admin.ModelAdmin):
     readonly_fields = ("created_at",)
     
     def member_count(self, obj):
-        """Display the number of members in the league"""
-        return obj.memberships.count()
-    member_count.short_description = "Members"
+        """Display the number of active members in the league"""
+        return obj.memberships.filter(is_active=True).count()
+    member_count.short_description = "Active Members"
 
 
 @admin.register(LeagueMembership)
 class LeagueMembershipAdmin(admin.ModelAdmin):
-    list_display = ("league", "user", "role", "joined_at")
-    list_filter = ("role", "joined_at")
+    list_display = ("league", "user", "role", "is_active", "joined_at")
+    list_filter = ("role", "is_active", "joined_at")
     search_fields = ("league__name", "user__username")
     autocomplete_fields = ("league", "user")
     readonly_fields = ("joined_at",)
