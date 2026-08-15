@@ -50,6 +50,22 @@ def eastern_time(value):
 
 
 @register.filter
+def eastern_weekday(value):
+    """Return the Eastern-time weekday abbreviation (Mon, Tue, ...)."""
+    if not value:
+        return ""
+    try:
+        eastern = pytz.timezone("America/New_York")
+        if timezone.is_aware(value):
+            value = value.astimezone(eastern)
+        else:
+            value = timezone.make_aware(value, pytz.UTC).astimezone(eastern)
+        return value.strftime("%a")
+    except Exception:
+        return ""
+
+
+@register.filter
 def has_started(game):
     """
     Check if a game has started.

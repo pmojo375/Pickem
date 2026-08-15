@@ -587,6 +587,29 @@
                     Select All AP Top 25 Games
                 </button>
             </div>
+
+            <!-- Game list filters -->
+            <div class="mb-4 grid grid-cols-1 md:grid-cols-3 gap-3" id="game-filters">
+                <div class="form-control">
+                    <label class="label py-1" for="filter-weekday">
+                        <span class="label-text font-semibold"><i class="fas fa-calendar-day mr-1"></i>Weekday</span>
+                    </label>
+                    <select id="filter-weekday" class="select select-bordered select-sm w-full">
+                        <option value="">All days</option>
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label py-1" for="filter-conference">
+                        <span class="label-text font-semibold"><i class="fas fa-university mr-1"></i>Conference</span>
+                    </label>
+                    <select id="filter-conference" class="select select-bordered select-sm w-full">
+                        <option value="">All conferences</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <div class="badge badge-ghost badge-lg h-8 px-3" id="filter-count"></div>
+                </div>
+            </div>
             
             <!-- Total Points Tiebreaker Game Selection -->
             <div class="mb-4" id="total-points-section" style="display: none;">
@@ -620,7 +643,10 @@
                 <label class="game-card cursor-pointer" 
                        data-has-ranked="{% if g.home_team.id in team_rankings or g.away_team.id in team_rankings %}true{% else %}false{% endif %}"
                        data-home-rank="{% if g.home_team.id in team_rankings %}{{ team_rankings|get_item:g.home_team.id }}{% else %}999{% endif %}"
-                       data-away-rank="{% if g.away_team.id in team_rankings %}{{ team_rankings|get_item:g.away_team.id }}{% else %}999{% endif %}">
+                       data-away-rank="{% if g.away_team.id in team_rankings %}{{ team_rankings|get_item:g.away_team.id }}{% else %}999{% endif %}"
+                       data-weekday="{{ g.kickoff|eastern_weekday }}"
+                       data-home-conference="{{ g.home_team.conference|default:'' }}"
+                       data-away-conference="{{ g.away_team.conference|default:'' }}">
                     <input type="checkbox" 
                            name="game_{{ g.id }}_select" 
                            class="game-checkbox hidden"
@@ -753,10 +779,16 @@
         display: block !important;
     }
     
+    /* Hidden by weekday/conference filters (checkboxes still submit) */
+    .game-card.game-card-filtered-out {
+        display: none;
+    }
+
     /* Hover effect */
     .game-card:hover .game-card-content {
         transform: translateY(-2px);
     }
+
     
     /* Smooth transitions */
     .game-card-content {
@@ -960,6 +992,84 @@
     const selectedCount = document.querySelectorAll('.game-checkbox:checked').length;
     const gamesForm = document.getElementById('games-form');
     const selectTop25Btn = document.getElementById('select-top25-btn');
+
+    // Weekday / conference / Top 25 visibility filters
+    (function initGameFilters() {
+      const weekdaySelect = document.getElementById('filter-weekday');
+      const conferenceSelect = document.getElementById('filter-conference');
+      const filterCount = document.getElementById('filter-count');
+      const cards = Array.from(document.querySelectorAll('.game-card'));
+      if (!weekdaySelect || !conferenceSelect || cards.length === 0) {
+        return;
+      }
+
+      const POWER4 = new Set(['SEC', 'Big Ten', 'ACC', 'Big 12']);
+      const G5 = new Set(['American Athletic', 'Sun Belt', 'Mid-American', 'Mountain West', 'Conference USA']);
+      const WEEKDAY_ORDER = ['Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed'];
+      const WEEKDAY_LABELS = {
+        Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday',
+        Fri: 'Friday', Sat: 'Saturday', Sun: 'Sunday'
+      };
+
+      function cardConferences(card) {
+        return [card.dataset.homeConference, card.dataset.awayConference].filter(Boolean);
+      }
+
+      const weekdays = [...new Set(cards.map(c => c.dataset.weekday).filter(Boolean))]
+        .sort((a, b) => WEEKDAY_ORDER.indexOf(a) - WEEKDAY_ORDER.indexOf(b));
+      weekdays.forEach(day => {
+        const opt = document.createElement('option');
+        opt.value = day;
+        opt.textContent = WEEKDAY_LABELS[day] || day;
+        weekdaySelect.appendChild(opt);
+      });
+
+      const conferences = [...new Set(cards.flatMap(cardConferences))].sort();
+      const groupOpts = [
+        { value: 'top25', label: 'AP Top 25' },
+        { value: 'power4', label: 'Power 4 (SEC, B1G, ACC, Big 12)' },
+        { value: 'g5', label: 'Group of 5' },
+      ];
+      groupOpts.forEach(({ value, label }) => {
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = label;
+        conferenceSelect.appendChild(opt);
+      });
+      conferences.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        conferenceSelect.appendChild(opt);
+      });
+
+      function conferenceMatch(card, filter) {
+        if (!filter) return true;
+        const confs = cardConferences(card);
+        if (filter === 'top25') return card.dataset.hasRanked === 'true';
+        if (filter === 'power4') return confs.some(c => POWER4.has(c));
+        if (filter === 'g5') return confs.some(c => G5.has(c));
+        return confs.includes(filter);
+      }
+
+      function applyFilters() {
+        const weekday = weekdaySelect.value;
+        const conference = conferenceSelect.value;
+        let visible = 0;
+        cards.forEach(card => {
+          const show = (!weekday || card.dataset.weekday === weekday) && conferenceMatch(card, conference);
+          card.classList.toggle('game-card-filtered-out', !show);
+          if (show) visible += 1;
+        });
+        if (filterCount) {
+          filterCount.textContent = `Showing ${visible} of ${cards.length}`;
+        }
+      }
+
+      weekdaySelect.addEventListener('change', applyFilters);
+      conferenceSelect.addEventListener('change', applyFilters);
+      applyFilters();
+    })();
     
     // Get all submit buttons
     const submitButtons = gamesForm ? gamesForm.querySelectorAll('button[type="submit"]') : [];

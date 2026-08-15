@@ -593,20 +593,24 @@ def pull_season_teams(season_year: int, force: bool = False):
                     logger.warning(f"Team missing school name, skipping: {team_data}")
                     continue
                 
-                mascot = team_data.get('mascot', '')
-                abbreviation = team_data.get('abbreviation', '')
-                conference = team_data.get('conference', '')
-                division = team_data.get('division') or ''  # Handle None from API
-                classification = team_data.get('classification', '')
+                mascot = team_data.get('mascot') or ''
+                abbreviation = team_data.get('abbreviation') or ''
+                conference = team_data.get('conference') or ''
+                division = team_data.get('division') or ''
+                classification = team_data.get('classification') or ''
                 
                 # Only store FBS and FCS teams (skip Division I, II, III, etc.)
                 if classification not in ('fbs', 'fcs'):
                     logger.debug(f"Skipping non-FBS/FCS team: {school} ({classification})")
                     continue
                 
-                color = team_data.get('color', '')
-                alt_color = team_data.get('alternateColor', '')  # camelCase!
-                twitter = team_data.get('twitter', '')
+                color = team_data.get('color') or ''
+                alt_color = team_data.get('alternateColor') or ''
+                twitter = team_data.get('twitter') or ''
+                if color in ('#null', 'null'):
+                    color = ''
+                if alt_color in ('#null', 'null'):
+                    alt_color = ''
                 
                 # Normalize colors
                 if color and not color.startswith('#'):
@@ -615,7 +619,7 @@ def pull_season_teams(season_year: int, force: bool = False):
                     alt_color = f'#{alt_color}'
                 
                 # Get logos
-                logos = team_data.get('logos', [])
+                logos = team_data.get('logos') or []
                 logo_url = logos[0] if logos else ''
                 
                 # Handle location data (CFBD uses camelCase)
@@ -671,10 +675,8 @@ def pull_season_teams(season_year: int, force: bool = False):
                     updated_count += 1
             
             except Exception as e:
-                logger.error(f"❌ ERROR processing team '{school}': {type(e).__name__}: {e}")
-                logger.error(f"Team data: {team_data}")
-                # Don't continue - let it fail so we can see the error
-                raise
+                logger.error(f"ERROR processing team '{school}': {type(e).__name__}: {e}")
+                continue
         
         # Mark as pulled
         season.teams_pulled = True
