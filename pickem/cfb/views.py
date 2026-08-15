@@ -5,9 +5,14 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.views.decorators.http import require_POST
+from django.views.decorators.debug import sensitive_post_parameters
+from allauth.account.forms import ChangePasswordForm, SetPasswordForm
+from allauth.socialaccount.forms import DisconnectForm
+from allauth.socialaccount.models import SocialAccount
 from .models import Game, Pick, Team, League, LeagueMembership, LeagueGame, LeagueRules, Season, Ranking, Week, MemberSeason, MemberWeek
 from django.utils import timezone
 from . import services
+from .forms import AccountNameForm
 from django.conf import settings
 
 
@@ -908,6 +913,67 @@ def standings_view(request):
             context['key_picks_enabled'] = fallback_league_rules and fallback_league_rules.key_picks_enabled
     
     return render(request, "cfb/standings.html", context)
+
+
+@sensitive_post_parameters("oldpassword", "password1", "password2")
+@login_required
+def account_view(request):
+    user = request.user
+    has_usable_password = user.has_usable_password()
+    social_accounts = SocialAccount.objects.filter(user=user)
+    google_account = social_accounts.filter(provider="google").first()
+
+    name_form = AccountNameForm(instance=user)
+    if has_usable_password:
+        password_form = ChangePasswordForm(user=user)
+    else:
+        password_form = SetPasswordForm(user=user)
+    disconnect_form = DisconnectForm(request=request)
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+
+        if action == "update_name":
+            name_form = AccountNameForm(request.POST, instance=user)
+            if name_form.is_valid():
+                name_form.save()
+                messages.success(request, "Your name has been updated.")
+                return redirect("account")
+
+        elif action == "change_password":
+            if has_usable_password:
+                password_form = ChangePasswordForm(user=user, data=request.POST)
+            else:
+                password_form = SetPasswordForm(user=user, data=request.POST)
+            if password_form.is_valid():
+                password_form.save()
+                messages.success(request, "Your password has been updated.")
+                return redirect("account")
+
+        elif action == "disconnect_social":
+            disconnect_form = DisconnectForm(request.POST, request=request)
+            if disconnect_form.is_valid():
+                disconnect_form.save()
+                messages.success(request, "Provider disconnected from your account.")
+                return redirect("account")
+            for error in disconnect_form.non_field_errors():
+                messages.error(request, error)
+            for field_errors in disconnect_form.errors.values():
+                for error in field_errors:
+                    messages.error(request, error)
+
+    return render(
+        request,
+        "cfb/account.html",
+        {
+            "name_form": name_form,
+            "password_form": password_form,
+            "has_usable_password": has_usable_password,
+            "google_account": google_account,
+            "social_accounts": social_accounts,
+            "disconnect_form": disconnect_form,
+        },
+    )
 
 
 @login_required

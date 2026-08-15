@@ -104,7 +104,7 @@
                         <li class="menu-title">
                             <span>{{ request.user.username }}</span>
                         </li>
-                        <li><a href="{% url 'socialaccount_connections' %}"><i class="fas fa-link mr-1"></i> Connected Accounts</a></li>
+                        <li><a href="{% url 'account' %}"><i class="fas fa-user-cog mr-1"></i> Account</a></li>
                         <li><a href="{% url 'account_logout' %}"><i class="fas fa-sign-out-alt mr-1"></i> Logout</a></li>
                     </ul>
                 </div>
@@ -160,10 +160,10 @@
                         <li class="menu-title">
                             <span>{{ request.user.username }}</span>
                         </li>
+                        <li><a href="{% url 'account' %}"><i class="fas fa-user-cog mr-1"></i> Account</a></li>
                         {% if request.user.is_staff %}
                         <li><a href="/settings/"><i class="fas fa-cog mr-1"></i> Settings</a></li>
                         {% endif %}
-                        <li><a href="{% url 'socialaccount_connections' %}"><i class="fas fa-link mr-1"></i> Connected Accounts</a></li>
                         <li><a href="{% url 'account_logout' %}"><i class="fas fa-sign-out-alt mr-1"></i> Logout</a></li>
                     </ul>
                 </div>

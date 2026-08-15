@@ -1,0 +1,217 @@
+{% extends "cfb/base.html" %}
+{% load i18n %}
+{% load socialaccount %}
+{% load cfb_tags %}
+
+{% block title %}Account | CFB Pick'em{% endblock %}
+
+{% block content %}
+<section class="max-w-2xl mx-auto space-y-6">
+    <div>
+        <h1 class="text-3xl font-bold">Account</h1>
+        <p class="text-sm text-base-content/70 mt-1">
+            Update your display name, password, and connected sign-in providers.
+        </p>
+    </div>
+
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body space-y-4">
+            <div class="flex items-center gap-3">
+                <div class="avatar placeholder">
+                    <div class="bg-primary text-primary-content rounded-full w-12">
+                        <span class="text-lg"><i class="fas fa-user"></i></span>
+                    </div>
+                </div>
+                <div>
+                    <h2 class="text-xl font-semibold">Profile</h2>
+                    <p class="text-sm text-base-content/70">
+                        Your name appears in standings and league rosters.
+                    </p>
+                </div>
+            </div>
+
+            <div class="grid gap-2 text-sm">
+                <div class="flex justify-between gap-4">
+                    <span class="text-base-content/60">Username</span>
+                    <span class="font-medium">{{ request.user.username }}</span>
+                </div>
+                <div class="flex justify-between gap-4">
+                    <span class="text-base-content/60">Email</span>
+                    <span class="font-medium">{{ request.user.email|default:"—" }}</span>
+                </div>
+            </div>
+
+            <form method="post" action="{% url 'account' %}" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_name">
+
+                {% if name_form.non_field_errors %}
+                    <div class="alert alert-error">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>{{ name_form.non_field_errors|striptags }}</span>
+                    </div>
+                {% endif %}
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div class="form-control">
+                        <label class="label" for="{{ name_form.first_name.id_for_label }}">
+                            <span class="label-text">{{ name_form.first_name.label }}</span>
+                        </label>
+                        {{ name_form.first_name }}
+                        {% if name_form.first_name.errors %}
+                            <label class="label">
+                                <span class="label-text-alt text-error">{{ name_form.first_name.errors|striptags }}</span>
+                            </label>
+                        {% endif %}
+                    </div>
+                    <div class="form-control">
+                        <label class="label" for="{{ name_form.last_name.id_for_label }}">
+                            <span class="label-text">{{ name_form.last_name.label }}</span>
+                        </label>
+                        {{ name_form.last_name }}
+                        {% if name_form.last_name.errors %}
+                            <label class="label">
+                                <span class="label-text-alt text-error">{{ name_form.last_name.errors|striptags }}</span>
+                            </label>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save mr-2"></i> Save name
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card bg-base-100 shadow-xl" id="password">
+        <div class="card-body space-y-4">
+            <div class="flex items-center gap-3">
+                <div class="avatar placeholder">
+                    <div class="bg-secondary text-secondary-content rounded-full w-12">
+                        <span class="text-lg"><i class="fas fa-lock"></i></span>
+                    </div>
+                </div>
+                <div>
+                    <h2 class="text-xl font-semibold">
+                        {% if has_usable_password %}Change password{% else %}Set password{% endif %}
+                    </h2>
+                    <p class="text-sm text-base-content/70">
+                        {% if has_usable_password %}
+                            Choose a new password for signing in with your username or email.
+                        {% else %}
+                            You signed in with Google. Set a password to also sign in directly.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+
+            <form method="post" action="{% url 'account' %}" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="change_password">
+
+                {% if password_form.non_field_errors %}
+                    <div class="alert alert-error">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>{{ password_form.non_field_errors|striptags }}</span>
+                    </div>
+                {% endif %}
+
+                {% if has_usable_password %}
+                    <div class="form-control">
+                        <label class="label" for="{{ password_form.oldpassword.id_for_label }}">
+                            <span class="label-text">{{ password_form.oldpassword.label }}</span>
+                        </label>
+                        {{ password_form.oldpassword|add_attrs:"class=input input-bordered w-full,placeholder=Current password" }}
+                        {% if password_form.oldpassword.errors %}
+                            <label class="label">
+                                <span class="label-text-alt text-error">{{ password_form.oldpassword.errors|striptags }}</span>
+                            </label>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                <div class="form-control">
+                    <label class="label" for="{{ password_form.password1.id_for_label }}">
+                        <span class="label-text">{{ password_form.password1.label }}</span>
+                    </label>
+                    {{ password_form.password1|add_attrs:"class=input input-bordered w-full,placeholder=New password" }}
+                    {% if password_form.password1.errors %}
+                        <label class="label">
+                            <span class="label-text-alt text-error">{{ password_form.password1.errors|striptags }}</span>
+                        </label>
+                    {% endif %}
+                </div>
+
+                <div class="form-control">
+                    <label class="label" for="{{ password_form.password2.id_for_label }}">
+                        <span class="label-text">{{ password_form.password2.label }}</span>
+                    </label>
+                    {{ password_form.password2|add_attrs:"class=input input-bordered w-full,placeholder=Confirm new password" }}
+                    {% if password_form.password2.errors %}
+                        <label class="label">
+                            <span class="label-text-alt text-error">{{ password_form.password2.errors|striptags }}</span>
+                        </label>
+                    {% endif %}
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-key mr-2"></i>
+                    {% if has_usable_password %}Update password{% else %}Set password{% endif %}
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card bg-base-100 shadow-xl" id="google">
+        <div class="card-body space-y-4">
+            <div class="flex items-center gap-3">
+                <div class="avatar placeholder">
+                    <div class="bg-base-200 rounded-full w-12">
+                        <span class="text-lg"><i class="fab fa-google"></i></span>
+                    </div>
+                </div>
+                <div>
+                    <h2 class="text-xl font-semibold">Google account</h2>
+                    <p class="text-sm text-base-content/70">
+                        Connect Google to sign in with one click. Your picks and standings stay linked to this account.
+                    </p>
+                </div>
+            </div>
+
+            {% if google_account %}
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-lg border border-base-300">
+                    <div>
+                        <p class="font-semibold">
+                            {{ google_account.get_provider_account }}
+                        </p>
+                        <p class="text-xs text-base-content/60 mt-1">
+                            Connected via Google
+                        </p>
+                    </div>
+                    <span class="badge badge-success badge-outline">Connected</span>
+                </div>
+
+                <form method="post" action="{% url 'account' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="disconnect_social">
+                    <input type="hidden" name="account" value="{{ google_account.pk }}">
+                    <button type="submit" class="btn btn-error btn-outline">
+                        <i class="fas fa-unlink mr-2"></i> Disconnect Google
+                    </button>
+                </form>
+            {% else %}
+                <div class="alert">
+                    <i class="fas fa-info-circle"></i>
+                    <span>No Google account is linked yet.</span>
+                </div>
+                {% providers_media_js %}
+                <a href="{% provider_login_url 'google' process='connect' next='/account/#google' %}" class="btn btn-outline gap-2">
+                    <i class="fab fa-google"></i>
+                    Connect Google
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}
