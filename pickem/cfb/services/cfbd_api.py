@@ -320,9 +320,10 @@ class CFBDAPIClient:
         data = self._make_request('/calendar', params)
         
         if data:
-            # Cache for 1 week
             cache.set(cache_key, data, timeout=604800)
             logger.info(f"Fetched {len(data)} calendar data from CFBD")
+        
+        return data
     
     def fetch_season_stats(
         self,

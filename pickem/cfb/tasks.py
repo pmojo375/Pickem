@@ -202,8 +202,8 @@ def pull_calendar(season_year: int, force: bool = False):
                 season_type=calendar_item['seasonType'],
                 number=calendar_item['week'],
                 defaults={
-                    'start_date': start_date,
-                    'end_date': end_date,
+                    'start_date': start_date.date(),
+                    'end_date': end_date.date(),
                 }
             )
             
@@ -765,11 +765,30 @@ def pull_season_games(season_year: int = None, season_type: str = 'regular', for
                     number=week_number,
                 ).first()
                 if not week:
-                    logger.warning(
-                        f"Week {week_number} not found for {season_year} {season_type}, skipping game"
+                    start_date_str = game_data.get('startDate')
+                    if not start_date_str or week_number is None:
+                        logger.warning(
+                            f"Week {week_number} not found for {season_year} {season_type} "
+                            f"and game has no date/week, skipping"
+                        )
+                        skipped_count += 1
+                        continue
+                    kickoff_for_week = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
+                    if timezone.is_naive(kickoff_for_week):
+                        kickoff_for_week = timezone.make_aware(kickoff_for_week)
+                    week_date = timezone.localtime(kickoff_for_week).date()
+                    week, _ = Week.objects.get_or_create(
+                        season=season,
+                        season_type=season_type,
+                        number=week_number,
+                        defaults={
+                            'start_date': week_date,
+                            'end_date': week_date,
+                        },
                     )
-                    skipped_count += 1
-                    continue
+                    logger.info(
+                        f"Created missing {season_type} week {week_number} for {season_year}"
+                    )
                 
                 # Extract game fields (CFBD uses camelCase)
                 game_id = game_data.get('id')
