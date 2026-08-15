@@ -6,34 +6,27 @@ from ..models import Season, Week
 
 def get_current_week(season: Optional[Season] = None, now: Optional[datetime] = None) -> Optional[Week]:
     """
-    Get the current Week object based on the current datetime.
-    
-    Args:
-        season: Season to filter by. If None, uses the active season.
-        now: Current datetime. If None, uses timezone.now().
-    
-    Returns:
-        Week object if found, None otherwise.
+    Get the Week that actually contains `now` on the calendar.
+
+    Background jobs (spreads, rankings, stats) must use this so they do not
+    treat a future week as current before it starts.
     """
     now = now or timezone.now()
-    
+
     if season is None:
         season = Season.objects.filter(is_active=True).first()
-    
+
     if not season:
         return None
-    
-    # Convert now to date for comparison
+
     current_date = now.date()
-    
-    # First, try to find a week where the current date matches the start_date
-    # This handles the case where end_date of previous week matches start_date of current week
+
+    # Prefer a week whose start_date is today (handles adjacent-week overlap)
     week = Week.objects.filter(
         season=season,
         start_date=current_date
     ).first()
-    
-    # If no week found with matching start_date, find where current_date falls between start_date and end_date
+
     if not week:
         week = Week.objects.filter(
             season=season,
@@ -41,16 +34,31 @@ def get_current_week(season: Optional[Season] = None, now: Optional[datetime] = 
             end_date__gte=current_date
         ).exclude(start_date=current_date).first()
 
-    # Before week 1 (or between seasons), use the next upcoming week so Settings/Picks
-    # are not empty just because kickoff hasn't arrived yet.
-    if not week:
-        week = (
-            Week.objects.filter(season=season, start_date__gt=current_date)
-            .order_by("start_date")
-            .first()
-        )
-
     return week
+
+
+def get_display_week(season: Optional[Season] = None, now: Optional[datetime] = None) -> Optional[Week]:
+    """
+    Week to show in Settings/Picks/Live.
+
+    Same as get_current_week during the season; before week 1, returns the next
+    upcoming week so the UI is not empty.
+    """
+    week = get_current_week(season=season, now=now)
+    if week:
+        return week
+
+    now = now or timezone.now()
+    if season is None:
+        season = Season.objects.filter(is_active=True).first()
+    if not season:
+        return None
+
+    return (
+        Week.objects.filter(season=season, start_date__gt=now.date())
+        .order_by("start_date")
+        .first()
+    )
 
 
 def get_week_datetime_range(week: Week) -> Tuple[datetime, datetime]:

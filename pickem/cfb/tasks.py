@@ -731,6 +731,10 @@ def pull_season_games(season_year: int = None, season_type: str = 'regular', for
             logger.warning(f"Teams not pulled for {season_year} yet, pulling teams first")
             pull_season_teams(season_year)
         
+        if not Week.objects.filter(season=season).exists():
+            logger.warning(f"No weeks found for {season_year}, pulling calendar first")
+            pull_calendar(season_year, force=True)
+        
         logger.info(f"Pulling ALL {season_type} games data for {season_year} season")
         
         # Get CFBD client
@@ -753,13 +757,20 @@ def pull_season_games(season_year: int = None, season_type: str = 'regular', for
         teams_by_name = {team.name: team for team in season.teams.all()}
         
         for game_data in games_data:
-            week = Week.objects.get(season=season, season_type=season_type, number=game_data.get('week'))
-            
-            if not week:
-                logger.warning(f"Week {game_data.get('week')} not found for {season_year} {season_type}")
-                continue
-            
             try:
+                week_number = game_data.get('week')
+                week = Week.objects.filter(
+                    season=season,
+                    season_type=season_type,
+                    number=week_number,
+                ).first()
+                if not week:
+                    logger.warning(
+                        f"Week {week_number} not found for {season_year} {season_type}, skipping game"
+                    )
+                    skipped_count += 1
+                    continue
+                
                 # Extract game fields (CFBD uses camelCase)
                 game_id = game_data.get('id')
                 season_type_value = game_data.get('seasonType', 'regular')  # camelCase!
@@ -1081,7 +1092,7 @@ def initialize_season(season_year: int, force: bool = False):
         logger.error(f"Error initializing season {season_year}: {e}", exc_info=True)
 
 
-@shared_task(name='cfb.tasks.update_team_records_async')
+@shared_task(name='cfb.tasks.update_team_records_async', rate_limit='1/s')
 def update_team_records_async(season_year: int):
     """
     Asynchronously update team records for a given season.

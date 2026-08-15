@@ -30,7 +30,7 @@ def home_view(request):
             from datetime import timedelta
             
             # Get current week and its date range
-            current_week = services.schedule.get_current_week()
+            current_week = services.schedule.get_display_week()
             
             # Picks made this week
             week_picks_count = 0
@@ -94,7 +94,7 @@ def picks_view(request):
     
     if not league:
         # No league - show message instead of redirecting
-        current_week = services.schedule.get_current_week()
+        current_week = services.schedule.get_display_week()
         context = {
             "games_with_picks": [],
             "current_league": None,
@@ -126,7 +126,7 @@ def picks_view(request):
         from datetime import timedelta
         
         # Get current week and its date range
-        current_week = services.schedule.get_current_week()
+        current_week = services.schedule.get_display_week()
         
         # Get active season and league rules
         active_season = Season.objects.filter(is_active=True).first()
@@ -257,7 +257,7 @@ def picks_view(request):
     from datetime import timedelta
     
     # Get current week and its date range
-    current_week = services.schedule.get_current_week()
+    current_week = services.schedule.get_display_week()
     
     # Get league games for this league - current week of the active season only
     active_season = Season.objects.filter(is_active=True).first()
@@ -418,7 +418,7 @@ def live_view(request):
         return render(request, "cfb/live.html", context)
     
     # Show picks for selected games in the current week window
-    current_week = services.schedule.get_current_week()
+    current_week = services.schedule.get_display_week()
     
     # Get league games that are active
     league_games = []
@@ -1233,7 +1233,7 @@ def settings_view(request):
             return redirect(f"/settings/?league_id={league.id}")
 
     # Get current week and its date range
-    current_week = services.schedule.get_current_week()
+    current_week = services.schedule.get_display_week()
     start, end = None, None
     games = Game.objects.none()
     
