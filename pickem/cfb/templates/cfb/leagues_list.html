@@ -27,7 +27,9 @@
                 <div class="card-body">
                     <h3 class="card-title text-lg">
                         {{ league.name }}
-                        {% if not league.is_active %}
+                        {% if league.season_opt_in_required %}
+                        <div class="badge badge-warning badge-sm">Waiting for season</div>
+                        {% elif not league.is_active %}
                         <div class="badge badge-warning badge-sm">Closed</div>
                         {% endif %}
                         {% with membership=league.memberships.all|first %}

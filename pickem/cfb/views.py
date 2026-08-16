@@ -1491,10 +1491,15 @@ def start_new_season_view(request):
             messages.success(
                 request,
                 f"Started {season.name} ({season.year}). {previous.year} is no longer active. "
-                f"Copied rules for {rules_copied} league{'s' if rules_copied != 1 else ''}.",
+                f"Copied rules for {rules_copied} league{'s' if rules_copied != 1 else ''}. "
+                f"{result.get('leagues_paused', 0)} league(s) are closed until owners open them for {season.year}.",
             )
         else:
-            messages.success(request, f"Started {season.name} ({season.year}) and set it as the active season.")
+            messages.success(
+                request,
+                f"Started {season.name} ({season.year}) and set it as the active season. "
+                f"{result.get('leagues_paused', 0)} league(s) are closed until owners open them for {season.year}.",
+            )
 
         if result.get("initialize_mode") == "queued":
             messages.info(request, f"CFBD data pull for {season.year} has been queued.")
@@ -1676,7 +1681,8 @@ def _complete_league_join(request, league):
         else:
             messages.warning(
                 request,
-                f"You are already a member of '{league.name}', but your membership is inactive. Ask a league admin to reactivate you.",
+                f"You are already a member of '{league.name}', but your membership is inactive. "
+                "Open the league page to activate it, or use the link from your opt-in email.",
             )
         return redirect("league_detail", league_id=league.id)
 
@@ -1790,6 +1796,8 @@ def league_detail_view(request, league_id):
     can_close_league = (user_role == "owner" and membership_is_active) or request.user.is_staff
     memberships = LeagueMembership.objects.filter(league=league).select_related("user").order_by("-role", "joined_at")
     active_member_count = memberships.filter(is_active=True).count()
+    pending_opt_in_count = memberships.filter(is_active=False, role="member").count()
+    active_season = Season.objects.filter(is_active=True).first()
 
     context = {
         "league": league,
@@ -1800,10 +1808,13 @@ def league_detail_view(request, league_id):
         "is_admin": is_admin,
         "can_manage_this_league": can_manage_this_league,
         "can_close_league": can_close_league,
+        "can_open_for_season": can_manage_this_league and league.season_opt_in_required,
+        "can_email_opt_in": can_manage_this_league and league.is_active and not league.season_opt_in_required,
+        "pending_opt_in_count": pending_opt_in_count,
         "membership_is_active": membership_is_active,
         "active_member_count": active_member_count,
         "inactive_member_count": memberships.count() - active_member_count,
-        "active_season": Season.objects.filter(is_active=True).first(),
+        "active_season": active_season,
         "join_password_min_length": JOIN_PASSWORD_MIN_LENGTH,
     }
     if can_manage_this_league:
@@ -1941,10 +1952,147 @@ def league_reopen_view(request, league_id):
         messages.info(request, f"'{league.name}' is already open.")
         return redirect("league_detail", league_id=league.id)
 
+    if league.season_opt_in_required:
+        messages.error(
+            request,
+            "This league is waiting to be opened for the new season. Use Open for this season instead of Reopen.",
+        )
+        return redirect("league_detail", league_id=league.id)
+
     league.is_active = True
     league.save(update_fields=["is_active"])
     messages.success(request, f"'{league.name}' is open again.")
     return redirect("league_detail", league_id=league.id)
+
+
+@login_required
+@require_POST
+def league_open_for_season_view(request, league_id):
+    """Open a league for the current season and require members to opt back in."""
+    league = get_object_or_404(League, pk=league_id)
+    if not (request.user.is_staff or _active_league_admin(league, request.user)):
+        messages.error(request, "You do not have permission to open this league for the season.")
+        return redirect("league_detail", league_id=league.id)
+
+    if not league.season_opt_in_required:
+        messages.info(request, f"'{league.name}' does not need a season opt-in.")
+        return redirect("league_detail", league_id=league.id)
+
+    active_season = Season.objects.filter(is_active=True).first()
+    year_label = str(active_season.year) if active_season else "this season"
+
+    deactivated = LeagueMembership.objects.filter(league=league, role="member").update(is_active=False)
+    LeagueMembership.objects.filter(league=league, role__in=("owner", "admin")).update(is_active=True)
+    league.is_active = True
+    league.season_opt_in_required = False
+    league.save(update_fields=["is_active", "season_opt_in_required"])
+
+    messages.success(
+        request,
+        f"'{league.name}' is open for {year_label}. "
+        f"{deactivated} returning member{'s' if deactivated != 1 else ''} must opt in. "
+        "You can email them from this page.",
+    )
+    return redirect("league_detail", league_id=league.id)
+
+
+@login_required
+@require_POST
+def league_email_opt_in_view(request, league_id):
+    """Email inactive members a personal opt-in link."""
+    league = get_object_or_404(League, pk=league_id)
+    if not (request.user.is_staff or _active_league_admin(league, request.user)):
+        messages.error(request, "You do not have permission to email members in this league.")
+        return redirect("league_detail", league_id=league.id)
+
+    if not league.is_active or league.season_opt_in_required:
+        messages.error(request, "Open the league for this season before sending opt-in emails.")
+        return redirect("league_detail", league_id=league.id)
+
+    active_season = Season.objects.filter(is_active=True).first()
+    if not active_season:
+        messages.error(request, "There is no active season.")
+        return redirect("league_detail", league_id=league.id)
+
+    sent, skipped, failed = services.opt_in.send_season_opt_in_emails(request, league, active_season)
+    if sent:
+        messages.success(request, f"Sent opt-in email to {sent} member{'s' if sent != 1 else ''}.")
+    if skipped:
+        messages.warning(request, f"Skipped {skipped} member{'s' if skipped != 1 else ''} with no email address.")
+    if failed:
+        messages.error(request, f"{failed} email{'s' if failed != 1 else ''} failed to send. Check the server logs.")
+    if not sent and not skipped and not failed:
+        messages.info(request, "There are no inactive members to email.")
+    return redirect("league_detail", league_id=league.id)
+
+
+@login_required
+@require_POST
+def league_self_activate_view(request, league_id):
+    """Let a logged-in inactive member opt back in for the current season."""
+    league = get_object_or_404(League, pk=league_id)
+    membership = LeagueMembership.objects.filter(league=league, user=request.user).first()
+    if not membership:
+        messages.error(request, "You are not a member of this league.")
+        return redirect("leagues_list")
+
+    if not league.is_active or league.season_opt_in_required:
+        messages.error(request, "This league is not open for the season yet.")
+        return redirect("league_detail", league_id=league.id)
+
+    if membership.is_active:
+        messages.info(request, f"You are already active in '{league.name}'.")
+        return redirect("league_detail", league_id=league.id)
+
+    membership.is_active = True
+    membership.save(update_fields=["is_active"])
+    messages.success(request, f"You are active in '{league.name}' for this season.")
+    return redirect("league_detail", league_id=league.id)
+
+
+@login_required
+def league_opt_in_view(request, token):
+    """Activate membership from a personal email link."""
+    active_season = Season.objects.filter(is_active=True).first()
+    membership = (
+        LeagueMembership.from_opt_in_token(token, active_season.year)
+        if active_season
+        else None
+    )
+    if not membership:
+        messages.error(request, "This opt-in link is invalid or has expired.")
+        return redirect("leagues_list")
+
+    league = membership.league
+    if request.user.pk != membership.user_id:
+        messages.error(
+            request,
+            "This opt-in link is for a different account. Log in as that user and open the link again.",
+        )
+        return redirect("league_detail", league_id=league.id)
+
+    if request.method == "POST":
+        if not league.is_active or league.season_opt_in_required:
+            messages.error(request, "This league is not open for the season yet.")
+            return redirect("league_detail", league_id=league.id)
+        if membership.is_active:
+            messages.info(request, f"You are already active in '{league.name}'.")
+            return redirect("league_detail", league_id=league.id)
+        membership.is_active = True
+        membership.save(update_fields=["is_active"])
+        messages.success(request, f"You are active in '{league.name}' for this season.")
+        return redirect("league_detail", league_id=league.id)
+
+    return render(
+        request,
+        "cfb/league_opt_in.html",
+        {
+            "league": league,
+            "token": token,
+            "membership": membership,
+            "active_season": active_season,
+        },
+    )
 
 
 @login_required

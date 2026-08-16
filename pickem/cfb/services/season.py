@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from django.db import connections, transaction
 
-from cfb.models import LeagueRules, Season
+from cfb.models import League, LeagueRules, Season
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +105,10 @@ def start_new_season(year: int, name: str = "") -> Dict[str, Any]:
         rules_copied = 0
         if previous:
             rules_copied = _clone_league_rules(previous, season)
+        leagues_paused = League.objects.update(
+            is_active=False,
+            season_opt_in_required=True,
+        )
 
     initialize_queued, initialize_mode, initialize_error = _start_initialize(year)
 
@@ -112,6 +116,7 @@ def start_new_season(year: int, name: str = "") -> Dict[str, Any]:
         "season": season,
         "previous_season": previous,
         "rules_copied": rules_copied,
+        "leagues_paused": leagues_paused,
         "initialize_queued": initialize_queued,
         "initialize_mode": initialize_mode,
         "initialize_error": initialize_error,

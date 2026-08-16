@@ -18,7 +18,9 @@
                 <div class="flex-1">
                     <h1 class="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-2">
                         <i class="fas fa-users-cog mr-2"></i>{{ league.name }}
-                        {% if not league.is_active %}
+                        {% if league.season_opt_in_required %}
+                        <span class="badge badge-warning badge-lg align-middle">Waiting for {{ active_season.year|default:"season" }}</span>
+                        {% elif not league.is_active %}
                         <span class="badge badge-warning badge-lg align-middle">Closed</span>
                         {% endif %}
                     </h1>
@@ -121,10 +123,40 @@
     </div>
     {% endif %}
 
+    {% if can_open_for_season %}
+    <div class="alert alert-info mb-6">
+        <i class="fas fa-flag-checkered"></i>
+        <div class="flex-1">
+            <div class="font-bold">Open this league for {% if active_season %}{{ active_season.year }}{% else %}the new season{% endif %}</div>
+            <div class="text-sm">
+                Returning members will be set inactive until they opt in. You stay active as owner/admin so you can email them.
+            </div>
+        </div>
+        <form method="post" action="{% url 'league_open_for_season' league.id %}">
+            {% csrf_token %}
+            <button
+                type="submit"
+                class="btn btn-primary"
+                onclick="return confirm('Open {{ league.name }} for the season? Returning members will need to opt in before they can pick.')"
+            >
+                Open for {% if active_season %}{{ active_season.year }}{% else %}season{% endif %}
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
     {% if is_member and not membership_is_active %}
     <div class="alert alert-warning mb-6">
         <i class="fas fa-user-slash"></i>
-        <span>Your membership in this league is inactive. You cannot make picks until a league admin reactivates you.</span>
+        <div class="flex-1">
+            <span>Your membership is inactive, so you cannot make picks.</span>
+        </div>
+        {% if league.is_active and not league.season_opt_in_required %}
+        <form method="post" action="{% url 'league_self_activate' league.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-primary">Activate my membership</button>
+        </form>
+        {% endif %}
     </div>
     {% endif %}
 
@@ -137,7 +169,13 @@
             {% if not league.is_active %}
             <div class="alert alert-warning">
                 <i class="fas fa-lock"></i>
-                <span>This league is closed. Invite links and join passwords will not work until you reopen it.</span>
+                <span>
+                    {% if league.season_opt_in_required %}
+                    This league is waiting to be opened for the new season. Invite links will not work until then.
+                    {% else %}
+                    This league is closed. Invite links and join passwords will not work until you reopen it.
+                    {% endif %}
+                </span>
             </div>
             {% endif %}
             <p class="text-sm text-base-content/70">
@@ -166,6 +204,27 @@
                     <i class="fas fa-sync-alt mr-2"></i>Regenerate invite link
                 </button>
             </form>
+
+            {% if can_email_opt_in %}
+            <div class="divider"></div>
+            <h3 class="font-bold text-lg">Returning members</h3>
+            <p class="text-sm text-base-content/70">
+                {{ pending_opt_in_count }} inactive member{{ pending_opt_in_count|pluralize }}
+                can opt in from an email link or the league page.
+            </p>
+            {% if pending_opt_in_count %}
+            <form method="post" action="{% url 'league_email_opt_in' league.id %}">
+                {% csrf_token %}
+                <button
+                    type="submit"
+                    class="btn btn-secondary"
+                    onclick="return confirm('Email {{ pending_opt_in_count }} inactive member{{ pending_opt_in_count|pluralize }} an opt-in link?')"
+                >
+                    <i class="fas fa-envelope mr-2"></i>Email returning members
+                </button>
+            </form>
+            {% endif %}
+            {% endif %}
 
             <div class="divider"></div>
 
@@ -352,13 +411,15 @@
                         <i class="fas fa-lock mr-2"></i>Close league
                     </button>
                 </form>
-                {% else %}
+                {% elif not league.season_opt_in_required %}
                 <form method="post" action="{% url 'league_reopen' league.id %}">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-success">
                         <i class="fas fa-lock-open mr-2"></i>Reopen league
                     </button>
                 </form>
+                {% else %}
+                <span class="text-sm text-base-content/60">Use Open for this season above instead of Reopen.</span>
                 {% endif %}
             </div>
             <div class="divider"></div>

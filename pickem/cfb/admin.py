@@ -87,7 +87,7 @@ class PickAdmin(admin.ModelAdmin):
 @admin.register(League)
 class LeagueAdmin(admin.ModelAdmin):
     list_display = ("name", "created_by", "is_active", "created_at", "member_count")
-    list_filter = ("is_active", "created_at")
+    list_filter = ("is_active", "season_opt_in_required", "created_at")
     search_fields = ("name", "description", "created_by__username")
     readonly_fields = ("created_at", "invite_version")
     exclude = ("join_password",)

@@ -46,7 +46,8 @@
             <i class="fas fa-user-slash text-6xl text-warning mb-4"></i>
             <h2 class="card-title text-2xl mb-2">Membership Inactive</h2>
             <p class="text-base-content/70 mb-6 max-w-md">
-                Your membership in {{ current_league.name }} is inactive, so you cannot make picks. Ask a league admin to reactivate you.
+                Your membership in {{ current_league.name }} is inactive, so you cannot make picks.
+                Open the league page to activate it, or use the link from your opt-in email.
             </p>
             <a href="{% url 'league_detail' current_league.id %}" class="btn btn-primary">View League</a>
         </div>

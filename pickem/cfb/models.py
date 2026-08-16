@@ -7,6 +7,7 @@ from django.urls import reverse
 
 
 LEAGUE_INVITE_SALT = "cfb.league.invite"
+LEAGUE_OPT_IN_SALT = "cfb.league.opt-in"
 JOIN_PASSWORD_MIN_LENGTH = 4
 
 
@@ -21,6 +22,10 @@ class League(models.Model):
         help_text="Hashed password required to join this league.",
     )
     invite_version = models.PositiveIntegerField(default=1)
+    season_opt_in_required = models.BooleanField(
+        default=False,
+        help_text="Set when a new season starts. Owner must open the league for the year before members can opt in.",
+    )
 
     class Meta:
         ordering = ["-created_at"]
@@ -231,6 +236,27 @@ class LeagueMembership(models.Model):
     def __str__(self) -> str:
         status = "active" if self.is_active else "inactive"
         return f"{self.user.username} in {self.league.name} ({self.role}, {status})"
+
+    def get_opt_in_token(self, season_year: int) -> str:
+        return signing.dumps(
+            {"l": self.league_id, "u": self.user_id, "y": season_year},
+            salt=LEAGUE_OPT_IN_SALT,
+        )
+
+    @classmethod
+    def from_opt_in_token(cls, token: str, season_year: int):
+        try:
+            data = signing.loads(token, salt=LEAGUE_OPT_IN_SALT)
+        except signing.BadSignature:
+            return None
+        league_id = data.get("l")
+        user_id = data.get("u")
+        year = data.get("y")
+        if not isinstance(league_id, int) or not isinstance(user_id, int) or year != season_year:
+            return None
+        return cls.objects.filter(league_id=league_id, user_id=user_id).select_related(
+            "league", "user"
+        ).first()
 
 
 class Season(models.Model):

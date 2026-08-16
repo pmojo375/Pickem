@@ -8,7 +8,7 @@
         <h1 class="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
             <i class="fas fa-flag-checkered mr-2"></i>Start New Season
         </h1>
-        <p class="text-base-content/70 mt-2">Deactivate the current season, create a new one, copy league rules, and pull CFBD data.</p>
+        <p class="text-base-content/70 mt-2">Deactivate the current season, create a new one, copy league rules, close existing leagues until owners open them, and pull CFBD data.</p>
     </div>
 
     {% if active_season %}
@@ -78,7 +78,7 @@
                         <span class="label-text">
                             I understand this will deactivate
                             {% if active_season %}the {{ active_season.year }} season{% else %}any currently active season{% endif %}
-                            for <strong>all leagues</strong> and start a CFBD data pull for the new year.
+                            for <strong>all leagues</strong>, close those leagues until owners open them for the new year, and start a CFBD data pull.
                         </span>
                     </label>
                 </div>

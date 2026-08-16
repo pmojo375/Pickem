@@ -1,0 +1,42 @@
+{% extends "cfb/base.html" %}
+
+{% block title %}Rejoin {{ league.name }} | CFB Pick'em{% endblock %}
+
+{% block content %}
+<section class="max-w-2xl mx-auto">
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body space-y-4">
+            <h1 class="card-title text-2xl">Rejoin {{ league.name }}</h1>
+            <p class="text-sm text-base-content/70">
+                Confirm that you want to play in
+                {% if active_season %}{{ active_season.year }}{% else %}this season{% endif %}.
+                You will be able to make picks after you activate.
+            </p>
+
+            {% if membership.is_active %}
+            <div class="alert">
+                <i class="fas fa-check text-success"></i>
+                <span>You are already active in this league.</span>
+            </div>
+            <a href="{% url 'league_detail' league.id %}" class="btn btn-primary">View league</a>
+            {% elif not league.is_active or league.season_opt_in_required %}
+            <div class="alert alert-warning">
+                <i class="fas fa-lock"></i>
+                <span>This league is not open for the season yet. Check back after the commissioner opens it.</span>
+            </div>
+            {% else %}
+            <form method="post" action="{% url 'league_opt_in' token %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary btn-block">
+                    <i class="fas fa-check mr-2"></i>Activate my membership
+                </button>
+            </form>
+            {% endif %}
+
+            <p class="text-sm text-base-content/70">
+                <a href="{% url 'leagues_list' %}" class="link link-hover">Back to leagues</a>
+            </p>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,10 @@
+Hi {{ user.username }},
+
+{{ league.name }} is open for the {{ season.year }} season.
+
+If you want to play this year, activate your membership here:
+{{ activate_url }}
+
+If you do not activate, you will stay in the league as inactive and will not make picks or appear in standings.
+
+— CFB Pick'em
