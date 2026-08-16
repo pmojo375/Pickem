@@ -1,0 +1,27 @@
+{% extends "cfb/base.html" %}
+{% load i18n %}
+
+{% block title %}Verify Email | CFB Pick'em{% endblock %}
+
+{% block content %}
+<section class="max-w-2xl mx-auto">
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body space-y-4">
+            <h1 class="card-title text-2xl">Check your email</h1>
+            <p class="text-sm text-base-content/70">
+                We sent a confirmation link to finish creating your account.
+                Open that link, then confirm the address. If you do not see the
+                email, check your spam folder.
+            </p>
+            <div class="alert">
+                <i class="fas fa-envelope text-primary"></i>
+                <span>You will not be signed in until the email is confirmed.</span>
+            </div>
+            <p class="text-sm text-base-content/70">
+                Already confirmed?
+                <a href="{% url 'account_login' %}" class="link link-primary link-hover">Sign in</a>
+            </p>
+        </div>
+    </div>
+</section>
+{% endblock %}

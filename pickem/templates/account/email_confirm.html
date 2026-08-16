@@ -1,0 +1,53 @@
+{% extends "cfb/base.html" %}
+{% load i18n %}
+{% load account %}
+
+{% block title %}Confirm Email | CFB Pick'em{% endblock %}
+
+{% block content %}
+<section class="max-w-2xl mx-auto">
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body space-y-4">
+            <h1 class="card-title text-2xl">Confirm your email</h1>
+
+            {% if confirmation %}
+                {% user_display confirmation.email_address.user as user_display %}
+                {% if can_confirm %}
+                    <p class="text-sm text-base-content/70">
+                        Confirm that
+                        <span class="font-medium text-base-content">{{ confirmation.email_address.email }}</span>
+                        belongs to
+                        <span class="font-medium text-base-content">{{ user_display }}</span>.
+                    </p>
+                    <form method="post" action="{% url 'account_confirm_email' confirmation.key %}" class="space-y-4">
+                        {% csrf_token %}
+                        {{ redirect_field }}
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <i class="fas fa-check mr-2"></i> Confirm email
+                        </button>
+                    </form>
+                {% else %}
+                    <div class="alert alert-error">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>
+                            Unable to confirm {{ email }} because it is already confirmed by a different account.
+                        </span>
+                    </div>
+                    <p class="text-sm text-base-content/70">
+                        <a href="{% url 'account_login' %}" class="link link-primary link-hover">Sign in</a>
+                    </p>
+                {% endif %}
+            {% else %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-clock"></i>
+                    <span>This confirmation link expired or is invalid.</span>
+                </div>
+                <p class="text-sm text-base-content/70">
+                    Sign in and request a new confirmation email, or
+                    <a href="{% url 'account_signup' %}" class="link link-primary link-hover">create a new account</a>.
+                </p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}
