@@ -82,3 +82,6 @@ docs/_build/
 
 # PyBuilder
 target/
+pickem/Pick Data/*
+pickem/logs/*
+pickem/cfbd_data/*
