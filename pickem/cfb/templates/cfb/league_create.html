@@ -53,6 +53,39 @@
                     </label>
                 </div>
 
+                <div class="form-control mb-4">
+                    <label class="label">
+                        <span class="label-text font-semibold">Join password <span class="text-error">*</span></span>
+                    </label>
+                    <input
+                        type="password"
+                        name="join_password"
+                        placeholder="Password people need to join"
+                        class="input input-bordered w-full"
+                        required
+                        minlength="{{ join_password_min_length }}"
+                        autocomplete="new-password"
+                    >
+                    <label class="label">
+                        <span class="label-text-alt text-base-content/60">At least {{ join_password_min_length }} characters. Share this with people you want in the league.</span>
+                    </label>
+                </div>
+
+                <div class="form-control mb-6">
+                    <label class="label">
+                        <span class="label-text font-semibold">Confirm join password <span class="text-error">*</span></span>
+                    </label>
+                    <input
+                        type="password"
+                        name="join_password_confirm"
+                        placeholder="Re-enter join password"
+                        class="input input-bordered w-full"
+                        required
+                        minlength="{{ join_password_min_length }}"
+                        autocomplete="new-password"
+                    >
+                </div>
+
                 <!-- Submit Buttons -->
                 <div class="card-actions justify-end gap-2">
                     <a href="{% url 'leagues_list' %}" class="btn btn-ghost">
@@ -79,9 +112,9 @@
         <div class="card bg-base-200">
             <div class="card-body">
                 <h3 class="font-bold flex items-center">
-                    <i class="fas fa-user-plus text-secondary mr-2"></i>Anyone Can Join
+                    <i class="fas fa-user-plus text-secondary mr-2"></i>Invite Your Friends
                 </h3>
-                <p class="text-sm text-base-content/70">Your league will be visible to everyone, and anyone can join to compete.</p>
+                <p class="text-sm text-base-content/70">Share the join password or invite link. Anyone with either can join.</p>
             </div>
         </div>
     </div>

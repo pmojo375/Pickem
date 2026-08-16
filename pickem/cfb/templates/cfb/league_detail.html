@@ -54,15 +54,26 @@
                         </a>
                         {% endif %}
                     {% else %}
-                        <a href="{% url 'league_join' league.id %}" class="btn btn-primary">
-                            <i class="fas fa-user-plus mr-2"></i>Join League
-                        </a>
+                        <form method="post" action="{% url 'league_join' league.id %}" class="flex flex-col sm:flex-row gap-2">
+                            {% csrf_token %}
+                            <input
+                                type="password"
+                                name="join_password"
+                                class="input input-bordered"
+                                placeholder="Join password"
+                                required
+                            >
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-user-plus mr-2"></i>Join League
+                            </button>
+                        </form>
                     {% endif %}
                 </div>
             </div>
         </div>
     </div>
 
+    {% if is_member %}
     <!-- League Stats -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div class="stat bg-base-100 rounded-lg shadow">
@@ -98,6 +109,7 @@
             <div class="stat-value text-2xl">{% if active_season %}{{ active_season.year }}{% else %}—{% endif %}</div>
         </div>
     </div>
+    {% endif %}
 
     {% if is_member and not membership_is_active %}
     <div class="alert alert-warning mb-6">
@@ -106,6 +118,95 @@
     </div>
     {% endif %}
 
+    {% if is_admin %}
+    <div class="card bg-base-100 shadow-xl mb-6">
+        <div class="card-body space-y-6">
+            <h2 class="card-title text-2xl">
+                <i class="fas fa-link mr-2 text-primary"></i>Invite people
+            </h2>
+            <p class="text-sm text-base-content/70">
+                Share this link to let someone join without the password.
+                Regenerating it invalidates every old link.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-2">
+                <input
+                    id="invite-url"
+                    type="text"
+                    class="input input-bordered w-full"
+                    value="{{ invite_url }}"
+                    readonly
+                >
+                <button type="button" class="btn btn-outline" onclick="copyInviteLink()">
+                    <i class="fas fa-copy mr-2"></i>Copy
+                </button>
+            </div>
+            <form method="post" action="{% url 'league_rotate_invite' league.id %}">
+                {% csrf_token %}
+                <button
+                    type="submit"
+                    class="btn btn-ghost btn-sm"
+                    onclick="return confirm('Regenerate the invite link? Anyone with the old link will no longer be able to join.')"
+                >
+                    <i class="fas fa-sync-alt mr-2"></i>Regenerate invite link
+                </button>
+            </form>
+
+            <div class="divider"></div>
+
+            <h3 class="font-bold text-lg">Change join password</h3>
+            <p class="text-sm text-base-content/70">
+                The current password cannot be shown. Set a new one to replace it.
+            </p>
+            <form method="post" action="{% url 'league_change_join_password' league.id %}" class="grid gap-4 md:grid-cols-2">
+                {% csrf_token %}
+                <div class="form-control">
+                    <label class="label" for="new-join-password">
+                        <span class="label-text">New join password</span>
+                    </label>
+                    <input
+                        id="new-join-password"
+                        type="password"
+                        name="join_password"
+                        class="input input-bordered w-full"
+                        required
+                        minlength="{{ join_password_min_length }}"
+                        autocomplete="new-password"
+                    >
+                </div>
+                <div class="form-control">
+                    <label class="label" for="new-join-password-confirm">
+                        <span class="label-text">Confirm password</span>
+                    </label>
+                    <input
+                        id="new-join-password-confirm"
+                        type="password"
+                        name="join_password_confirm"
+                        class="input input-bordered w-full"
+                        required
+                        minlength="{{ join_password_min_length }}"
+                        autocomplete="new-password"
+                    >
+                </div>
+                <div class="md:col-span-2">
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        Update password
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script>
+        function copyInviteLink() {
+            const input = document.getElementById('invite-url');
+            navigator.clipboard.writeText(input.value).then(function() {
+                input.classList.add('input-success');
+                setTimeout(function() { input.classList.remove('input-success'); }, 1200);
+            });
+        }
+    </script>
+    {% endif %}
+
+    {% if is_member %}
     <!-- Members List -->
     <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
@@ -211,6 +312,7 @@
             {% endif %}
         </div>
     </div>
+    {% endif %}
 </div>
 {% endblock %}
 

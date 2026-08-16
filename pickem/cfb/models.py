@@ -1,6 +1,13 @@
 from django.db import models
 from django.conf import settings
+from django.contrib.auth.hashers import check_password, make_password
+from django.core import signing
 from django.core.exceptions import ValidationError
+from django.urls import reverse
+
+
+LEAGUE_INVITE_SALT = "cfb.league.invite"
+JOIN_PASSWORD_MIN_LENGTH = 4
 
 
 class League(models.Model):
@@ -9,6 +16,11 @@ class League(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="created_leagues")
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
+    join_password = models.CharField(
+        max_length=128,
+        help_text="Hashed password required to join this league.",
+    )
+    invite_version = models.PositiveIntegerField(default=1)
 
     class Meta:
         ordering = ["-created_at"]
@@ -20,6 +32,48 @@ class League(models.Model):
         # Ensure unique league name (case-insensitive)
         if League.objects.filter(name__iexact=self.name).exclude(pk=self.pk).exists():
             raise ValidationError({"name": "A league with this name already exists."})
+
+    def set_join_password(self, raw_password: str) -> None:
+        self.join_password = make_password(raw_password)
+
+    def check_join_password(self, raw_password: str) -> bool:
+        if not raw_password or not self.join_password:
+            return False
+        return check_password(raw_password, self.join_password)
+
+    def get_invite_token(self) -> str:
+        return signing.dumps(
+            {"l": self.pk, "v": self.invite_version},
+            salt=LEAGUE_INVITE_SALT,
+        )
+
+    def get_invite_path(self) -> str:
+        return reverse("league_invite", kwargs={"token": self.get_invite_token()})
+
+    def rotate_invite(self) -> None:
+        self.invite_version += 1
+
+    def save(self, *args, **kwargs):
+        if not self.join_password:
+            from django.utils.crypto import get_random_string
+            self.set_join_password(get_random_string(20))
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def from_invite_token(cls, token: str):
+        try:
+            data = signing.loads(token, salt=LEAGUE_INVITE_SALT)
+        except signing.BadSignature:
+            return None
+        league_id = data.get("l")
+        version = data.get("v")
+        if not isinstance(league_id, int) or not isinstance(version, int):
+            return None
+        return cls.objects.filter(
+            pk=league_id,
+            invite_version=version,
+            is_active=True,
+        ).first()
 
 
 class LeagueRules(models.Model):

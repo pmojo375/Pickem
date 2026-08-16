@@ -9,7 +9,21 @@ from django.views.decorators.debug import sensitive_post_parameters
 from allauth.account.forms import ChangePasswordForm, SetPasswordForm
 from allauth.socialaccount.forms import DisconnectForm
 from allauth.socialaccount.models import SocialAccount
-from .models import Game, Pick, Team, League, LeagueMembership, LeagueGame, LeagueRules, Season, Ranking, Week, MemberSeason, MemberWeek
+from .models import (
+    JOIN_PASSWORD_MIN_LENGTH,
+    Game,
+    Pick,
+    Team,
+    League,
+    LeagueMembership,
+    LeagueGame,
+    LeagueRules,
+    Season,
+    Ranking,
+    Week,
+    MemberSeason,
+    MemberWeek,
+)
 from django.utils import timezone
 from . import services
 from .forms import AccountNameForm
@@ -1665,100 +1679,7 @@ def update_live_scores(request):
 
 # ============ LEAGUE VIEWS ============
 
-@login_required
-def leagues_list_view(request):
-    """Show all leagues the user is a member of and all public leagues."""
-    user_leagues = League.objects.filter(memberships__user=request.user).distinct()
-    all_leagues = League.objects.filter(is_active=True).order_by("-created_at")
-    
-    context = {
-        "user_leagues": user_leagues,
-        "all_leagues": all_leagues,
-    }
-    return render(request, "cfb/leagues_list.html", context)
-
-
-@login_required
-def league_create_view(request):
-    """Create a new league."""
-    if request.method == "POST":
-        name = request.POST.get("name", "").strip()
-        description = request.POST.get("description", "").strip()
-        
-        if not name:
-            messages.error(request, "League name is required.")
-            return render(request, "cfb/league_create.html", {"name": name, "description": description})
-        
-        # Check if league name already exists (case-insensitive)
-        if League.objects.filter(name__iexact=name).exists():
-            messages.error(request, f"A league with the name '{name}' already exists. Please choose a different name.")
-            return render(request, "cfb/league_create.html", {"name": name, "description": description})
-        
-        try:
-            league = League.objects.create(
-                name=name,
-                description=description,
-                created_by=request.user
-            )
-            
-            # Automatically add the creator as owner
-            LeagueMembership.objects.create(
-                league=league,
-                user=request.user,
-                role="owner"
-            )
-            
-            messages.success(request, f"League '{league.name}' created successfully! 🎉")
-            return redirect("league_detail", league_id=league.id)
-            
-        except ValidationError as e:
-            messages.error(request, str(e))
-            return render(request, "cfb/league_create.html", {"name": name, "description": description})
-    
-    return render(request, "cfb/league_create.html")
-
-
-@login_required
-def league_detail_view(request, league_id):
-    """View details of a specific league."""
-    league = get_object_or_404(League, pk=league_id)
-    
-    # Check if user is a member
-    try:
-        membership = LeagueMembership.objects.get(league=league, user=request.user)
-        is_member = True
-        user_role = membership.role
-        membership_is_active = membership.is_active
-    except LeagueMembership.DoesNotExist:
-        is_member = False
-        user_role = None
-        membership_is_active = False
-    
-    # Get all members
-    memberships = LeagueMembership.objects.filter(league=league).select_related("user").order_by("-role", "joined_at")
-    active_member_count = memberships.filter(is_active=True).count()
-    
-    context = {
-        "league": league,
-        "is_member": is_member,
-        "user_role": user_role,
-        "memberships": memberships,
-        "is_owner": user_role == "owner",
-        "is_admin": user_role in ["owner", "admin"] and membership_is_active,
-        "membership_is_active": membership_is_active,
-        "active_member_count": active_member_count,
-        "inactive_member_count": memberships.count() - active_member_count,
-        "active_season": Season.objects.filter(is_active=True).first(),
-    }
-    return render(request, "cfb/league_detail.html", context)
-
-
-@login_required
-def league_join_view(request, league_id):
-    """Join a league."""
-    league = get_object_or_404(League, pk=league_id)
-    
-    # Check if already a member
+def _complete_league_join(request, league):
     existing = LeagueMembership.objects.filter(league=league, user=request.user).first()
     if existing:
         if existing.is_active:
@@ -1769,15 +1690,218 @@ def league_join_view(request, league_id):
                 f"You are already a member of '{league.name}', but your membership is inactive. Ask a league admin to reactivate you.",
             )
         return redirect("league_detail", league_id=league.id)
-    
-    # Add user to league
+
     LeagueMembership.objects.create(
         league=league,
         user=request.user,
-        role="member"
+        role="member",
     )
-    
-    messages.success(request, f"You have joined '{league.name}'! 🎉")
+    messages.success(request, f"You have joined '{league.name}'!")
+    return redirect("league_detail", league_id=league.id)
+
+
+def _active_league_admin(league, user):
+    return LeagueMembership.objects.filter(
+        league=league,
+        user=user,
+        is_active=True,
+        role__in=("owner", "admin"),
+    ).first()
+
+
+def _join_password_error(password, password_confirm):
+    if len(password) < JOIN_PASSWORD_MIN_LENGTH:
+        return f"Join password must be at least {JOIN_PASSWORD_MIN_LENGTH} characters."
+    if password != password_confirm:
+        return "Join passwords do not match."
+    return None
+
+
+@login_required
+def leagues_list_view(request):
+    """Show leagues the user belongs to, plus a password join form."""
+    user_leagues = League.objects.filter(memberships__user=request.user).distinct()
+    return render(request, "cfb/leagues_list.html", {"user_leagues": user_leagues})
+
+
+@login_required
+@sensitive_post_parameters("join_password", "join_password_confirm")
+def league_create_view(request):
+    """Create a new league."""
+    if request.method == "POST":
+        name = request.POST.get("name", "").strip()
+        description = request.POST.get("description", "").strip()
+        join_password = request.POST.get("join_password", "")
+        join_password_confirm = request.POST.get("join_password_confirm", "")
+        form_values = {
+            "name": name,
+            "description": description,
+            "join_password_min_length": JOIN_PASSWORD_MIN_LENGTH,
+        }
+
+        if not name:
+            messages.error(request, "League name is required.")
+            return render(request, "cfb/league_create.html", form_values)
+
+        password_error = _join_password_error(join_password, join_password_confirm)
+        if password_error:
+            messages.error(request, password_error)
+            return render(request, "cfb/league_create.html", form_values)
+
+        if League.objects.filter(name__iexact=name).exists():
+            messages.error(request, f"A league with the name '{name}' already exists. Please choose a different name.")
+            return render(request, "cfb/league_create.html", form_values)
+
+        try:
+            league = League(
+                name=name,
+                description=description,
+                created_by=request.user,
+            )
+            league.set_join_password(join_password)
+            league.save()
+
+            LeagueMembership.objects.create(
+                league=league,
+                user=request.user,
+                role="owner",
+            )
+
+            messages.success(request, f"League '{league.name}' created successfully!")
+            return redirect("league_detail", league_id=league.id)
+
+        except ValidationError as e:
+            messages.error(request, str(e))
+            return render(request, "cfb/league_create.html", form_values)
+
+    return render(
+        request,
+        "cfb/league_create.html",
+        {"join_password_min_length": JOIN_PASSWORD_MIN_LENGTH},
+    )
+
+
+@login_required
+def league_detail_view(request, league_id):
+    """View details of a specific league."""
+    league = get_object_or_404(League, pk=league_id)
+
+    try:
+        membership = LeagueMembership.objects.get(league=league, user=request.user)
+        is_member = True
+        user_role = membership.role
+        membership_is_active = membership.is_active
+    except LeagueMembership.DoesNotExist:
+        is_member = False
+        user_role = None
+        membership_is_active = False
+
+    is_admin = user_role in ["owner", "admin"] and membership_is_active
+    memberships = LeagueMembership.objects.filter(league=league).select_related("user").order_by("-role", "joined_at")
+    active_member_count = memberships.filter(is_active=True).count()
+
+    context = {
+        "league": league,
+        "is_member": is_member,
+        "user_role": user_role,
+        "memberships": memberships,
+        "is_owner": user_role == "owner",
+        "is_admin": is_admin,
+        "membership_is_active": membership_is_active,
+        "active_member_count": active_member_count,
+        "inactive_member_count": memberships.count() - active_member_count,
+        "active_season": Season.objects.filter(is_active=True).first(),
+        "join_password_min_length": JOIN_PASSWORD_MIN_LENGTH,
+    }
+    if is_admin:
+        context["invite_url"] = request.build_absolute_uri(league.get_invite_path())
+    return render(request, "cfb/league_detail.html", context)
+
+
+@login_required
+@require_POST
+@sensitive_post_parameters("join_password")
+def league_join_view(request, league_id):
+    """Join a league with its join password."""
+    league = get_object_or_404(League, pk=league_id, is_active=True)
+    if not league.check_join_password(request.POST.get("join_password", "")):
+        messages.error(request, "Incorrect join password.")
+        return redirect("league_detail", league_id=league.id)
+    return _complete_league_join(request, league)
+
+
+@login_required
+@require_POST
+@sensitive_post_parameters("join_password")
+def league_join_by_name_view(request):
+    """Join a league from the leagues list using name + password."""
+    name = request.POST.get("name", "").strip()
+    password = request.POST.get("join_password", "")
+    league = League.objects.filter(name__iexact=name, is_active=True).first()
+    if not league or not league.check_join_password(password):
+        messages.error(request, "League not found or password is incorrect.")
+        return redirect("leagues_list")
+    return _complete_league_join(request, league)
+
+
+@login_required
+def league_invite_view(request, token):
+    """Join via an admin-shared invite link, skipping the password."""
+    league = League.from_invite_token(token)
+    if not league:
+        messages.error(request, "This invite link is invalid or has been revoked.")
+        return redirect("leagues_list")
+
+    existing = LeagueMembership.objects.filter(league=league, user=request.user).first()
+    if request.method == "POST":
+        return _complete_league_join(request, league)
+
+    return render(
+        request,
+        "cfb/league_invite.html",
+        {
+            "league": league,
+            "token": token,
+            "existing": existing,
+        },
+    )
+
+
+@login_required
+@require_POST
+def league_rotate_invite_view(request, league_id):
+    """Invalidate existing invite links and issue a new one."""
+    league = get_object_or_404(League, pk=league_id)
+    if not _active_league_admin(league, request.user):
+        messages.error(request, "You do not have permission to manage this league.")
+        return redirect("league_detail", league_id=league.id)
+
+    league.rotate_invite()
+    league.save(update_fields=["invite_version"])
+    messages.success(request, "Invite link regenerated. Previous links no longer work.")
+    return redirect("league_detail", league_id=league.id)
+
+
+@login_required
+@require_POST
+@sensitive_post_parameters("join_password", "join_password_confirm")
+def league_change_join_password_view(request, league_id):
+    """Let owners/admins set a new join password."""
+    league = get_object_or_404(League, pk=league_id)
+    if not _active_league_admin(league, request.user):
+        messages.error(request, "You do not have permission to manage this league.")
+        return redirect("league_detail", league_id=league.id)
+
+    password = request.POST.get("join_password", "")
+    password_confirm = request.POST.get("join_password_confirm", "")
+    password_error = _join_password_error(password, password_confirm)
+    if password_error:
+        messages.error(request, password_error)
+        return redirect("league_detail", league_id=league.id)
+
+    league.set_join_password(password)
+    league.save(update_fields=["join_password"])
+    messages.success(request, "Join password updated.")
     return redirect("league_detail", league_id=league.id)
 
 

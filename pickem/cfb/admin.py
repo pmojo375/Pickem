@@ -89,7 +89,8 @@ class LeagueAdmin(admin.ModelAdmin):
     list_display = ("name", "created_by", "is_active", "created_at", "member_count")
     list_filter = ("is_active", "created_at")
     search_fields = ("name", "description", "created_by__username")
-    readonly_fields = ("created_at",)
+    readonly_fields = ("created_at", "invite_version")
+    exclude = ("join_password",)
     
     def member_count(self, obj):
         """Display the number of active members in the league"""

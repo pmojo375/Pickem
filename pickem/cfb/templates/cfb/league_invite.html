@@ -1,0 +1,48 @@
+{% extends "cfb/base.html" %}
+
+{% block title %}Join {{ league.name }} | CFB Pick'em{% endblock %}
+
+{% block content %}
+<section class="max-w-2xl mx-auto">
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body space-y-4">
+            <h1 class="card-title text-2xl">You've been invited</h1>
+            <p class="text-sm text-base-content/70">
+                Join <span class="font-medium text-base-content">{{ league.name }}</span>
+                without entering a password.
+            </p>
+            {% if league.description %}
+            <p class="text-sm text-base-content/70">{{ league.description }}</p>
+            {% endif %}
+
+            {% if existing %}
+                {% if existing.is_active %}
+                <div class="alert">
+                    <i class="fas fa-check text-success"></i>
+                    <span>You are already a member of this league.</span>
+                </div>
+                {% else %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-user-slash"></i>
+                    <span>You are already a member, but your membership is inactive. Ask a league admin to reactivate you.</span>
+                </div>
+                {% endif %}
+                <a href="{% url 'league_detail' league.id %}" class="btn btn-primary">
+                    View league
+                </a>
+            {% else %}
+                <form method="post" action="{% url 'league_invite' token %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <i class="fas fa-user-plus mr-2"></i>Join {{ league.name }}
+                    </button>
+                </form>
+            {% endif %}
+
+            <p class="text-sm text-base-content/70">
+                <a href="{% url 'leagues_list' %}" class="link link-hover">Back to leagues</a>
+            </p>
+        </div>
+    </div>
+</section>
+{% endblock %}
