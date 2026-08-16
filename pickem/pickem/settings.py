@@ -327,6 +327,9 @@ ACCOUNT_LOGOUT_REDIRECT_URL = '/'
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_LOGIN_METHODS = {'email', 'username'}
 ACCOUNT_SIGNUP_FIELDS = ['username*', 'email*', 'password1*', 'password2*']
+# django-allauth 0.63 still reads these; newer versions use SIGNUP_FIELDS above.
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = True
 ACCOUNT_USERNAME_CASE_INSENSITIVE = True
 ACCOUNT_PRESERVE_USERNAME_CASING = False
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
