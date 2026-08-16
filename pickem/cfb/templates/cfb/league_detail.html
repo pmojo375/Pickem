@@ -18,6 +18,9 @@
                 <div class="flex-1">
                     <h1 class="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-2">
                         <i class="fas fa-users-cog mr-2"></i>{{ league.name }}
+                        {% if not league.is_active %}
+                        <span class="badge badge-warning badge-lg align-middle">Closed</span>
+                        {% endif %}
                     </h1>
                     {% if league.description %}
                     <p class="text-base-content/70">{{ league.description }}</p>
@@ -33,7 +36,12 @@
                         </div>
                     </div>
                 </div>
-                <div class="flex gap-2 flex-wrap">
+                <div class="flex gap-2 flex-wrap items-center">
+                    {% if can_manage_this_league %}
+                    <a href="{% url 'settings' %}?league_id={{ league.id }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-cog mr-2"></i>Rules &amp; games
+                    </a>
+                    {% endif %}
                     {% if is_member %}
                         {% if not membership_is_active %}
                         <div class="badge badge-warning badge-lg">
@@ -53,7 +61,7 @@
                             <i class="fas fa-sign-out-alt mr-2"></i>Leave League
                         </a>
                         {% endif %}
-                    {% else %}
+                    {% elif league.is_active %}
                         <form method="post" action="{% url 'league_join' league.id %}" class="flex flex-col sm:flex-row gap-2">
                             {% csrf_token %}
                             <input
@@ -67,6 +75,8 @@
                                 <i class="fas fa-user-plus mr-2"></i>Join League
                             </button>
                         </form>
+                    {% else %}
+                        <div class="badge badge-warning badge-lg">This league is closed</div>
                     {% endif %}
                 </div>
             </div>
@@ -124,6 +134,12 @@
             <h2 class="card-title text-2xl">
                 <i class="fas fa-link mr-2 text-primary"></i>Invite people
             </h2>
+            {% if not league.is_active %}
+            <div class="alert alert-warning">
+                <i class="fas fa-lock"></i>
+                <span>This league is closed. Invite links and join passwords will not work until you reopen it.</span>
+            </div>
+            {% endif %}
             <p class="text-sm text-base-content/70">
                 Share this link to let someone join without the password.
                 Regenerating it invalidates every old link.
@@ -310,6 +326,64 @@
                 <span>No members yet. Be the first to join!</span>
             </div>
             {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if can_close_league %}
+    <div class="card bg-base-100 shadow-xl mt-6 border border-error/40">
+        <div class="card-body space-y-4">
+            <h2 class="card-title text-error">
+                <i class="fas fa-exclamation-triangle mr-2"></i>Close or delete
+            </h2>
+            <p class="text-sm text-base-content/70">
+                Closing hides this league from picks and blocks new members. You can reopen it later.
+                Deleting permanently removes the league, members, picks, and rules.
+            </p>
+            <div class="flex flex-wrap gap-2">
+                {% if league.is_active %}
+                <form method="post" action="{% url 'league_close' league.id %}">
+                    {% csrf_token %}
+                    <button
+                        type="submit"
+                        class="btn btn-warning"
+                        onclick="return confirm('Close {{ league.name }}? People will not be able to join until you reopen it.')"
+                    >
+                        <i class="fas fa-lock mr-2"></i>Close league
+                    </button>
+                </form>
+                {% else %}
+                <form method="post" action="{% url 'league_reopen' league.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-lock-open mr-2"></i>Reopen league
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            <div class="divider"></div>
+            <form method="post" action="{% url 'league_delete' league.id %}" class="space-y-3 max-w-md">
+                {% csrf_token %}
+                <label class="label" for="confirm-delete-name">
+                    <span class="label-text">Type <span class="font-semibold">{{ league.name }}</span> to delete</span>
+                </label>
+                <input
+                    id="confirm-delete-name"
+                    type="text"
+                    name="confirm_name"
+                    class="input input-bordered w-full"
+                    placeholder="{{ league.name }}"
+                    required
+                    autocomplete="off"
+                >
+                <button
+                    type="submit"
+                    class="btn btn-error"
+                    onclick="return confirm('This cannot be undone. Delete {{ league.name }}?')"
+                >
+                    <i class="fas fa-trash mr-2"></i>Delete league
+                </button>
+            </form>
         </div>
     </div>
     {% endif %}

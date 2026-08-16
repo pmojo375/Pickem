@@ -25,6 +25,9 @@ urlpatterns = [
     path('leagues/<int:league_id>/join/', views.league_join_view, name='league_join'),
     path('leagues/<int:league_id>/invite/rotate/', views.league_rotate_invite_view, name='league_rotate_invite'),
     path('leagues/<int:league_id>/join-password/', views.league_change_join_password_view, name='league_change_join_password'),
+    path('leagues/<int:league_id>/close/', views.league_close_view, name='league_close'),
+    path('leagues/<int:league_id>/reopen/', views.league_reopen_view, name='league_reopen'),
+    path('leagues/<int:league_id>/delete/', views.league_delete_view, name='league_delete'),
     path('leagues/<int:league_id>/leave/', views.league_leave_view, name='league_leave'),
     path('leagues/<int:league_id>/members/<int:membership_id>/status/', views.league_member_status_view, name='league_member_status'),
     # App utility endpoints (avoid Django admin path)

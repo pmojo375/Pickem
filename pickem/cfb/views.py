@@ -38,20 +38,48 @@ def _user_is_active_member(league, user):
     return LeagueMembership.objects.filter(league=league, user=user, is_active=True).exists()
 
 
+def _user_leagues_qs(user, include_inactive=False):
+    qs = League.objects.filter(memberships__user=user)
+    if not include_inactive:
+        qs = qs.filter(is_active=True)
+    return qs.distinct()
+
+
+def _resolve_user_league(request, include_inactive=False):
+    user_leagues = _user_leagues_qs(request.user, include_inactive=include_inactive)
+    league_id = request.GET.get("league_id")
+    if league_id:
+        league = user_leagues.filter(pk=league_id).first()
+    else:
+        league = user_leagues.first()
+    return league, user_leagues
+
+
+def _managed_leagues_qs(user):
+    if user.is_staff:
+        return League.objects.all()
+    return League.objects.filter(
+        memberships__user=user,
+        memberships__is_active=True,
+        memberships__role__in=("owner", "admin"),
+    ).distinct()
+
+
+def _user_can_manage_leagues(user):
+    if user.is_staff:
+        return True
+    return LeagueMembership.objects.filter(
+        user=user,
+        is_active=True,
+        role__in=("owner", "admin"),
+    ).exists()
+
+
 def home_view(request):
     context = {}
     
     if request.user.is_authenticated:
-        # Get user's leagues
-        user_leagues = League.objects.filter(memberships__user=request.user).distinct()
-        
-        # Get league from query params or use first league
-        league_id = request.GET.get('league_id')
-        if league_id:
-            league = League.objects.filter(pk=league_id, memberships__user=request.user).first()
-        else:
-            membership = LeagueMembership.objects.filter(user=request.user).first()
-            league = membership.league if membership else None
+        league, user_leagues = _resolve_user_league(request)
         
         if league:
             # Get user stats for this league
@@ -109,17 +137,7 @@ def home_view(request):
 
 @login_required
 def picks_view(request):
-    # Get league from query params or use user's first league
-    league_id = request.GET.get('league_id')
-    if league_id:
-        league = League.objects.filter(pk=league_id, memberships__user=request.user).first()
-    else:
-        # Get user's first league
-        membership = LeagueMembership.objects.filter(user=request.user).first()
-        league = membership.league if membership else None
-    
-    # Get all user's leagues for the selector
-    user_leagues = League.objects.filter(memberships__user=request.user).distinct()
+    league, user_leagues = _resolve_user_league(request)
     
     if not league:
         # No league - show message instead of redirecting
@@ -430,17 +448,7 @@ def picks_view(request):
 
 @login_required
 def live_view(request):
-    # Get league from query params or use user's first league
-    league_id = request.GET.get('league_id')
-    if league_id:
-        league = League.objects.filter(pk=league_id, memberships__user=request.user).first()
-    else:
-        # Get user's first league
-        membership = LeagueMembership.objects.filter(user=request.user).first()
-        league = membership.league if membership else None
-    
-    # Get all user's leagues for the selector
-    user_leagues = League.objects.filter(memberships__user=request.user).distinct()
+    league, user_leagues = _resolve_user_league(request)
     
     if not league:
         # No league - show message instead of redirecting
@@ -585,16 +593,7 @@ def live_view(request):
 
 @login_required
 def standings_view(request):
-    # Get user's leagues
-    user_leagues = League.objects.filter(memberships__user=request.user).distinct()
-    
-    # Get league from query params or use first league
-    league_id = request.GET.get('league_id')
-    if league_id:
-        league = League.objects.filter(pk=league_id, memberships__user=request.user).first()
-    else:
-        membership = LeagueMembership.objects.filter(user=request.user).first()
-        league = membership.league if membership else None
+    league, user_leagues = _resolve_user_league(request)
     
     # Check if user wants to see full standings (not adjusted for dropped weeks)
     show_full_standings = request.GET.get('full', 'false').lower() == 'true'
@@ -992,29 +991,16 @@ def account_view(request):
 
 @login_required
 def settings_view(request):
-    if not request.user.is_staff:
-        return redirect("home")
-    
-    # Get league - allow staff to manage any league, or their own league if owner/admin
-    league_id = request.GET.get('league_id')
+    if not _user_can_manage_leagues(request.user):
+        messages.error(request, "You need to own or admin a league to manage settings.")
+        return redirect("leagues_list")
+
+    manageable_leagues = _managed_leagues_qs(request.user)
+    league_id = request.GET.get("league_id")
     if league_id:
-        if request.user.is_staff:
-            league = League.objects.filter(pk=league_id).first()
-        else:
-            league = League.objects.filter(pk=league_id, memberships__user=request.user, memberships__role__in=['owner', 'admin']).first()
+        league = manageable_leagues.filter(pk=league_id).first()
     else:
-        # Get first league where user is owner/admin or staff can see first league
-        if request.user.is_staff:
-            league = League.objects.first()
-        else:
-            membership = LeagueMembership.objects.filter(user=request.user, role__in=['owner', 'admin']).first()
-            league = membership.league if membership else None
-    
-    # Get all leagues user can manage
-    if request.user.is_staff:
-        manageable_leagues = League.objects.all()
-    else:
-        manageable_leagues = League.objects.filter(memberships__user=request.user, memberships__role__in=['owner', 'admin']).distinct()
+        league = manageable_leagues.first()
     
     if not league:
         # No league - show message instead of redirecting
@@ -1040,7 +1026,13 @@ def settings_view(request):
                 if request.user.is_staff:
                     target_league = get_object_or_404(League, pk=form_league_id)
                 else:
-                    target_league = get_object_or_404(League, pk=form_league_id, memberships__user=request.user, memberships__role__in=['owner', 'admin'])
+                    target_league = get_object_or_404(
+                        League,
+                        pk=form_league_id,
+                        memberships__user=request.user,
+                        memberships__is_active=True,
+                        memberships__role__in=["owner", "admin"],
+                    )
                 
                 target_season = get_object_or_404(Season, pk=season_id)
                 
@@ -1149,7 +1141,13 @@ def settings_view(request):
                 if request.user.is_staff:
                     league = get_object_or_404(League, pk=form_league_id)
                 else:
-                    league = get_object_or_404(League, pk=form_league_id, memberships__user=request.user, memberships__role__in=['owner', 'admin'])
+                    league = get_object_or_404(
+                        League,
+                        pk=form_league_id,
+                        memberships__user=request.user,
+                        memberships__is_active=True,
+                        memberships__role__in=["owner", "admin"],
+                    )
             
             # Process all game selections from the form
             from django.utils import timezone
@@ -1520,16 +1518,7 @@ def start_new_season_view(request):
 
 @login_required
 def roster_view(request):
-    # Get user's leagues
-    user_leagues = League.objects.filter(memberships__user=request.user).distinct()
-    
-    # Get league from query params or use first league
-    league_id = request.GET.get('league_id')
-    if league_id:
-        league = League.objects.filter(pk=league_id, memberships__user=request.user).first()
-    else:
-        membership = LeagueMembership.objects.filter(user=request.user).first()
-        league = membership.league if membership else None
+    league, user_leagues = _resolve_user_league(request)
     
     context = {
         'current_league': league,
@@ -1720,7 +1709,7 @@ def _join_password_error(password, password_confirm):
 @login_required
 def leagues_list_view(request):
     """Show leagues the user belongs to, plus a password join form."""
-    user_leagues = League.objects.filter(memberships__user=request.user).distinct()
+    user_leagues = _user_leagues_qs(request.user, include_inactive=True)
     return render(request, "cfb/leagues_list.html", {"user_leagues": user_leagues})
 
 
@@ -1797,6 +1786,8 @@ def league_detail_view(request, league_id):
         membership_is_active = False
 
     is_admin = user_role in ["owner", "admin"] and membership_is_active
+    can_manage_this_league = is_admin or request.user.is_staff
+    can_close_league = (user_role == "owner" and membership_is_active) or request.user.is_staff
     memberships = LeagueMembership.objects.filter(league=league).select_related("user").order_by("-role", "joined_at")
     active_member_count = memberships.filter(is_active=True).count()
 
@@ -1807,13 +1798,15 @@ def league_detail_view(request, league_id):
         "memberships": memberships,
         "is_owner": user_role == "owner",
         "is_admin": is_admin,
+        "can_manage_this_league": can_manage_this_league,
+        "can_close_league": can_close_league,
         "membership_is_active": membership_is_active,
         "active_member_count": active_member_count,
         "inactive_member_count": memberships.count() - active_member_count,
         "active_season": Season.objects.filter(is_active=True).first(),
         "join_password_min_length": JOIN_PASSWORD_MIN_LENGTH,
     }
-    if is_admin:
+    if can_manage_this_league:
         context["invite_url"] = request.build_absolute_uri(league.get_invite_path())
     return render(request, "cfb/league_detail.html", context)
 
@@ -1903,6 +1896,75 @@ def league_change_join_password_view(request, league_id):
     league.save(update_fields=["join_password"])
     messages.success(request, "Join password updated.")
     return redirect("league_detail", league_id=league.id)
+
+
+def _can_close_or_delete_league(league, user):
+    if user.is_staff:
+        return True
+    return LeagueMembership.objects.filter(
+        league=league,
+        user=user,
+        is_active=True,
+        role="owner",
+    ).exists()
+
+
+@login_required
+@require_POST
+def league_close_view(request, league_id):
+    """Deactivate a league so nobody new can join and it drops out of pick selectors."""
+    league = get_object_or_404(League, pk=league_id)
+    if not _can_close_or_delete_league(league, request.user):
+        messages.error(request, "Only the league owner can close this league.")
+        return redirect("league_detail", league_id=league.id)
+
+    if not league.is_active:
+        messages.info(request, f"'{league.name}' is already closed.")
+        return redirect("league_detail", league_id=league.id)
+
+    league.is_active = False
+    league.save(update_fields=["is_active"])
+    messages.success(request, f"'{league.name}' is closed. You can reopen or delete it.")
+    return redirect("league_detail", league_id=league.id)
+
+
+@login_required
+@require_POST
+def league_reopen_view(request, league_id):
+    """Reactivate a closed league."""
+    league = get_object_or_404(League, pk=league_id)
+    if not _can_close_or_delete_league(league, request.user):
+        messages.error(request, "Only the league owner can reopen this league.")
+        return redirect("league_detail", league_id=league.id)
+
+    if league.is_active:
+        messages.info(request, f"'{league.name}' is already open.")
+        return redirect("league_detail", league_id=league.id)
+
+    league.is_active = True
+    league.save(update_fields=["is_active"])
+    messages.success(request, f"'{league.name}' is open again.")
+    return redirect("league_detail", league_id=league.id)
+
+
+@login_required
+@require_POST
+def league_delete_view(request, league_id):
+    """Permanently delete a league and all of its picks, members, and rules."""
+    league = get_object_or_404(League, pk=league_id)
+    if not _can_close_or_delete_league(league, request.user):
+        messages.error(request, "Only the league owner can delete this league.")
+        return redirect("league_detail", league_id=league.id)
+
+    confirm_name = request.POST.get("confirm_name", "").strip()
+    if confirm_name.lower() != league.name.lower():
+        messages.error(request, "League name did not match. Nothing was deleted.")
+        return redirect("league_detail", league_id=league.id)
+
+    name = league.name
+    league.delete()
+    messages.success(request, f"League '{name}' has been deleted.")
+    return redirect("leagues_list")
 
 
 @login_required
