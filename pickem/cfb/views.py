@@ -2028,6 +2028,46 @@ def league_email_opt_in_view(request, league_id):
 
 @login_required
 @require_POST
+def league_email_invite_view(request, league_id):
+    """Email a league invite (or season opt-in) to a single address."""
+    league = get_object_or_404(League, pk=league_id)
+    if not (request.user.is_staff or _active_league_admin(league, request.user)):
+        messages.error(request, "You do not have permission to invite people to this league.")
+        return redirect("league_detail", league_id=league.id)
+
+    if not league.is_active or league.season_opt_in_required:
+        messages.error(request, "Open the league for this season before sending invites.")
+        return redirect("league_detail", league_id=league.id)
+
+    active_season = Season.objects.filter(is_active=True).first()
+    try:
+        result, email = services.invites.send_league_email_invite(
+            request,
+            league,
+            request.POST.get("email", ""),
+            season=active_season,
+        )
+    except ValidationError as exc:
+        messages.error(request, exc.messages[0] if exc.messages else str(exc))
+        return redirect("league_detail", league_id=league.id)
+
+    if result == "already_active":
+        messages.info(request, f"{email} is already an active member of this league.")
+    elif result == "no_season":
+        messages.error(request, "There is no active season to send an opt-in email for.")
+    elif result == "opt_in_sent":
+        messages.success(request, f"Sent season opt-in email to {email}.")
+    elif result == "existing_sent":
+        messages.success(request, f"Sent league invite to {email}.")
+    elif result == "new_sent":
+        messages.success(request, f"Sent join site and league invite to {email}.")
+    else:
+        messages.error(request, f"Failed to send email to {email}. Check the server logs.")
+    return redirect("league_detail", league_id=league.id)
+
+
+@login_required
+@require_POST
 def league_self_activate_view(request, league_id):
     """Let a logged-in inactive member opt back in for the current season."""
     league = get_object_or_404(League, pk=league_id)

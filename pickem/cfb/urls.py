@@ -30,6 +30,7 @@ urlpatterns = [
     path('leagues/<int:league_id>/reopen/', views.league_reopen_view, name='league_reopen'),
     path('leagues/<int:league_id>/open-season/', views.league_open_for_season_view, name='league_open_for_season'),
     path('leagues/<int:league_id>/email-opt-in/', views.league_email_opt_in_view, name='league_email_opt_in'),
+    path('leagues/<int:league_id>/email-invite/', views.league_email_invite_view, name='league_email_invite'),
     path('leagues/<int:league_id>/activate/', views.league_self_activate_view, name='league_self_activate'),
     path('leagues/<int:league_id>/delete/', views.league_delete_view, name='league_delete'),
     path('leagues/<int:league_id>/leave/', views.league_leave_view, name='league_leave'),

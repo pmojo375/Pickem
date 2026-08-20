@@ -1,0 +1,8 @@
+Hi {{ user.username }},
+
+{{ inviter.get_username }} invited you to join {{ league.name }} on CFB Pick'em.
+
+Join the league here:
+{{ invite_url }}
+
+— CFB Pick'em

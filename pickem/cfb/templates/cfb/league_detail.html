@@ -205,6 +205,28 @@
                 </button>
             </form>
 
+            {% if league.is_active and not league.season_opt_in_required %}
+            <div class="divider"></div>
+            <h3 class="font-bold text-lg">Invite by email</h3>
+            <p class="text-sm text-base-content/70">
+                If they already have an account, they get a league invite. If not, they get a create-account and join-league email.
+            </p>
+            <form method="post" action="{% url 'league_email_invite' league.id %}" class="flex flex-col sm:flex-row gap-2">
+                {% csrf_token %}
+                <input
+                    type="email"
+                    name="email"
+                    class="input input-bordered w-full"
+                    placeholder="friend@example.com"
+                    required
+                    autocomplete="email"
+                >
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-envelope mr-2"></i>Send invite
+                </button>
+            </form>
+            {% endif %}
+
             {% if can_email_opt_in %}
             <div class="divider"></div>
             <h3 class="font-bold text-lg">Returning members</h3>

@@ -1,0 +1,11 @@
+Hi,
+
+{{ inviter.get_username }} invited you to join {{ league.name }} on CFB Pick'em.
+
+Create your account here:
+{{ signup_url }}
+
+After you sign up (and confirm your email), use this link to join the league:
+{{ invite_url }}
+
+— CFB Pick'em

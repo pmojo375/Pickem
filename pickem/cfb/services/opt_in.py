@@ -19,6 +19,43 @@ def pending_opt_in_members(league):
     )
 
 
+def send_single_season_opt_in_email(request, membership, season) -> bool:
+    """Email one inactive member a personal opt-in link. Returns True on success."""
+    email = (membership.user.email or "").strip()
+    if not email:
+        return False
+
+    token = membership.get_opt_in_token(season.year)
+    activate_url = request.build_absolute_uri(
+        reverse("league_opt_in", kwargs={"token": token})
+    )
+    body = render_to_string(
+        "cfb/email/season_opt_in.txt",
+        {
+            "league": membership.league,
+            "season": season,
+            "user": membership.user,
+            "activate_url": activate_url,
+        },
+    )
+    try:
+        send_mail(
+            subject=f"Rejoin {membership.league.name} for {season.year}",
+            message=body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+    except (OSError, smtplib.SMTPException, BadHeaderError):
+        logger.exception(
+            "Failed to send season opt-in email to %s for league %s",
+            email,
+            membership.league_id,
+        )
+        return False
+    return True
+
+
 def send_season_opt_in_emails(request, league, season):
     """Email inactive members a personal opt-in link for this season."""
     sent = 0
@@ -31,32 +68,9 @@ def send_season_opt_in_emails(request, league, season):
             skipped += 1
             continue
 
-        token = membership.get_opt_in_token(season.year)
-        activate_url = request.build_absolute_uri(
-            reverse("league_opt_in", kwargs={"token": token})
-        )
-        context = {
-            "league": league,
-            "season": season,
-            "user": membership.user,
-            "activate_url": activate_url,
-        }
-        body = render_to_string("cfb/email/season_opt_in.txt", context)
-        try:
-            send_mail(
-                subject=f"Rejoin {league.name} for {season.year}",
-                message=body,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[email],
-                fail_silently=False,
-            )
+        if send_single_season_opt_in_email(request, membership, season):
             sent += 1
-        except (OSError, smtplib.SMTPException, BadHeaderError):
-            logger.exception(
-                "Failed to send season opt-in email to %s for league %s",
-                email,
-                league.pk,
-            )
+        else:
             failed += 1
 
     return sent, skipped, failed
