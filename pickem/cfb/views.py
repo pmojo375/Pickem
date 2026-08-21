@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.core.exceptions import ValidationError
-from django.db.models import Q
+from django.db.models import Case, IntegerField, Q, Value, When
 from django.views.decorators.http import require_POST
 from django.views.decorators.debug import sensitive_post_parameters
 from allauth.account.forms import ChangePasswordForm, SetPasswordForm
@@ -493,6 +493,7 @@ def live_view(request):
         league_games = LeagueGame.objects.filter(
             league=league,
             is_active=True,
+            game__season=current_week.season,
             game__kickoff__range=(start, end)
         ).values_list('game_id', flat=True)
         
@@ -501,6 +502,7 @@ def live_view(request):
             user=request.user,
             league=league,
             game_id__in=league_games,
+            game__season=current_week.season,
             game__kickoff__range=(start, end)
         ).select_related("game__home_team", "game__away_team", "picked_team")
     
@@ -654,7 +656,15 @@ def standings_view(request):
             
             # Get available weeks (weeks with live games or all games completed)
             available_weeks = []
-            all_weeks = Week.objects.filter(season=active_season).order_by('number')
+            all_weeks = Week.objects.filter(season=active_season).order_by(
+                Case(
+                    When(season_type='regular', then=Value(0)),
+                    When(season_type='postseason', then=Value(1)),
+                    default=Value(2),
+                    output_field=IntegerField(),
+                ),
+                'number',
+            )
             
             for week in all_weeks:
                 # Check if this week has games in this league
@@ -1360,6 +1370,7 @@ def settings_view(request):
     if current_week:
         start, end = services.schedule.get_week_datetime_range(current_week)
         games = Game.objects.filter(
+            season=current_week.season,
             kickoff__range=(start, end)
         ).filter(
             Q(home_team__classification='fbs') | Q(away_team__classification='fbs')

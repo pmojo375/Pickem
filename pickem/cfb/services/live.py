@@ -1,4 +1,4 @@
-from ..models import Game, Pick, LeagueGame
+from ..models import Game, Pick, LeagueGame, Season
 import requests
 from django.utils import timezone
 from datetime import timedelta
@@ -157,11 +157,14 @@ def fetch_and_store_live_scores() -> int:
     now = timezone.now()
     start_of_week = now - timedelta(days=7)
     
-    # Get all games in current window
+    # Get all games in current window for the active season
     games = Game.objects.filter(
         kickoff__gte=start_of_week,
         kickoff__lte=now + timedelta(days=1)
     ).select_related('home_team', 'away_team')
+    active_season = Season.objects.filter(is_active=True).first()
+    if active_season:
+        games = games.filter(season=active_season)
     
     if not games.exists():
         return 0

@@ -714,16 +714,18 @@ def pull_season_games(season_year: int = None, season_type: str = 'regular', for
     try:
         from .services.schedule import get_current_week
         
-        # Auto-determine season_year if not provided
+        # Use the active season even before week 1 starts so kickoff refreshes
+        # still run. Only borrow season_type from the current week when one exists.
         if season_year is None:
-            current_week = get_current_week()
-            if not current_week:
-                logger.error("No current week found and season_year not provided")
+            active_season = Season.objects.filter(is_active=True).first()
+            if not active_season:
+                logger.error("No active season found and season_year not provided")
                 return
-            
-            season_year = current_week.season.year
-            if season_type == 'regular':  # Only override if still default
-                season_type = current_week.season_type
+            season_year = active_season.year
+            if season_type == 'regular':
+                current_week = get_current_week(season=active_season)
+                if current_week:
+                    season_type = current_week.season_type
         
         season = Season.objects.get(year=season_year)
         

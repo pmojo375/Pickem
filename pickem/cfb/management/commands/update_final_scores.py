@@ -68,7 +68,7 @@ class Command(BaseCommand):
         # Apply week filter if provided
         if week and season_year:
             try:
-                week_obj = Week.objects.get(season=season, number=week)
+                week_obj = Week.objects.get(season=season, number=week, season_type='regular')
                 games_query = games_query.filter(week=week_obj)
             except Week.DoesNotExist:
                 raise CommandError(f'Week {week} does not exist for season {season_year}')

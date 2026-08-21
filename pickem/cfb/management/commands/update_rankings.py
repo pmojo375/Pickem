@@ -175,13 +175,21 @@ class Command(BaseCommand):
             )
             return 'error'
 
+        try:
+            week_obj = Week.objects.get(season=season, number=week, season_type=season_type)
+        except Week.DoesNotExist:
+            self.stdout.write(
+                self.style.WARNING(
+                    f'    Week {week} not found for {season.year} {season_type}'
+                )
+            )
+            return 'error'
+
         # Check if ranking already exists
         try:
-            week = Week.objects.get(season=season, number=week, season_type=season_type)
-            
             existing_ranking = Ranking.objects.get(
                 season=season,
-                week=week,
+                week=week_obj,
                 season_type=season_type,
                 team=team,
                 poll=poll_name
@@ -205,7 +213,7 @@ class Command(BaseCommand):
             # Create new ranking
             Ranking.objects.create(
                 season=season,
-                week=week,
+                week=week_obj,
                 season_type=season_type,
                 team=team,
                 poll=poll_name,

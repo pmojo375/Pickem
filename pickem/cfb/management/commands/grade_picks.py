@@ -50,7 +50,11 @@ class Command(BaseCommand):
 
             if week_num:
                 try:
-                    week = Week.objects.get(season=season, number=week_num)
+                    week = Week.objects.get(
+                        season=season,
+                        number=week_num,
+                        season_type='regular',
+                    )
                     games_query = games_query.filter(week=week)
                     self.stdout.write(self.style.SUCCESS(f'Grading picks for week {week_num}'))
                 except Week.DoesNotExist:
