@@ -70,6 +70,9 @@
                 left: 0;
                 right: 0;
                 z-index: 50;
+                box-sizing: content-box;
+                height: 4rem;
+                padding-bottom: env(safe-area-inset-bottom, 0px);
             }
             .main-content {
                 padding-bottom: 100px !important;
@@ -351,7 +354,9 @@
             }
             nav.style.transform = 'none';
             var gap = vv.height - nav.getBoundingClientRect().bottom;
-            nav.style.transform = Math.abs(gap) >= 1 ? 'translateY(' + gap + 'px)' : '';
+            // Only fill empty space below the bar. Never shift it up — Firefox already
+            // does that when the toolbar returns, which made the icons jump.
+            nav.style.transform = gap > 1 ? 'translateY(' + gap + 'px)' : '';
         }
 
         function onChange() {
@@ -364,7 +369,6 @@
         vv.addEventListener('resize', onChange);
         vv.addEventListener('scroll', onChange);
         window.addEventListener('resize', onChange);
-        window.addEventListener('scroll', onChange, { passive: true });
     })();
     </script>
 </body>
