@@ -1,8 +1,33 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="dark" class="bg-base-300">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <script>
+        /* Gmail/in-app WebViews resize when their toolbar shows or hides.
+           Lock --app-height on first paint; only refresh on width/orientation change. */
+        (function() {
+            var lastWidth = window.innerWidth;
+            function setAppHeight() {
+                if (!window.matchMedia('(max-width: 767px)').matches) {
+                    document.documentElement.style.removeProperty('--app-height');
+                    return;
+                }
+                document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px');
+            }
+            setAppHeight();
+            window.addEventListener('orientationchange', function() {
+                setTimeout(setAppHeight, 300);
+                lastWidth = window.innerWidth;
+            });
+            window.addEventListener('resize', function() {
+                if (window.innerWidth !== lastWidth) {
+                    lastWidth = window.innerWidth;
+                    setAppHeight();
+                }
+            });
+        })();
+    </script>
     <title>{% block title %}BigPicks{% endblock %}</title>
     
     <!-- Tailwind CSS + DaisyUI -->
@@ -37,21 +62,27 @@
             transition: background-color 0.2s ease;
         }
         
-        /* Flexbox layout for sticky footer */
+        /* Don't put flex on body — iOS treats position:fixed as document-relative inside a flex body. */
         html {
             height: 100%;
+            overflow-x: clip;
         }
-        
+
         body {
             min-height: 100%;
+            overflow-x: clip;
+        }
+
+        .page-shell {
             display: flex;
             flex-direction: column;
+            min-height: 100%;
         }
-        
+
         .main-content {
             flex: 1 0 auto;
         }
-        
+
         footer {
             flex-shrink: 0;
         }
@@ -61,18 +92,59 @@
             letter-spacing: 0.08em;
             font-weight: 400;
         }
-        
-        /* App-like bottom nav for mobile */
-        @media (max-width: 768px) {
-            .bottom-nav {
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                z-index: 50;
+
+        /* App-like bottom nav for mobile: lock the shell to the visible viewport */
+        @media (max-width: 767px) {
+            html, body {
+                height: 100%;
+                height: -webkit-fill-available;
+                height: 100svh;
+                height: var(--app-height, 100svh);
+                max-height: 100%;
+                max-height: -webkit-fill-available;
+                max-height: 100svh;
+                max-height: var(--app-height, 100svh);
+                overflow: hidden;
+                overflow: clip;
+                overscroll-behavior: none;
             }
+
+            body {
+                min-height: 0;
+            }
+
+            .page-shell {
+                height: 100%;
+                min-height: 0;
+                overflow: hidden;
+            }
+
+            .mobile-header {
+                flex-shrink: 0;
+                padding-top: calc(0.5rem + env(safe-area-inset-top, 0px));
+            }
+
             .main-content {
-                padding-bottom: 100px !important;
+                flex: 1 1 auto;
+                min-height: 0;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior-y: contain;
+                padding-bottom: 0.5rem;
+            }
+
+            /* In-flow footer of the shell — do not use position:fixed on iOS */
+            .btm-nav.bottom-nav {
+                position: relative;
+                bottom: auto;
+                left: auto;
+                right: auto;
+                flex-shrink: 0;
+                width: 100%;
+                height: auto;
+                min-height: 4rem;
+                padding-bottom: env(safe-area-inset-bottom, 0px);
+                z-index: 50;
             }
         }
     </style>
@@ -80,6 +152,7 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-base-300">
+    <div class="page-shell">
     <!-- Desktop Navigation -->
     <div class="navbar bg-base-100 shadow-lg sticky top-0 z-50 hidden md:flex">
         <div class="navbar-start">
@@ -125,32 +198,8 @@
         </div>
     </div>
 
-    <!-- Mobile Bottom Navigation -->
-    <div class="btm-nav btm-nav-md md:hidden bottom-nav bg-base-100 border-t border-base-300">
-        <a href="/" class="{% if request.path == '/' %}active text-primary{% endif %}">
-            <i class="fas fa-home text-lg"></i>
-            <span class="btm-nav-label text-xs">Home</span>
-        </a>
-        <a href="/picks/" class="{% if request.path == '/picks/' %}active text-primary{% endif %}">
-            <i class="fas fa-hand-pointer text-lg"></i>
-            <span class="btm-nav-label text-xs">Picks</span>
-        </a>
-        <a href="/live/" class="{% if request.path == '/live/' %}active text-primary{% endif %}">
-            <i class="fas fa-play-circle text-lg"></i>
-            <span class="btm-nav-label text-xs">Live</span>
-        </a>
-        <a href="/standings/" class="{% if request.path == '/standings/' %}active text-primary{% endif %}">
-            <i class="fas fa-trophy text-lg"></i>
-            <span class="btm-nav-label text-xs">Standings</span>
-        </a>
-        <a href="/leagues/" class="{% if '/leagues/' in request.path %}active text-primary{% endif %}">
-            <i class="fas fa-users-cog text-lg"></i>
-            <span class="btm-nav-label text-xs">Leagues</span>
-        </a>
-    </div>
-
     <!-- Mobile Header (shows user info) -->
-    <div class="navbar bg-base-100 shadow-lg sticky top-0 z-50 md:hidden">
+    <div class="navbar mobile-header bg-base-100 shadow-lg sticky top-0 z-50 md:hidden">
         <div class="navbar-start">
             <a href="/" class="btn btn-ghost text-lg">
                 <i class="fas fa-football text-primary"></i>
@@ -208,6 +257,31 @@
             <p>© 2026 BigPicks · bigpicks.app · Built for Saturday</p>
         </aside>
     </footer>
+
+    <!-- Mobile Bottom Navigation -->
+    <div class="btm-nav btm-nav-md md:hidden bottom-nav bg-base-100 border-t border-base-300">
+        <a href="/" class="{% if request.path == '/' %}active text-primary{% endif %}">
+            <i class="fas fa-home text-lg"></i>
+            <span class="btm-nav-label text-xs">Home</span>
+        </a>
+        <a href="/picks/" class="{% if request.path == '/picks/' %}active text-primary{% endif %}">
+            <i class="fas fa-hand-pointer text-lg"></i>
+            <span class="btm-nav-label text-xs">Picks</span>
+        </a>
+        <a href="/live/" class="{% if request.path == '/live/' %}active text-primary{% endif %}">
+            <i class="fas fa-play-circle text-lg"></i>
+            <span class="btm-nav-label text-xs">Live</span>
+        </a>
+        <a href="/standings/" class="{% if request.path == '/standings/' %}active text-primary{% endif %}">
+            <i class="fas fa-trophy text-lg"></i>
+            <span class="btm-nav-label text-xs">Standings</span>
+        </a>
+        <a href="/leagues/" class="{% if '/leagues/' in request.path %}active text-primary{% endif %}">
+            <i class="fas fa-users-cog text-lg"></i>
+            <span class="btm-nav-label text-xs">Leagues</span>
+        </a>
+    </div>
+    </div>
 
     {% block extra_js %}{% endblock %}
     
@@ -333,6 +407,16 @@
             if (activeLeagueId) {
                 updateNavigationLinks(activeLeagueId);
             }
+
+            // Keep focused fields visible inside the mobile scrolling pane
+            document.addEventListener('focusin', function(event) {
+                if (!window.matchMedia('(max-width: 767px)').matches) return;
+                const target = event.target;
+                if (!target || !target.matches || !target.matches('input, textarea, select')) return;
+                setTimeout(function() {
+                    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                }, 300);
+            });
         });
     })();
     </script>
