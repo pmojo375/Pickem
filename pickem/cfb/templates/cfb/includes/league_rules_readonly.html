@@ -1,0 +1,161 @@
+{% if league_rules %}
+<div class="space-y-6">
+    {% if payout_summary %}
+    <div>
+        <h3 class="text-lg font-bold mb-3 flex items-center gap-2">
+            <i class="fas fa-dollar-sign text-success"></i>
+            Entry &amp; prizes
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div class="stat bg-base-200 rounded-lg">
+                <div class="stat-title">Entry cost</div>
+                <div class="stat-value text-2xl text-success">
+                    {% if payout_summary.has_entry %}${{ payout_summary.entry_fee|floatformat:2 }}{% else %}Free{% endif %}
+                </div>
+                <div class="stat-desc">Per player</div>
+            </div>
+            <div class="stat bg-base-200 rounded-lg">
+                <div class="stat-title">Prize pool</div>
+                <div class="stat-value text-2xl text-primary">${{ payout_summary.total_pool|floatformat:2 }}</div>
+                <div class="stat-desc">{{ payout_summary.member_count }} active player{{ payout_summary.member_count|pluralize }}</div>
+            </div>
+            <div class="stat bg-base-200 rounded-lg">
+                <div class="stat-title">Season split</div>
+                <div class="stat-value text-lg">
+                    {% if payout_summary.has_weekly %}{{ payout_summary.weekly_percent|floatformat:0 }}% weekly{% endif %}
+                    {% if payout_summary.has_weekly and payout_summary.has_season %} · {% endif %}
+                    {% if payout_summary.has_season %}{{ payout_summary.season_percent|floatformat:0 }}% season{% endif %}
+                    {% if not payout_summary.has_weekly and not payout_summary.has_season %}—{% endif %}
+                </div>
+                <div class="stat-desc">How the pool is divided</div>
+            </div>
+        </div>
+        <p class="text-sm text-base-content/60 mb-4">
+            Dollar amounts use the current roster and update as people join or leave.
+        </p>
+
+        <div class="grid grid-cols-1 {% if payout_summary.has_weekly and payout_summary.has_season %}md:grid-cols-2{% endif %} gap-4">
+            {% if payout_summary.has_weekly %}
+            <div class="rounded-lg border border-info/30 bg-base-200 p-4">
+                <h4 class="font-bold mb-1 flex items-center gap-2">
+                    <i class="fas fa-calendar-week text-info"></i>
+                    Each week
+                </h4>
+                <p class="text-sm text-base-content/70 mb-3">
+                    ${{ payout_summary.weekly_pool|floatformat:2 }} per week
+                    ({{ payout_summary.weekly_percent|floatformat:2 }}% of the pool ÷ {{ payout_summary.weeks_in_season }} weeks)
+                </p>
+                {% if payout_summary.weekly_places %}
+                <ul class="space-y-2">
+                    {% for place in payout_summary.weekly_places %}
+                    <li class="flex justify-between items-center py-1 border-b border-base-300 last:border-0">
+                        <span>{{ place.label }}</span>
+                        <span class="font-semibold text-info">${{ place.amount|floatformat:2 }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-sm text-base-content/60">Weekly payout spots have not been set yet.</p>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if payout_summary.has_season %}
+            <div class="rounded-lg border border-warning/30 bg-base-200 p-4">
+                <h4 class="font-bold mb-1 flex items-center gap-2">
+                    <i class="fas fa-trophy text-warning"></i>
+                    Season finish
+                </h4>
+                <p class="text-sm text-base-content/70 mb-3">
+                    ${{ payout_summary.season_pool|floatformat:2 }}
+                    ({{ payout_summary.season_percent|floatformat:2 }}% of the pool)
+                </p>
+                {% if payout_summary.season_places or payout_summary.last_place %}
+                <ul class="space-y-2">
+                    {% for place in payout_summary.season_places %}
+                    <li class="flex justify-between items-center py-1 border-b border-base-300 last:border-0">
+                        <span>{{ place.label }}</span>
+                        <span class="font-semibold text-warning">${{ place.amount|floatformat:2 }}</span>
+                    </li>
+                    {% endfor %}
+                    {% if payout_summary.last_place %}
+                    <li class="flex justify-between items-center py-1">
+                        <span class="text-error">{{ payout_summary.last_place.label }}</span>
+                        <span class="font-semibold text-error">${{ payout_summary.last_place.amount|floatformat:2 }}</span>
+                    </li>
+                    {% endif %}
+                </ul>
+                {% else %}
+                <p class="text-sm text-base-content/60">Season payout spots have not been set yet.</p>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div>
+        <h3 class="text-lg font-bold mb-3 flex items-center gap-2">
+            <i class="fas fa-gavel text-primary"></i>
+            How scoring works
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div class="rounded-lg bg-base-200 p-4">
+                <div class="text-xs uppercase tracking-wide text-base-content/60">Correct pick</div>
+                <div class="font-semibold">{{ league_rules.points_per_correct_pick }} point{{ league_rules.points_per_correct_pick|pluralize }}</div>
+            </div>
+            <div class="rounded-lg bg-base-200 p-4">
+                <div class="text-xs uppercase tracking-wide text-base-content/60">Scoring</div>
+                <div class="font-semibold">{% if league_rules.against_the_spread_enabled %}Against the spread{% else %}Straight up{% endif %}</div>
+            </div>
+            <div class="rounded-lg bg-base-200 p-4">
+                <div class="text-xs uppercase tracking-wide text-base-content/60">Picks per week</div>
+                <div class="font-semibold">
+                    {% if league_rules.picks_per_week == 0 %}All {{ league_rules.pickable_games_per_week }} games{% else %}{{ league_rules.picks_per_week }} of {{ league_rules.pickable_games_per_week }}{% endif %}
+                </div>
+            </div>
+            <div class="rounded-lg bg-base-200 p-4">
+                <div class="text-xs uppercase tracking-wide text-base-content/60">Key picks</div>
+                <div class="font-semibold">
+                    {% if league_rules.key_picks_enabled %}
+                        {{ league_rules.number_of_key_picks }} per week, +{{ league_rules.key_pick_extra_points }} bonus
+                    {% else %}
+                        Off
+                    {% endif %}
+                </div>
+            </div>
+            <div class="rounded-lg bg-base-200 p-4">
+                <div class="text-xs uppercase tracking-wide text-base-content/60">Drop weeks</div>
+                <div class="font-semibold">
+                    {% if league_rules.drop_weeks %}{{ league_rules.drop_weeks }} worst week{{ league_rules.drop_weeks|pluralize }}{% else %}None{% endif %}
+                </div>
+            </div>
+            <div class="rounded-lg bg-base-200 p-4">
+                <div class="text-xs uppercase tracking-wide text-base-content/60">Tiebreaker</div>
+                <div class="font-semibold">{{ league_rules.get_tiebreaker_display }}</div>
+            </div>
+            {% if league_rules.against_the_spread_enabled %}
+            <div class="rounded-lg bg-base-200 p-4">
+                <div class="text-xs uppercase tracking-wide text-base-content/60">Spreads lock</div>
+                <div class="font-semibold">{{ league_rules.get_spread_lock_weekday_display }}</div>
+            </div>
+            <div class="rounded-lg bg-base-200 p-4">
+                <div class="text-xs uppercase tracking-wide text-base-content/60">Hooks</div>
+                <div class="font-semibold">{% if league_rules.force_hooks %}Half-point spreads{% else %}As posted{% endif %}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert">
+    <i class="fas fa-info-circle"></i>
+    <span>
+        {% if active_season %}
+        Scoring and payout rules have not been set for {{ active_season.year }} yet.
+        {% else %}
+        No active season is set, so league rules are not available yet.
+        {% endif %}
+    </span>
+</div>
+{% endif %}

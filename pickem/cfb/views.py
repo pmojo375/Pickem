@@ -1555,6 +1555,28 @@ def start_new_season_view(request):
     return render(request, "cfb/start_new_season.html", _context())
 
 
+def _league_rules_context(league, active_season=None, member_count=None):
+    """Read-only rules and payout summary for members (and league detail)."""
+    if active_season is None:
+        active_season = Season.objects.filter(is_active=True).first()
+
+    league_rules = None
+    if league and active_season:
+        league_rules = LeagueRules.objects.filter(league=league, season=active_season).first()
+
+    if member_count is None:
+        member_count = 0
+        if league:
+            member_count = LeagueMembership.objects.filter(league=league, is_active=True).count()
+
+    return {
+        "active_season": active_season,
+        "league_rules": league_rules,
+        "payout_summary": services.payouts.build_payout_summary(league_rules, member_count),
+        "league_member_count": member_count,
+    }
+
+
 @login_required
 def roster_view(request):
     league, user_leagues = _resolve_user_league(request)
@@ -1851,6 +1873,7 @@ def league_detail_view(request, league_id):
         "active_season": active_season,
         "join_password_min_length": JOIN_PASSWORD_MIN_LENGTH,
     }
+    context.update(_league_rules_context(league, active_season, active_member_count))
     if can_manage_this_league:
         context["invite_url"] = request.build_absolute_uri(league.get_invite_path())
     return render(request, "cfb/league_detail.html", context)

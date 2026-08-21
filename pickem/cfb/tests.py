@@ -1,10 +1,13 @@
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.core.exceptions import ValidationError
 from django.test import RequestFactory, TestCase, override_settings
 
-from cfb.models import League, LeagueMembership, Season
+from cfb.models import League, LeagueMembership, LeagueRules, Season
 from cfb.services import invites
+from cfb.services.payouts import build_payout_summary
 
 User = get_user_model()
 
@@ -65,3 +68,68 @@ class LeagueEmailInviteTests(TestCase):
         )
         self.assertEqual(result, "already_active")
         self.assertEqual(len(mail.outbox), 0)
+
+
+class PayoutSummaryTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user("owner", "owner@example.com", "pass")
+        self.league = League.objects.create(name="Payout League", created_by=self.owner)
+        LeagueMembership.objects.create(league=self.league, user=self.owner, role="owner")
+        self.season = Season.objects.create(year=2026, is_active=True)
+        self.rules = LeagueRules.objects.create(
+            league=self.league,
+            season=self.season,
+            entry_fee=Decimal("50.00"),
+            weekly_payout_percent=Decimal("40.00"),
+            season_payout_percent=Decimal("60.00"),
+            weekly_payout_structure={"1": 100},
+            season_payout_structure={"1": 70, "2": 20},
+            season_payout_last_percent=Decimal("10.00"),
+        )
+
+    def test_entry_and_place_payouts(self):
+        summary = build_payout_summary(self.rules, member_count=10)
+        self.assertEqual(summary["entry_fee"], Decimal("50.00"))
+        self.assertEqual(summary["total_pool"], Decimal("500.00"))
+        self.assertEqual(summary["weekly_places"][0]["label"], "1st place")
+        self.assertEqual(summary["weekly_places"][0]["amount"], Decimal("16.67"))
+        self.assertEqual(summary["season_places"][0]["label"], "1st place")
+        self.assertEqual(summary["season_places"][0]["amount"], Decimal("210.00"))
+        self.assertEqual(summary["season_places"][1]["amount"], Decimal("60.00"))
+        self.assertEqual(summary["last_place"]["amount"], Decimal("30.00"))
+
+    def test_no_payout_returns_none(self):
+        self.rules.entry_fee = Decimal("0.00")
+        self.rules.weekly_payout_percent = Decimal("0.00")
+        self.rules.season_payout_percent = Decimal("0.00")
+        self.assertIsNone(build_payout_summary(self.rules, member_count=10))
+
+
+class MemberRulesViewTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user("owner", "owner@example.com", "pass")
+        self.member = User.objects.create_user("member", "member@example.com", "pass")
+        self.league = League.objects.create(name="Member League", created_by=self.owner)
+        LeagueMembership.objects.create(league=self.league, user=self.owner, role="owner")
+        LeagueMembership.objects.create(league=self.league, user=self.member, role="member")
+        self.season = Season.objects.create(year=2026, is_active=True)
+        LeagueRules.objects.create(
+            league=self.league,
+            season=self.season,
+            entry_fee=Decimal("25.00"),
+            weekly_payout_percent=Decimal("50.00"),
+            season_payout_percent=Decimal("50.00"),
+            weekly_payout_structure={"1": 100},
+            season_payout_structure={"1": 100},
+        )
+
+    def test_member_sees_rules_on_league_detail(self):
+        self.client.force_login(self.member)
+        response = self.client.get(f"/leagues/{self.league.id}/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Entry cost")
+        self.assertContains(response, "$25.00")
+        self.assertContains(response, "1st place")
+        self.assertContains(response, "Each week")
+        self.assertContains(response, "Season finish")
+

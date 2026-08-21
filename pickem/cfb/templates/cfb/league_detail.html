@@ -123,6 +123,20 @@
     </div>
     {% endif %}
 
+    {% if league_rules or payout_summary %}
+    <div class="card bg-base-100 shadow-xl mb-6">
+        <div class="card-body">
+            <h2 class="card-title text-2xl mb-2">
+                <i class="fas fa-gavel mr-2 text-primary"></i>League rules
+                {% if active_season %}
+                <span class="badge badge-ghost">{{ active_season.year }}</span>
+                {% endif %}
+            </h2>
+            {% include "cfb/includes/league_rules_readonly.html" %}
+        </div>
+    </div>
+    {% endif %}
+
     {% if can_open_for_season %}
     <div class="alert alert-info mb-6">
         <i class="fas fa-flag-checkered"></i>
