@@ -2,7 +2,7 @@
 {% load i18n %}
 {% load cfb_tags %}
 
-{% block title %}Social Sign In | CFB Pick'em{% endblock %}
+{% block title %}Social Sign In | BigPicks{% endblock %}
 
 {% block content %}
 <section class="max-w-xl mx-auto">
@@ -20,7 +20,7 @@
                             {% blocktrans with provider=provider.name %}Connect {{ provider }}{% endblocktrans %}
                         </h1>
                         <p class="text-base-content/70 text-sm">
-                            {% blocktrans with provider=provider.name %}You are about to connect a new third-party account from {{ provider }} to CFB Pick'em.{% endblocktrans %}
+                            {% blocktrans with provider=provider.name %}You are about to connect a new third-party account from {{ provider }} to BigPicks.{% endblocktrans %}
                         </p>
                     {% else %}
                         <h1 class="text-2xl font-semibold">

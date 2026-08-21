@@ -2,7 +2,7 @@
 {% load static %}
 {% load cfb_tags %}
 
-{% block title %}Live Games - CFB Pick'em{% endblock %}
+{% block title %}Live Games - BigPicks{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/live-updates.css' %}">
@@ -317,9 +317,9 @@
         onStatusChange: function({ hasLiveGames, liveGameCount }) {
             // Update page title to show live game count
             if (hasLiveGames) {
-                document.title = `(${liveGameCount} Live) Live Games - CFB Pick'em`;
+                document.title = `(${liveGameCount} Live) Live Games - BigPicks`;
             } else {
-                document.title = 'Live Games - CFB Pick\'em';
+                document.title = 'Live Games - BigPicks';
             }
         }
     });

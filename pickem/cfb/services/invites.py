@@ -78,7 +78,7 @@ def send_league_email_invite(request, league, raw_email, season=None):
                 "invite_url": invite_url,
             },
         )
-        subject = f"Join CFB Pick'em and play in {league.name}"
+        subject = f"Join BigPicks and play in {league.name}"
         kind = "new_sent"
 
     try:

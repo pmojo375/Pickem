@@ -80,27 +80,43 @@ def home_view(request):
     
     if request.user.is_authenticated:
         league, user_leagues = _resolve_user_league(request)
+        context["user_leagues"] = user_leagues
+        context["current_league"] = league
         
         if league:
-            # Get user stats for this league
-            from django.utils import timezone
-            from datetime import timedelta
-            
-            # Get current week and its date range
+            from django.db.models import Count, Q
+
             current_week = services.schedule.get_display_week()
-            
-            # Picks made this week
+            active_season = Season.objects.filter(is_active=True).first()
+            now = timezone.now()
+
             week_picks_count = 0
+            week_games_count = 0
+            open_picks_count = 0
             if current_week:
                 start, end = services.schedule.get_week_datetime_range(current_week)
-                week_picks_count = Pick.objects.filter(
+                week_games = LeagueGame.objects.filter(
+                    league=league,
+                    is_active=True,
+                    game__kickoff__range=(start, end),
+                )
+                if active_season:
+                    week_games = week_games.filter(game__season=active_season)
+
+                week_games_count = week_games.count()
+                week_picks = Pick.objects.filter(
                     user=request.user,
                     league=league,
-                    game__kickoff__range=(start, end)
+                    game__kickoff__range=(start, end),
+                )
+                if active_season:
+                    week_picks = week_picks.filter(game__season=active_season)
+                week_picks_count = week_picks.count()
+                picked_ids = week_picks.values_list("game_id", flat=True)
+                open_picks_count = week_games.filter(game__kickoff__gt=now).exclude(
+                    game_id__in=picked_ids
                 ).count()
-            
-            # Total correct picks (active season only)
-            active_season = Season.objects.filter(is_active=True).first()
+
             total_picks = Pick.objects.filter(user=request.user, league=league, is_correct__isnull=False)
             rankings_qs = Pick.objects.filter(league=league, is_correct__isnull=False)
             if active_season:
@@ -110,26 +126,32 @@ def home_view(request):
             correct_picks = total_picks.filter(is_correct=True).count()
             total_picks_count = total_picks.count()
             win_rate = round((correct_picks / total_picks_count * 100) if total_picks_count > 0 else 0, 1)
-            
-            # User ranking in league (by correct picks)
-            from django.db.models import Count, Q
-            rankings = rankings_qs.values('user').annotate(
-                correct_count=Count('id', filter=Q(is_correct=True))
-            ).order_by('-correct_count')
-            
+
+            rankings = rankings_qs.values("user").annotate(
+                correct_count=Count("id", filter=Q(is_correct=True))
+            ).order_by("-correct_count")
+
             user_rank = None
             for idx, rank in enumerate(rankings, 1):
-                if rank['user'] == request.user.id:
+                if rank["user"] == request.user.id:
                     user_rank = idx
                     break
-            
+
+            league_rules = None
+            if active_season:
+                league_rules = LeagueRules.objects.filter(
+                    league=league, season=active_season
+                ).first()
+
             context.update({
-                'current_league': league,
-                'user_leagues': user_leagues,
-                'week_picks_count': week_picks_count,
-                'win_rate': win_rate,
-                'user_rank': user_rank,
-                'total_players': league.memberships.filter(is_active=True).count(),
+                "current_week": current_week,
+                "week_picks_count": week_picks_count,
+                "week_games_count": week_games_count,
+                "open_picks_count": open_picks_count,
+                "win_rate": win_rate,
+                "user_rank": user_rank,
+                "total_players": league.memberships.filter(is_active=True).count(),
+                "ats_enabled": bool(league_rules and league_rules.against_the_spread_enabled),
             })
     
     return render(request, "cfb/home.html", context)

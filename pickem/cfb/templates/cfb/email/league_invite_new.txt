@@ -1,6 +1,6 @@
 Hi,
 
-{{ inviter.get_username }} invited you to join {{ league.name }} on CFB Pick'em.
+{{ inviter.get_username }} invited you to join {{ league.name }} on BigPicks.
 
 Create your account here:
 {{ signup_url }}
@@ -8,4 +8,4 @@ Create your account here:
 After you sign up (and confirm your email), use this link to join the league:
 {{ invite_url }}
 
-— CFB Pick'em
+— BigPicks

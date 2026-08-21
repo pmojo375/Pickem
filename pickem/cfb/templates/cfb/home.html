@@ -1,127 +1,325 @@
 {% extends 'cfb/base.html' %}
 
-{% block title %}Home - CFB Pick'em{% endblock %}
+{% block title %}{% if request.user.is_authenticated %}Home | BigPicks{% else %}BigPicks | College Football Pick'em{% endif %}{% endblock %}
 
-{% block content %}
-<div class="hero min-h-[60vh]">
-    <div class="hero-content text-center">
-        <div class="max-w-2xl">
-            <div class="mb-8">
-                <i class="fas fa-football text-8xl text-primary animate-pulse"></i>
-            </div>
-            <h1 class="text-5xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-6">
-                Welcome to CFB Pick'em
-            </h1>
-            <p class="text-xl text-base-content/80 mb-8">
-                Make your picks, compete with friends, and prove you're the ultimate college football expert.
-            </p>
-            
-            {% if request.user.is_authenticated %}
-                <!-- League Selector -->
-                {% if current_league %}
-                    {% if user_leagues.count > 1 %}
-                    <div class="mb-6">
-                        <select class="select select-bordered select-primary" onchange="window.location.href='/?league_id=' + this.value">
-                            {% for league in user_leagues %}
-                            <option value="{{ league.id }}" {% if league.id == current_league.id %}selected{% endif %}>
-                                {{ league.name }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    {% else %}
-                    <div class="badge badge-primary badge-lg mb-6">{{ current_league.name }}</div>
-                    {% endif %}
-                {% endif %}
-                <div class="flex gap-4 justify-center flex-wrap">
-                    <a href="/picks/" class="btn btn-primary btn-lg">
-                        <i class="fas fa-hand-pointer mr-2"></i>
-                        Make Your Picks
-                    </a>
-                    <a href="/live/" class="btn btn-outline btn-lg">
-                        <i class="fas fa-play-circle mr-2"></i>
-                        View Live Games
-                    </a>
-                </div>
-                
-                <!-- Quick Stats Cards -->
-                {% if current_league %}
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-12">
-                    <div class="stat bg-base-100 rounded-box shadow-xl">
-                        <div class="stat-figure text-primary">
-                            <i class="fas fa-check-circle text-3xl"></i>
-                        </div>
-                        <div class="stat-title">Picks Made</div>
-                        <div class="stat-value text-primary">{{ week_picks_count|default:0 }}</div>
-                        <div class="stat-desc">This week</div>
-                    </div>
-                    
-                    <div class="stat bg-base-100 rounded-box shadow-xl">
-                        <div class="stat-figure text-secondary">
-                            <i class="fas fa-chart-line text-3xl"></i>
-                        </div>
-                        <div class="stat-title">Win Rate</div>
-                        <div class="stat-value text-secondary">{{ win_rate|default:0 }}%</div>
-                        <div class="stat-desc">In {{ current_league.name }}</div>
-                    </div>
-                    
-                    <div class="stat bg-base-100 rounded-box shadow-xl">
-                        <div class="stat-figure text-accent">
-                            <i class="fas fa-trophy text-3xl"></i>
-                        </div>
-                        <div class="stat-title">Ranking</div>
-                        <div class="stat-value text-accent">{% if user_rank %}#{{ user_rank }}{% else %}-{% endif %}</div>
-                        <div class="stat-desc">of {{ total_players|default:0 }} players</div>
-                    </div>
-                </div>
-                {% else %}
-                <!-- No league message -->
-                <div class="alert alert-warning mt-6">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <div>
-                        <h3 class="font-bold">No League Yet</h3>
-                        <div class="text-sm">Join or create a league to start making picks!</div>
-                    </div>
-                    <a href="/leagues/" class="btn btn-sm btn-primary">View Leagues</a>
-                </div>
-                {% endif %}
-            {% else %}
-                <div class="mt-8">
-                    <a href="{% url 'account_login' %}" class="btn btn-primary btn-lg">
-                        <i class="fas fa-sign-in-alt mr-2"></i>
-                        Login to Get Started
-                    </a>
-                </div>
-            {% endif %}
-        </div>
-    </div>
-</div>
-
-<!-- Features Section -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
-    <div class="card bg-base-100 shadow-xl">
-        <div class="card-body items-center text-center">
-            <i class="fas fa-mobile-alt text-4xl text-primary mb-4"></i>
-            <h2 class="card-title">Mobile Friendly</h2>
-            <p class="text-base-content/70">Make picks on the go with our responsive design</p>
-        </div>
-    </div>
-    
-    <div class="card bg-base-100 shadow-xl">
-        <div class="card-body items-center text-center">
-            <i class="fas fa-bolt text-4xl text-secondary mb-4"></i>
-            <h2 class="card-title">Live Updates</h2>
-            <p class="text-base-content/70">Track your picks in real-time during game day</p>
-        </div>
-    </div>
-    
-    <div class="card bg-base-100 shadow-xl">
-        <div class="card-body items-center text-center">
-            <i class="fas fa-star text-4xl text-accent mb-4"></i>
-            <h2 class="card-title">Key Picks</h2>
-            <p class="text-base-content/70">Double down with confidence picks for bonus points</p>
-        </div>
-    </div>
-</div>
+{% block extra_css %}
+<style>
+    .home-hero {
+        position: relative;
+        overflow: hidden;
+        border-radius: 1.5rem;
+    }
+    .home-hero-inner {
+        position: relative;
+        z-index: 1;
+    }
+    .brand-hero {
+        font-family: "Bebas Neue", sans-serif;
+        font-size: clamp(4.25rem, 14vw, 7.5rem);
+        line-height: 0.9;
+        letter-spacing: 0.04em;
+    }
+    .home-step {
+        counter-increment: how;
+    }
+    .home-step-num::before {
+        content: counter(how, decimal-leading-zero);
+        font-family: "Bebas Neue", sans-serif;
+        font-size: 2.25rem;
+        letter-spacing: 0.08em;
+        line-height: 1;
+    }
+</style>
 {% endblock %}
 
+{% block content %}
+{% if request.user.is_authenticated %}
+    <section class="home-hero bg-base-100 text-base-content border border-base-content/10 mb-8">
+        <div class="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-secondary/10"></div>
+        <div class="home-hero-inner p-6 md:p-10">
+            <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                <div>
+                    <p class="text-sm uppercase tracking-[0.25em] text-primary mb-2">bigpicks.app</p>
+                    <h1 class="text-4xl md:text-5xl font-bold mb-2">
+                        Hey {{ request.user.username }}
+                    </h1>
+                    <p class="text-base-content/80">
+                        {% if current_league %}
+                            {{ current_league.name }}
+                            {% if current_week %} · Week {{ current_week.number }}{% endif %}
+                        {% else %}
+                            Join a league to start picking this Saturday.
+                        {% endif %}
+                    </p>
+                </div>
+                {% if current_league %}
+                    {% if user_leagues.count > 1 %}
+                    <select class="select select-bordered select-primary w-full md:w-auto" onchange="window.location.href='/?league_id=' + this.value">
+                        {% for league in user_leagues %}
+                        <option value="{{ league.id }}" {% if league.id == current_league.id %}selected{% endif %}>
+                            {{ league.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    {% else %}
+                    <div class="badge badge-primary badge-lg">{{ current_league.name }}</div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    {% if current_league %}
+        <div class="card bg-base-100 shadow-xl mb-8">
+            <div class="card-body">
+                <div class="flex flex-col lg:flex-row lg:items-center gap-6">
+                    <div class="flex-1">
+                        {% if current_week %}
+                            <div class="badge badge-primary mb-3">Week {{ current_week.number }}</div>
+                        {% endif %}
+                        {% if week_games_count == 0 %}
+                            <h2 class="card-title text-2xl">The board is not up yet</h2>
+                            <p class="text-base-content/70">
+                                Games for this week have not been posted in {{ current_league.name }}. Check back soon, or jump into live scores.
+                            </p>
+                        {% elif open_picks_count > 0 %}
+                            <h2 class="card-title text-2xl">You have {{ open_picks_count }} pick{{ open_picks_count|pluralize }} left</h2>
+                            <p class="text-base-content/70">
+                                {{ week_picks_count }} of {{ week_games_count }} games locked in. Get the rest in before kickoff.
+                            </p>
+                        {% elif week_picks_count >= week_games_count %}
+                            <h2 class="card-title text-2xl">You're locked in</h2>
+                            <p class="text-base-content/70">
+                                All {{ week_games_count }} games are picked. Watch them live and keep an eye on the standings.
+                            </p>
+                        {% else %}
+                            <h2 class="card-title text-2xl">The rest are underway</h2>
+                            <p class="text-base-content/70">
+                                {{ week_picks_count }} of {{ week_games_count }} were in before kickoff. Follow the live board from here.
+                            </p>
+                        {% endif %}
+                    </div>
+                    <div class="flex flex-wrap gap-3">
+                        <a href="/picks/" class="btn btn-primary">
+                            <i class="fas fa-hand-pointer mr-2"></i>
+                            {% if open_picks_count > 0 %}Finish Picks{% else %}View Picks{% endif %}
+                        </a>
+                        <a href="/live/" class="btn btn-outline">
+                            <i class="fas fa-play-circle mr-2"></i>
+                            Live
+                        </a>
+                    </div>
+                </div>
+                {% if week_games_count > 0 %}
+                <progress class="progress progress-primary w-full mt-2" value="{{ week_picks_count }}" max="{{ week_games_count }}"></progress>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="stat bg-base-100 rounded-box shadow-xl">
+                <div class="stat-figure text-primary">
+                    <i class="fas fa-check-circle text-3xl"></i>
+                </div>
+                <div class="stat-title">Picks Made</div>
+                <div class="stat-value text-primary">{{ week_picks_count|default:0 }}{% if week_games_count %}<span class="text-2xl text-base-content/40 font-normal">/{{ week_games_count }}</span>{% endif %}</div>
+                <div class="stat-desc">This week</div>
+            </div>
+
+            <div class="stat bg-base-100 rounded-box shadow-xl">
+                <div class="stat-figure text-secondary">
+                    <i class="fas fa-chart-line text-3xl"></i>
+                </div>
+                <div class="stat-title">Win Rate</div>
+                <div class="stat-value text-secondary">{{ win_rate|default:0 }}%</div>
+                <div class="stat-desc">{% if ats_enabled %}Against the spread{% else %}This season{% endif %}</div>
+            </div>
+
+            <div class="stat bg-base-100 rounded-box shadow-xl">
+                <div class="stat-figure text-accent">
+                    <i class="fas fa-trophy text-3xl"></i>
+                </div>
+                <div class="stat-title">Ranking</div>
+                <div class="stat-value text-accent">{% if user_rank %}#{{ user_rank }}{% else %}—{% endif %}</div>
+                <div class="stat-desc">of {{ total_players|default:0 }} players</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <a href="/picks/" class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
+                <div class="card-body items-center text-center py-8">
+                    <i class="fas fa-hand-pointer text-3xl text-primary mb-2"></i>
+                    <h2 class="font-bold">Picks</h2>
+                    <p class="text-sm text-base-content/60">Winners and key picks</p>
+                </div>
+            </a>
+            <a href="/live/" class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
+                <div class="card-body items-center text-center py-8">
+                    <i class="fas fa-play-circle text-3xl text-secondary mb-2"></i>
+                    <h2 class="font-bold">Live</h2>
+                    <p class="text-sm text-base-content/60">Scores as they happen</p>
+                </div>
+            </a>
+            <a href="/standings/" class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
+                <div class="card-body items-center text-center py-8">
+                    <i class="fas fa-trophy text-3xl text-accent mb-2"></i>
+                    <h2 class="font-bold">Standings</h2>
+                    <p class="text-sm text-base-content/60">See who is running it</p>
+                </div>
+            </a>
+            <a href="/roster/" class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
+                <div class="card-body items-center text-center py-8">
+                    <i class="fas fa-users text-3xl text-primary mb-2"></i>
+                    <h2 class="font-bold">Roster</h2>
+                    <p class="text-sm text-base-content/60">Your league members</p>
+                </div>
+            </a>
+        </div>
+    {% else %}
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body items-center text-center py-12">
+                <i class="fas fa-users-cog text-5xl text-primary mb-4"></i>
+                <h2 class="card-title text-2xl">You need a league</h2>
+                <p class="text-base-content/70 max-w-md">
+                    BigPicks is built around private groups. Join with a password or invite, or start one and bring your people.
+                </p>
+                <div class="flex flex-wrap gap-3 justify-center mt-4">
+                    <a href="/leagues/" class="btn btn-primary">
+                        <i class="fas fa-users-cog mr-2"></i>
+                        View Leagues
+                    </a>
+                    <a href="{% url 'league_create' %}" class="btn btn-outline">
+                        <i class="fas fa-plus mr-2"></i>
+                        Create a League
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+{% else %}
+    <section class="home-hero bg-base-100 text-base-content border border-base-content/10 mb-12">
+        <div class="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-secondary/10"></div>
+        <div class="home-hero-inner hero min-h-[28rem] md:min-h-[32rem]">
+            <div class="hero-content text-center py-16 md:py-20">
+                <div class="max-w-3xl">
+                    <p class="text-sm uppercase tracking-[0.35em] text-primary mb-4">bigpicks.app</p>
+                    <h1 class="brand-hero mb-4">
+                        Big<span class="text-primary">Picks</span>
+                    </h1>
+                    <p class="text-xl md:text-2xl text-base-content mb-3">
+                        Private college football pick'em. Your league, your rules.
+                    </p>
+                    <p class="text-base-content/80 max-w-xl mx-auto mb-8">
+                        Create a league, set how you score it, and find out who actually knows CFB — not who talks the most in the group chat.
+                    </p>
+                    <div class="flex gap-3 justify-center flex-wrap">
+                        <a href="{% url 'account_login' %}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-sign-in-alt mr-2"></i>
+                            Sign In
+                        </a>
+                        <a href="{% url 'account_signup' %}" class="btn btn-outline btn-lg">
+                            Create Account
+                        </a>
+                    </div>
+                    <div class="flex flex-wrap justify-center gap-2 mt-8">
+                        <span class="badge badge-outline">Private leagues</span>
+                        <span class="badge badge-outline">Custom rules</span>
+                        <span class="badge badge-outline">Key picks</span>
+                        <span class="badge badge-outline">Live scores</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="mb-12" style="counter-reset: how;">
+        <h2 class="text-3xl font-bold text-center mb-2">How Saturday works</h2>
+        <p class="text-center text-base-content/60 mb-8">Three steps. No spreadsheet. No excuses.</p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="card bg-base-100 shadow-xl home-step">
+                <div class="card-body">
+                    <div class="home-step-num text-primary mb-2"></div>
+                    <h3 class="card-title">Start a league</h3>
+                    <p class="text-base-content/70">Invite your group with a password or a link. Keep it private — this is for your people, not the internet.</p>
+                </div>
+            </div>
+            <div class="card bg-base-100 shadow-xl home-step">
+                <div class="card-body">
+                    <div class="home-step-num text-primary mb-2"></div>
+                    <h3 class="card-title">Make your picks</h3>
+                    <p class="text-base-content/70">Straight up or against the spread — the commissioner sets the rules. Mark key picks when you want extra points.</p>
+                </div>
+            </div>
+            <div class="card bg-base-100 shadow-xl home-step">
+                <div class="card-body">
+                    <div class="home-step-num text-primary mb-2"></div>
+                    <h3 class="card-title">Watch it hit</h3>
+                    <p class="text-base-content/70">Live scores, standings, and bragging rights update as games go final. The chat can wait until after kickoff.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="mb-12">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                    <i class="fas fa-sliders-h text-2xl text-primary mb-2"></i>
+                    <h3 class="card-title text-lg">Straight up or ATS</h3>
+                    <p class="text-base-content/70">Pick winners, or play against the spread. Commissioners choose the scoring — the site does not force a format.</p>
+                </div>
+            </div>
+            <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                    <i class="fas fa-star text-2xl text-secondary mb-2"></i>
+                    <h3 class="card-title text-lg">Key picks</h3>
+                    <p class="text-base-content/70">Mark your confidence games for bonus points. One swing pick can flip a week — or a season.</p>
+                </div>
+            </div>
+            <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                    <i class="fas fa-bolt text-2xl text-accent mb-2"></i>
+                    <h3 class="card-title text-lg">Live game day</h3>
+                    <p class="text-base-content/70">Track your card while the games are on. Green is good. Red means you are explaining yourself later.</p>
+                </div>
+            </div>
+            <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                    <i class="fas fa-trophy text-2xl text-primary mb-2"></i>
+                    <h3 class="card-title text-lg">Season standings</h3>
+                    <p class="text-base-content/70">Week-to-week and full-season ranks, so the trophy is not decided by one lucky Thursday night.</p>
+                </div>
+            </div>
+            <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                    <i class="fas fa-users text-2xl text-secondary mb-2"></i>
+                    <h3 class="card-title text-lg">Your group, your rules</h3>
+                    <p class="text-base-content/70">Set the slate, key picks, tiebreakers, and scoring. Run the league the way your crew already argues about it.</p>
+                </div>
+            </div>
+            <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                    <i class="fas fa-mobile-alt text-2xl text-accent mb-2"></i>
+                    <h3 class="card-title text-lg">Built for the tailgate</h3>
+                    <p class="text-base-content/70">Make picks from the couch, the lot, or the bar. The board is the same on a phone as it is on a laptop.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="home-hero bg-base-100 text-base-content border border-base-content/10">
+        <div class="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-secondary/10"></div>
+        <div class="home-hero-inner text-center py-14 px-6">
+            <h2 class="text-3xl md:text-4xl font-bold mb-3">Ready to talk picks?</h2>
+            <p class="text-base-content/70 mb-6 max-w-lg mx-auto">
+                Sign in and get in a league before the next slate drops. Saturdays are better with something on the line.
+            </p>
+            <div class="flex gap-3 justify-center flex-wrap">
+                <a href="{% url 'account_login' %}" class="btn btn-primary btn-lg">Sign In</a>
+                <a href="{% url 'account_signup' %}" class="btn btn-outline btn-lg">Create Account</a>
+            </div>
+        </div>
+    </section>
+{% endif %}
+{% endblock %}
