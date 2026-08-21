@@ -70,12 +70,57 @@
                 left: 0;
                 right: 0;
                 z-index: 50;
-                box-sizing: content-box;
-                height: 4rem;
-                padding-bottom: env(safe-area-inset-bottom, 0px);
             }
             .main-content {
                 padding-bottom: 100px !important;
+            }
+        }
+
+        /*
+         * Firefox Android resizes the layout when its toolbars show/hide and
+         * offsets position:fixed. Don't use fixed there — pin the nav as the
+         * last flex row of a viewport-tall shell. Chrome ignores this block.
+         */
+        @supports (-moz-appearance: none) {
+            @media (max-width: 767px) {
+                html, body {
+                    width: 100%;
+                    max-width: 100%;
+                    height: 100%;
+                    height: 100dvh;
+                    max-height: 100dvh;
+                    overflow: hidden;
+                }
+                body {
+                    min-height: 0;
+                }
+                .navbar.md\:hidden {
+                    order: 1;
+                    flex-shrink: 0;
+                }
+                .main-content {
+                    order: 2;
+                    flex: 1 1 auto;
+                    min-height: 0;
+                    overflow-x: hidden;
+                    overflow-y: auto;
+                    overscroll-behavior: contain;
+                    padding-bottom: 1rem !important;
+                }
+                .btm-nav.bottom-nav {
+                    order: 3;
+                    position: relative !important;
+                    bottom: auto !important;
+                    left: 0 !important;
+                    right: 0 !important;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    transform: none !important;
+                    flex-shrink: 0;
+                    height: 4rem;
+                    box-sizing: border-box;
+                    padding-bottom: 0 !important;
+                }
             }
         }
     </style>
@@ -337,38 +382,6 @@
                 updateNavigationLinks(activeLeagueId);
             }
         });
-    })();
-    </script>
-    <script>
-    (function() {
-        var nav = document.querySelector('.btm-nav.bottom-nav');
-        var vv = window.visualViewport;
-        if (!nav || !vv) return;
-        var ticking = false;
-
-        function pin() {
-            ticking = false;
-            if (!window.matchMedia('(max-width: 767px)').matches) {
-                nav.style.transform = '';
-                return;
-            }
-            nav.style.transform = 'none';
-            var gap = vv.height - nav.getBoundingClientRect().bottom;
-            // Only fill empty space below the bar. Never shift it up — Firefox already
-            // does that when the toolbar returns, which made the icons jump.
-            nav.style.transform = gap > 1 ? 'translateY(' + gap + 'px)' : '';
-        }
-
-        function onChange() {
-            if (ticking) return;
-            ticking = true;
-            requestAnimationFrame(pin);
-        }
-
-        pin();
-        vv.addEventListener('resize', onChange);
-        vv.addEventListener('scroll', onChange);
-        window.addEventListener('resize', onChange);
     })();
     </script>
 </body>
