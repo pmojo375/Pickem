@@ -120,6 +120,18 @@
                     height: 4rem;
                     box-sizing: border-box;
                     padding-bottom: 0 !important;
+                    overflow: visible;
+                    z-index: 50;
+                }
+                .btm-nav.bottom-nav::after {
+                    content: "";
+                    position: absolute;
+                    left: 0;
+                    right: 0;
+                    top: 100%;
+                    height: 50vh;
+                    background-color: var(--fallback-b1, oklch(var(--b1) / 1));
+                    pointer-events: none;
                 }
             }
         }
