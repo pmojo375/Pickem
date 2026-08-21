@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark" class="bg-base-300">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -32,16 +32,14 @@
             background: #5a6678;
         }
         
-        /* Smooth transitions — skip html/body so Firefox toolbar resize
-           doesn't animate the page background as if it were changing size. */
-        *:not(html):not(body) {
+        /* Smooth transitions */
+        * {
             transition: background-color 0.2s ease;
         }
         
         /* Flexbox layout for sticky footer */
         html {
             height: 100%;
-            background-color: inherit;
         }
         
         body {
@@ -66,27 +64,12 @@
         
         /* App-like bottom nav for mobile */
         @media (max-width: 768px) {
-            .btm-nav.bottom-nav {
+            .bottom-nav {
                 position: fixed;
                 bottom: 0;
                 left: 0;
                 right: 0;
                 z-index: 50;
-                height: auto;
-                min-height: 4rem;
-                overflow: visible;
-            }
-            /* Firefox's visual viewport can extend below bottom:0; paint the nav color there
-               so page cards don't peek through. Off-screen in Chrome. */
-            .btm-nav.bottom-nav::after {
-                content: "";
-                position: absolute;
-                left: 0;
-                right: 0;
-                top: 100%;
-                height: 100vh;
-                background-color: inherit;
-                pointer-events: none;
             }
             .main-content {
                 padding-bottom: 100px !important;
@@ -140,6 +123,30 @@
                 </a>
             {% endif %}
         </div>
+    </div>
+
+    <!-- Mobile Bottom Navigation -->
+    <div class="btm-nav btm-nav-md md:hidden bottom-nav bg-base-100 border-t border-base-300">
+        <a href="/" class="{% if request.path == '/' %}active text-primary{% endif %}">
+            <i class="fas fa-home text-lg"></i>
+            <span class="btm-nav-label text-xs">Home</span>
+        </a>
+        <a href="/picks/" class="{% if request.path == '/picks/' %}active text-primary{% endif %}">
+            <i class="fas fa-hand-pointer text-lg"></i>
+            <span class="btm-nav-label text-xs">Picks</span>
+        </a>
+        <a href="/live/" class="{% if request.path == '/live/' %}active text-primary{% endif %}">
+            <i class="fas fa-play-circle text-lg"></i>
+            <span class="btm-nav-label text-xs">Live</span>
+        </a>
+        <a href="/standings/" class="{% if request.path == '/standings/' %}active text-primary{% endif %}">
+            <i class="fas fa-trophy text-lg"></i>
+            <span class="btm-nav-label text-xs">Standings</span>
+        </a>
+        <a href="/leagues/" class="{% if '/leagues/' in request.path %}active text-primary{% endif %}">
+            <i class="fas fa-users-cog text-lg"></i>
+            <span class="btm-nav-label text-xs">Leagues</span>
+        </a>
     </div>
 
     <!-- Mobile Header (shows user info) -->
@@ -201,30 +208,6 @@
             <p>© 2026 BigPicks · bigpicks.app · Built for Saturday</p>
         </aside>
     </footer>
-
-    <!-- Mobile Bottom Navigation (end of body so it isn't a mid-flex item) -->
-    <div class="btm-nav btm-nav-md md:hidden bottom-nav bg-base-100 border-t border-base-300">
-        <a href="/" class="{% if request.path == '/' %}active text-primary{% endif %}">
-            <i class="fas fa-home text-lg"></i>
-            <span class="btm-nav-label text-xs">Home</span>
-        </a>
-        <a href="/picks/" class="{% if request.path == '/picks/' %}active text-primary{% endif %}">
-            <i class="fas fa-hand-pointer text-lg"></i>
-            <span class="btm-nav-label text-xs">Picks</span>
-        </a>
-        <a href="/live/" class="{% if request.path == '/live/' %}active text-primary{% endif %}">
-            <i class="fas fa-play-circle text-lg"></i>
-            <span class="btm-nav-label text-xs">Live</span>
-        </a>
-        <a href="/standings/" class="{% if request.path == '/standings/' %}active text-primary{% endif %}">
-            <i class="fas fa-trophy text-lg"></i>
-            <span class="btm-nav-label text-xs">Standings</span>
-        </a>
-        <a href="/leagues/" class="{% if '/leagues/' in request.path %}active text-primary{% endif %}">
-            <i class="fas fa-users-cog text-lg"></i>
-            <span class="btm-nav-label text-xs">Leagues</span>
-        </a>
-    </div>
 
     {% block extra_js %}{% endblock %}
     
@@ -351,6 +334,37 @@
                 updateNavigationLinks(activeLeagueId);
             }
         });
+    })();
+    </script>
+    <script>
+    (function() {
+        var nav = document.querySelector('.btm-nav.bottom-nav');
+        var vv = window.visualViewport;
+        if (!nav || !vv) return;
+        var ticking = false;
+
+        function pin() {
+            ticking = false;
+            if (!window.matchMedia('(max-width: 767px)').matches) {
+                nav.style.transform = '';
+                return;
+            }
+            nav.style.transform = 'none';
+            var gap = vv.height - nav.getBoundingClientRect().bottom;
+            nav.style.transform = Math.abs(gap) >= 1 ? 'translateY(' + gap + 'px)' : '';
+        }
+
+        function onChange() {
+            if (ticking) return;
+            ticking = true;
+            requestAnimationFrame(pin);
+        }
+
+        pin();
+        vv.addEventListener('resize', onChange);
+        vv.addEventListener('scroll', onChange);
+        window.addEventListener('resize', onChange);
+        window.addEventListener('scroll', onChange, { passive: true });
     })();
     </script>
 </body>
