@@ -1343,8 +1343,8 @@ def settings_view(request):
             Q(home_team__classification='fbs') | Q(away_team__classification='fbs')
         ).select_related("home_team", "away_team").order_by("kickoff")
     
-    # Get existing league games for this league that were created within the current week window
-    # This ensures we don't show games from previous weeks that might have been selected before
+    # Get existing league games for this week's games (kickoff already scoped above).
+    # Do not filter on selected_at — admins often save the slate before the week starts.
     league_games_dict = {}
     if current_week and games.exists():
         league_games_dict = {
@@ -1353,12 +1353,12 @@ def settings_view(request):
                 league=league, 
                 game__in=games, 
                 is_active=True,
-                selected_at__range=(start, end)
             )
         }
     
     # Combine games with their league_game status
     games_with_selection = [(g, league_games_dict.get(g.id)) for g in games]
+    currently_selected_count = sum(1 for _, lg in games_with_selection if lg)
     
     # Get all seasons and current league rules
     all_seasons = Season.objects.all().order_by('-year')
@@ -1426,6 +1426,7 @@ def settings_view(request):
     
     context = {
         "games_with_selection": games_with_selection,
+        "currently_selected_count": currently_selected_count,
         "current_league": league,
         "manageable_leagues": manageable_leagues,
         "league_rules": league_rules,

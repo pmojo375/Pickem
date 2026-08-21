@@ -572,7 +572,19 @@
                     Limit: {{ league_rules.pickable_games_per_week }} games
                 </div>
                 {% endif %}
+                {% if currently_selected_count %}
+                <div class="badge badge-success badge-lg whitespace-nowrap">
+                    <i class="fas fa-bookmark mr-1"></i>
+                    Currently selected: {{ currently_selected_count }}
+                </div>
+                {% endif %}
             </h2>
+            {% if currently_selected_count %}
+            <p class="text-sm text-base-content/70 mt-2">
+                Games marked <span class="badge badge-success badge-outline badge-sm">Currently selected</span>
+                are already in this week's slate. Saving a new selection will replace them.
+            </p>
+            {% endif %}
         </div>
         
         {% if games_with_selection %}
@@ -598,7 +610,7 @@
             </div>
 
             <!-- Game list filters -->
-            <div class="mb-4 grid grid-cols-1 md:grid-cols-3 gap-3" id="game-filters">
+            <div class="mb-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3" id="game-filters">
                 <div class="form-control">
                     <label class="label py-1" for="filter-weekday">
                         <span class="label-text font-semibold"><i class="fas fa-calendar-day mr-1"></i>Weekday</span>
@@ -614,6 +626,15 @@
                     <select id="filter-conference" class="select select-bordered select-sm w-full">
                         <option value="">All conferences</option>
                     </select>
+                </div>
+                <div class="form-control">
+                    <label class="label py-1" for="filter-current-slate">
+                        <span class="label-text font-semibold"><i class="fas fa-bookmark mr-1"></i>Current slate</span>
+                    </label>
+                    <label class="label cursor-pointer justify-start gap-2 py-0 min-h-8">
+                        <input type="checkbox" id="filter-current-slate" class="toggle toggle-success toggle-sm" />
+                        <span class="label-text text-sm">Currently selected only</span>
+                    </label>
                 </div>
                 <div class="flex items-end">
                     <div class="badge badge-ghost badge-lg h-8 px-3" id="filter-count"></div>
@@ -655,7 +676,8 @@
                        data-away-rank="{% if g.away_team.id in team_rankings %}{{ team_rankings|get_item:g.away_team.id }}{% else %}999{% endif %}"
                        data-weekday="{{ g.kickoff|eastern_weekday }}"
                        data-home-conference="{{ g.home_team.conference|default:'' }}"
-                       data-away-conference="{{ g.away_team.conference|default:'' }}">
+                       data-away-conference="{{ g.away_team.conference|default:'' }}"
+                       data-currently-selected="{% if lg %}true{% else %}false{% endif %}">
                     <input type="checkbox" 
                            name="game_{{ g.id }}_select" 
                            class="game-checkbox hidden"
@@ -664,11 +686,17 @@
                     
                     <div class="game-card-content flex flex-col md:flex-row items-start md:items-center gap-4 p-4 rounded-lg border-2 border-base-300 bg-base-200/50 hover:bg-base-200 transition-all">
                         <!-- Kickoff Time -->
-                        <div class="flex-shrink-0">
+                        <div class="flex-shrink-0 flex flex-wrap items-center gap-2">
                             <div class="badge badge-ghost">
                                 <i class="fas fa-clock mr-1"></i>
                                 {{ g.kickoff|eastern_time }}
                             </div>
+                            {% if lg %}
+                            <span class="badge badge-success badge-sm whitespace-nowrap">
+                                <i class="fas fa-bookmark mr-1"></i>
+                                Currently selected
+                            </span>
+                            {% endif %}
                         </div>
                         
                         <!-- Away Team -->
@@ -788,6 +816,14 @@
         display: block !important;
     }
     
+    .game-card[data-currently-selected="true"] .game-card-content {
+        box-shadow: inset 6px 0 0 0 hsl(var(--su));
+    }
+
+    .game-card[data-currently-selected="true"] input[type="checkbox"]:checked + input[type="hidden"] + .game-card-content {
+        box-shadow: inset 6px 0 0 0 hsl(var(--su)), 0 0 0 3px hsl(var(--p) / 0.3);
+    }
+
     /* Hidden by weekday/conference filters (checkboxes still submit) */
     .game-card.game-card-filtered-out {
         display: none;
@@ -1006,6 +1042,7 @@
     (function initGameFilters() {
       const weekdaySelect = document.getElementById('filter-weekday');
       const conferenceSelect = document.getElementById('filter-conference');
+      const currentSlateToggle = document.getElementById('filter-current-slate');
       const filterCount = document.getElementById('filter-count');
       const cards = Array.from(document.querySelectorAll('.game-card'));
       if (!weekdaySelect || !conferenceSelect || cards.length === 0) {
@@ -1064,9 +1101,12 @@
       function applyFilters() {
         const weekday = weekdaySelect.value;
         const conference = conferenceSelect.value;
+        const currentSlateOnly = currentSlateToggle && currentSlateToggle.checked;
         let visible = 0;
         cards.forEach(card => {
-          const show = (!weekday || card.dataset.weekday === weekday) && conferenceMatch(card, conference);
+          const show = (!weekday || card.dataset.weekday === weekday)
+            && conferenceMatch(card, conference)
+            && (!currentSlateOnly || card.dataset.currentlySelected === 'true');
           card.classList.toggle('game-card-filtered-out', !show);
           if (show) visible += 1;
         });
@@ -1077,6 +1117,9 @@
 
       weekdaySelect.addEventListener('change', applyFilters);
       conferenceSelect.addEventListener('change', applyFilters);
+      if (currentSlateToggle) {
+        currentSlateToggle.addEventListener('change', applyFilters);
+      }
       applyFilters();
     })();
     
