@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark" class="bg-base-300">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -37,25 +37,21 @@
             transition: background-color 0.2s ease;
         }
         
-        /* Flex lives on .page-shell, not body, so the bottom nav can stay viewport-fixed. */
+        /* Flexbox layout for sticky footer */
         html {
             height: 100%;
         }
-
+        
         body {
             min-height: 100%;
-        }
-
-        .page-shell {
             display: flex;
             flex-direction: column;
-            min-height: 100%;
         }
-
+        
         .main-content {
             flex: 1 0 auto;
         }
-
+        
         footer {
             flex-shrink: 0;
         }
@@ -65,9 +61,10 @@
             letter-spacing: 0.08em;
             font-weight: 400;
         }
-
-        @media (max-width: 767px) {
-            .btm-nav.bottom-nav {
+        
+        /* App-like bottom nav for mobile */
+        @media (max-width: 768px) {
+            .bottom-nav {
                 position: fixed;
                 bottom: 0;
                 left: 0;
@@ -83,7 +80,6 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-base-300">
-    <div class="page-shell">
     <!-- Desktop Navigation -->
     <div class="navbar bg-base-100 shadow-lg sticky top-0 z-50 hidden md:flex">
         <div class="navbar-start">
@@ -127,6 +123,30 @@
                 </a>
             {% endif %}
         </div>
+    </div>
+
+    <!-- Mobile Bottom Navigation -->
+    <div class="btm-nav btm-nav-md md:hidden bottom-nav bg-base-100 border-t border-base-300">
+        <a href="/" class="{% if request.path == '/' %}active text-primary{% endif %}">
+            <i class="fas fa-home text-lg"></i>
+            <span class="btm-nav-label text-xs">Home</span>
+        </a>
+        <a href="/picks/" class="{% if request.path == '/picks/' %}active text-primary{% endif %}">
+            <i class="fas fa-hand-pointer text-lg"></i>
+            <span class="btm-nav-label text-xs">Picks</span>
+        </a>
+        <a href="/live/" class="{% if request.path == '/live/' %}active text-primary{% endif %}">
+            <i class="fas fa-play-circle text-lg"></i>
+            <span class="btm-nav-label text-xs">Live</span>
+        </a>
+        <a href="/standings/" class="{% if request.path == '/standings/' %}active text-primary{% endif %}">
+            <i class="fas fa-trophy text-lg"></i>
+            <span class="btm-nav-label text-xs">Standings</span>
+        </a>
+        <a href="/leagues/" class="{% if '/leagues/' in request.path %}active text-primary{% endif %}">
+            <i class="fas fa-users-cog text-lg"></i>
+            <span class="btm-nav-label text-xs">Leagues</span>
+        </a>
     </div>
 
     <!-- Mobile Header (shows user info) -->
@@ -188,31 +208,6 @@
             <p>© 2026 BigPicks · bigpicks.app · Built for Saturday</p>
         </aside>
     </footer>
-    </div>
-
-    <!-- Mobile Bottom Navigation -->
-    <div class="btm-nav btm-nav-md md:hidden bottom-nav bg-base-100 border-t border-base-300">
-        <a href="/" class="{% if request.path == '/' %}active text-primary{% endif %}">
-            <i class="fas fa-home text-lg"></i>
-            <span class="btm-nav-label text-xs">Home</span>
-        </a>
-        <a href="/picks/" class="{% if request.path == '/picks/' %}active text-primary{% endif %}">
-            <i class="fas fa-hand-pointer text-lg"></i>
-            <span class="btm-nav-label text-xs">Picks</span>
-        </a>
-        <a href="/live/" class="{% if request.path == '/live/' %}active text-primary{% endif %}">
-            <i class="fas fa-play-circle text-lg"></i>
-            <span class="btm-nav-label text-xs">Live</span>
-        </a>
-        <a href="/standings/" class="{% if request.path == '/standings/' %}active text-primary{% endif %}">
-            <i class="fas fa-trophy text-lg"></i>
-            <span class="btm-nav-label text-xs">Standings</span>
-        </a>
-        <a href="/leagues/" class="{% if '/leagues/' in request.path %}active text-primary{% endif %}">
-            <i class="fas fa-users-cog text-lg"></i>
-            <span class="btm-nav-label text-xs">Leagues</span>
-        </a>
-    </div>
 
     {% block extra_js %}{% endblock %}
     

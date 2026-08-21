@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.core.exceptions import ValidationError
-from django.db.models import Case, IntegerField, Q, Value, When
+from django.db.models import Case, Count, IntegerField, Q, Sum, Value, When
 from django.views.decorators.http import require_POST
 from django.views.decorators.debug import sensitive_post_parameters
 from allauth.account.forms import ChangePasswordForm, SetPasswordForm
@@ -855,7 +855,6 @@ def standings_view(request):
             context['key_picks_enabled'] = league_rules and league_rules.key_picks_enabled
         else:
             # Fallback to old method if no active season or member seasons
-            from django.db.models import Count, Q, Sum, Case, When, IntegerField
             from django.contrib.auth import get_user_model
             User = get_user_model()
             
