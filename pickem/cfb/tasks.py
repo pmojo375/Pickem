@@ -250,6 +250,12 @@ def update_spreads(self, season_year: int = None, season_type: str = 'regular', 
             logger.error(f"Season {season_year} not found")
             return
         
+        try:
+            week_obj = Week.objects.get(season=season, number=week, season_type=season_type)
+        except Week.DoesNotExist:
+            logger.error(f"Week {week} not found for {season_year} {season_type}")
+            return
+        
         logger.info(f"Updating spreads for {season_year} {season_type} week {week}")
         
         # Fetch lines from CFBD
@@ -280,10 +286,10 @@ def update_spreads(self, season_year: int = None, season_type: str = 'regular', 
                 games_no_lines += 1
                 continue
 
-            # Find the game in our database
+            # Find the game in our database (week is a FK; match by Week object)
             game = Game.objects.filter(
                 season=season,
-                week=week,
+                week=week_obj,
                 season_type=season_type,
                 home_team__name__iexact=home_team_name,
                 away_team__name__iexact=away_team_name

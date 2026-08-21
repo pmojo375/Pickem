@@ -179,13 +179,16 @@ class Command(BaseCommand):
         Find a game in the database by season, week, and team names.
         Uses fuzzy matching for team names.
         """
+        # week is a week *number*; Game.week is a FK to Week
+        week_filter = {'week__number': week, 'week__season_type': season_type}
+
         # First try exact match
         game = Game.objects.filter(
             season=season,
-            week=week,
             season_type=season_type,
             home_team__name__iexact=home_team_name,
-            away_team__name__iexact=away_team_name
+            away_team__name__iexact=away_team_name,
+            **week_filter,
         ).first()
         
         if game:
@@ -194,8 +197,8 @@ class Command(BaseCommand):
         # Try fuzzy matching - find games in this week and match team names
         games = Game.objects.filter(
             season=season,
-            week=week,
-            season_type=season_type
+            season_type=season_type,
+            **week_filter,
         ).select_related('home_team', 'away_team')
 
         for g in games:
