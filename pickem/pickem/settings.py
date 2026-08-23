@@ -337,11 +337,17 @@ ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_SESSION_REMEMBER = None  # Let the form control remember-me behavior
 ACCOUNT_ADAPTER = 'cfb.adapters.AccountAdapter'
 
-# Local: print mail (including verification links) to the runserver console.
+# Google already verified the address. Match that email to the existing User
+# instead of starting a new signup that loops on "confirm your email".
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
+
+# Local: log mail (including reset/verify links) so it still shows under the debugger.
 # Production: set EMAIL_BACKEND plus SMTP host/user/password via env.
 EMAIL_BACKEND = os.getenv(
     'EMAIL_BACKEND',
-    'django.core.mail.backends.console.EmailBackend'
+    'pickem.mail.LoggingEmailBackend'
     if DEBUG
     else 'django.core.mail.backends.smtp.EmailBackend',
 )
@@ -365,6 +371,8 @@ SOCIALACCOUNT_PROVIDERS = {
         },
         'SCOPE': ['profile', 'email'],
         'AUTH_PARAMS': {'prompt': 'select_account'},
+        'VERIFIED_EMAIL': True,
+        'EMAIL_AUTHENTICATION': True,
     },
 }
 

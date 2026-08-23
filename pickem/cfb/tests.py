@@ -133,3 +133,77 @@ class MemberRulesViewTests(TestCase):
         self.assertContains(response, "Each week")
         self.assertContains(response, "Season finish")
 
+
+class ReturningMemberLoginTests(TestCase):
+    def setUp(self):
+        self.member = User.objects.create_user("returner", "returner@example.com", "pass")
+        self.owner = User.objects.create_user("owner2", "owner2@example.com", "pass")
+        self.league = League.objects.create(name="Returning League", created_by=self.owner)
+        LeagueMembership.objects.create(league=self.league, user=self.owner, role="owner")
+        self.membership = LeagueMembership.objects.create(
+            league=self.league, user=self.member, role="member", is_active=False
+        )
+        self.season = Season.objects.create(year=2026, is_active=True)
+        self.league.is_active = True
+        self.league.season_opt_in_required = False
+        self.league.save(update_fields=["is_active", "season_opt_in_required"])
+
+    def test_opt_in_login_keeps_next_for_password_and_google(self):
+        token = self.membership.get_opt_in_token(self.season.year)
+        opt_in_path = f"/leagues/opt-in/{token}/"
+
+        response = self.client.get(opt_in_path)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response["Location"])
+        self.assertIn("next=", response["Location"])
+        self.assertIn("opt-in", response["Location"])
+
+        login_page = self.client.get(response["Location"])
+        self.assertEqual(login_page.status_code, 200)
+        self.assertContains(login_page, f'name="next"')
+        self.assertContains(login_page, opt_in_path)
+        self.assertContains(login_page, "next=")
+        self.assertContains(login_page, "google")
+
+    def test_password_login_returns_to_opt_in(self):
+        from allauth.account.models import EmailAddress
+
+        EmailAddress.objects.create(
+            user=self.member,
+            email=self.member.email,
+            verified=True,
+            primary=True,
+        )
+        token = self.membership.get_opt_in_token(self.season.year)
+        opt_in_path = f"/leagues/opt-in/{token}/"
+
+        response = self.client.post(
+            "/accounts/login/",
+            {
+                "login": self.member.username,
+                "password": "pass",
+                "next": opt_in_path,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], opt_in_path)
+
+        confirm = self.client.get(opt_in_path)
+        self.assertEqual(confirm.status_code, 200)
+        self.assertContains(confirm, "Activate my membership")
+
+
+class SyncVerifiedEmailsCommandTests(TestCase):
+    def test_creates_and_verifies_missing_email_address(self):
+        from django.core.management import call_command
+        from allauth.account.models import EmailAddress
+
+        user = User.objects.create_user("imported", "imported@example.com", "pass")
+        self.assertFalse(EmailAddress.objects.filter(user=user).exists())
+
+        call_command("sync_verified_emails", commit=True)
+
+        address = EmailAddress.objects.get(user=user, email="imported@example.com")
+        self.assertTrue(address.verified)
+        self.assertTrue(address.primary)
+

@@ -16,6 +16,9 @@
 
             <form method="post" action="{% url 'account_login' %}" class="space-y-4">
                 {% csrf_token %}
+                {% if redirect_field_value %}
+                    <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">
+                {% endif %}
                 {% if form.non_field_errors %}
                     <div class="alert alert-error">
                         <i class="fas fa-exclamation-triangle"></i>
@@ -71,7 +74,7 @@
 
             <div class="divider">Or continue with</div>
             {% providers_media_js %}
-            <a href="{% provider_login_url 'google' %}" class="btn btn-outline gap-2">
+            <a href="{% provider_login_url 'google' next=redirect_field_value %}" class="btn btn-outline gap-2">
                 <i class="fab fa-google"></i>
                 Google
             </a>
