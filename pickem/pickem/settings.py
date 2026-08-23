@@ -396,19 +396,48 @@ CELERY_WORKER_LOG_FORMAT = '[%(asctime)s: %(levelname)s/%(processName)s] %(messa
 CELERY_WORKER_TASK_LOG_FORMAT = '[%(asctime)s: %(levelname)s/%(processName)s][%(task_name)s(%(task_id)s)] %(message)s'
 
 # Redis cache configuration
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': os.getenv('REDIS_CACHE_URL', 'redis://127.0.0.1:6379/1'),
-        'OPTIONS': {
-            'db': 1,
-            'parser_class': 'redis.connection.PythonParser',
-            'pool_class': 'redis.BlockingConnectionPool',
-        },
-        'KEY_PREFIX': 'pickem',
-        'TIMEOUT': 300,  # 5 minutes default
+REDIS_CACHE_URL = os.getenv('REDIS_CACHE_URL', 'redis://127.0.0.1:6379/1')
+
+
+def _redis_is_reachable(url):
+    try:
+        import redis
+
+        redis.Redis.from_url(
+            url, socket_connect_timeout=0.3, socket_timeout=0.3
+        ).ping()
+        return True
+    except Exception:
+        return False
+
+
+if DEBUG and not _redis_is_reachable(REDIS_CACHE_URL):
+    print(
+        "WARNING: Redis is not running; using in-memory cache. "
+        "Password reset and login will work, but live scores will not. "
+        "Start Redis and restart runserver to restore it.",
+        flush=True,
+    )
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'pickem-dev',
+        }
     }
-}
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_CACHE_URL,
+            'OPTIONS': {
+                'db': 1,
+                'parser_class': 'redis.connection.PythonParser',
+                'pool_class': 'redis.BlockingConnectionPool',
+            },
+            'KEY_PREFIX': 'pickem',
+            'TIMEOUT': 300,
+        }
+    }
 
 # ============================================================================
 # ESPN LIVE SCORE AUTO-UPDATE CONFIGURATION
