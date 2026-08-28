@@ -174,7 +174,7 @@
     </div>
     {% endif %}
 
-    {% if is_admin %}
+    {% if is_member %}
     <div class="card bg-base-100 shadow-xl mb-6">
         <div class="card-body space-y-6">
             <h2 class="card-title text-2xl">
@@ -187,14 +187,16 @@
                     {% if league.season_opt_in_required %}
                     This league is waiting to be opened for the new season. Invite links will not work until then.
                     {% else %}
-                    This league is closed. Invite links and join passwords will not work until you reopen it.
+                    This league is closed. Invite links and join passwords will not work until it reopens.
                     {% endif %}
                 </span>
             </div>
             {% endif %}
             <p class="text-sm text-base-content/70">
                 Share this link to let someone join without the password.
+                {% if is_admin %}
                 Regenerating it invalidates every old link.
+                {% endif %}
             </p>
             <div class="flex flex-col sm:flex-row gap-2">
                 <input
@@ -208,6 +210,7 @@
                     <i class="fas fa-copy mr-2"></i>Copy
                 </button>
             </div>
+            {% if is_admin %}
             <form method="post" action="{% url 'league_rotate_invite' league.id %}">
                 {% csrf_token %}
                 <button
@@ -218,8 +221,9 @@
                     <i class="fas fa-sync-alt mr-2"></i>Regenerate invite link
                 </button>
             </form>
+            {% endif %}
 
-            {% if league.is_active and not league.season_opt_in_required %}
+            {% if is_admin and league.is_active and not league.season_opt_in_required %}
             <div class="divider"></div>
             <h3 class="font-bold text-lg">Invite by email</h3>
             <p class="text-sm text-base-content/70">
@@ -262,6 +266,7 @@
             {% endif %}
             {% endif %}
 
+            {% if is_admin %}
             <div class="divider"></div>
 
             <h3 class="font-bold text-lg">Change join password</h3>
@@ -304,6 +309,7 @@
                     </button>
                 </div>
             </form>
+            {% endif %}
         </div>
     </div>
     <script>

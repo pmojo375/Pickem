@@ -2130,7 +2130,7 @@ def league_detail_view(request, league_id):
         "join_password_min_length": JOIN_PASSWORD_MIN_LENGTH,
     }
     context.update(_league_rules_context(league, active_season, active_member_count))
-    if can_manage_this_league:
+    if is_member:
         context["invite_url"] = request.build_absolute_uri(league.get_invite_path())
     return render(request, "cfb/league_detail.html", context)
 

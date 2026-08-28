@@ -401,6 +401,22 @@ class MemberRulesViewTests(TestCase):
         self.assertContains(response, "Each week")
         self.assertContains(response, "Season finish")
 
+    def test_member_sees_readonly_invite_link(self):
+        self.client.force_login(self.member)
+        response = self.client.get(f"/leagues/{self.league.id}/")
+        self.assertContains(response, "Invite people")
+        self.assertContains(response, self.league.get_invite_path())
+        self.assertNotContains(response, "Regenerate invite link")
+        self.assertNotContains(response, "Invite by email")
+        self.assertNotContains(response, "Change join password")
+
+    def test_admin_sees_invite_management_controls(self):
+        self.client.force_login(self.owner)
+        response = self.client.get(f"/leagues/{self.league.id}/")
+        self.assertContains(response, "Regenerate invite link")
+        self.assertContains(response, "Invite by email")
+        self.assertContains(response, "Change join password")
+
 
 class ReturningMemberLoginTests(TestCase):
     def setUp(self):
