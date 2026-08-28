@@ -1,14 +1,20 @@
+import secrets
+from datetime import timedelta
+
 from django.db import models
 from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
 from django.core import signing
 from django.core.exceptions import ValidationError
 from django.urls import reverse
+from django.utils import timezone
 
 
 LEAGUE_INVITE_SALT = "cfb.league.invite"
 LEAGUE_OPT_IN_SALT = "cfb.league.opt-in"
 JOIN_PASSWORD_MIN_LENGTH = 4
+PERSONAL_INVITE_EXPIRY_DAYS = 30
+PERSONAL_INVITE_TOKEN_BYTES = 32
 
 
 class League(models.Model):
@@ -79,6 +85,90 @@ class League(models.Model):
             invite_version=version,
             is_active=True,
         ).first()
+
+
+class LeagueInvite(models.Model):
+    """Recipient-specific league invitation sent by email."""
+
+    league = models.ForeignKey(
+        League,
+        on_delete=models.CASCADE,
+        related_name="personal_invites",
+    )
+    email = models.EmailField()
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sent_league_invites",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField()
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["league", "email"]),
+        ]
+        verbose_name = "League Invite"
+        verbose_name_plural = "League Invites"
+
+    def __str__(self) -> str:
+        return f"Invite {self.email} to {self.league.name}"
+
+    @property
+    def is_revoked(self) -> bool:
+        return self.revoked_at is not None
+
+    @property
+    def is_expired(self) -> bool:
+        return timezone.now() >= self.expires_at
+
+    @property
+    def is_accepted(self) -> bool:
+        return self.accepted_at is not None
+
+    @property
+    def is_pending(self) -> bool:
+        return not self.is_revoked and not self.is_expired and not self.is_accepted
+
+    def get_path(self) -> str:
+        return reverse("personal_invite", kwargs={"token": self.token})
+
+    def revoke(self) -> None:
+        if not self.revoked_at:
+            self.revoked_at = timezone.now()
+            self.save(update_fields=["revoked_at"])
+
+    @classmethod
+    def generate_token(cls) -> str:
+        return secrets.token_urlsafe(PERSONAL_INVITE_TOKEN_BYTES)
+
+    @classmethod
+    def create_for_email(cls, league, email: str, invited_by=None, expires_in_days=None):
+        """Create a new personal invite, revoking any pending invite for the same email."""
+        normalized = email.strip().lower()
+        expires_in_days = expires_in_days or PERSONAL_INVITE_EXPIRY_DAYS
+        now = timezone.now()
+
+        cls.objects.filter(
+            league=league,
+            email__iexact=normalized,
+            accepted_at__isnull=True,
+            revoked_at__isnull=True,
+        ).update(revoked_at=now)
+
+        return cls.objects.create(
+            league=league,
+            email=normalized,
+            token=cls.generate_token(),
+            invited_by=invited_by,
+            expires_at=now + timedelta(days=expires_in_days),
+        )
 
 
 class LeagueRules(models.Model):

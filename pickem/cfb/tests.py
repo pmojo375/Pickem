@@ -1,15 +1,27 @@
 from decimal import Decimal
 
+from allauth.account.models import EmailAddress
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.core.exceptions import ValidationError
 from django.test import RequestFactory, TestCase, override_settings
+from django.urls import reverse
+from django.utils import timezone
+from datetime import timedelta
 
-from cfb.models import League, LeagueMembership, LeagueRules, Season
+from cfb.models import League, LeagueInvite, LeagueMembership, LeagueRules, Season
 from cfb.services import invites
 from cfb.services.payouts import build_payout_summary
 
 User = get_user_model()
+
+
+def _verify_email(user):
+    EmailAddress.objects.update_or_create(
+        user=user,
+        email=user.email,
+        defaults={"verified": True, "primary": True},
+    )
 
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
@@ -27,7 +39,7 @@ class LeagueEmailInviteTests(TestCase):
         with self.assertRaises(ValidationError):
             invites.send_league_email_invite(self.request, self.league, "not-an-email")
 
-    def test_existing_user_gets_league_invite(self):
+    def test_existing_user_gets_personal_league_invite(self):
         User.objects.create_user("friend", "friend@example.com", "pass")
         result, email = invites.send_league_email_invite(
             self.request, self.league, "friend@example.com", season=self.season
@@ -36,17 +48,21 @@ class LeagueEmailInviteTests(TestCase):
         self.assertEqual(email, "friend@example.com")
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("invited you to join", mail.outbox[0].body)
-        self.assertIn("/leagues/invite/", mail.outbox[0].body)
+        self.assertIn("/invite/", mail.outbox[0].body)
+        self.assertNotIn("/leagues/invite/", mail.outbox[0].body)
         self.assertNotIn("/accounts/signup/", mail.outbox[0].body)
+        invite = LeagueInvite.objects.get(league=self.league, email="friend@example.com")
+        self.assertTrue(invite.is_pending)
 
-    def test_unknown_email_gets_join_site_and_league_invite(self):
+    def test_unknown_email_gets_personal_invite_link(self):
         result, email = invites.send_league_email_invite(
             self.request, self.league, "newbie@example.com", season=self.season
         )
         self.assertEqual(result, "new_sent")
         self.assertEqual(len(mail.outbox), 1)
-        self.assertIn("/accounts/signup/", mail.outbox[0].body)
-        self.assertIn("/leagues/invite/", mail.outbox[0].body)
+        self.assertIn("/invite/", mail.outbox[0].body)
+        self.assertNotIn("/accounts/signup/", mail.outbox[0].body)
+        self.assertNotIn("/leagues/invite/", mail.outbox[0].body)
 
     def test_inactive_member_gets_opt_in_email(self):
         member = User.objects.create_user("returner", "returner@example.com", "pass")
@@ -68,6 +84,209 @@ class LeagueEmailInviteTests(TestCase):
         )
         self.assertEqual(result, "already_active")
         self.assertEqual(len(mail.outbox), 0)
+
+    def test_bulk_send_generates_distinct_personal_invites(self):
+        emails = ["alice@example.com", "bob@example.com", "carol@example.com"]
+        results = invites.send_league_email_invites_bulk(
+            self.request, self.league, emails, season=self.season
+        )
+        self.assertEqual(len(results), 3)
+        tokens = set(
+            LeagueInvite.objects.filter(league=self.league).values_list("token", flat=True)
+        )
+        self.assertEqual(len(tokens), 3)
+        self.assertEqual(len(mail.outbox), 3)
+
+    def test_resend_revokes_previous_pending_invite(self):
+        invites.send_league_email_invite(
+            self.request, self.league, "friend@example.com", season=self.season
+        )
+        first = LeagueInvite.objects.get(league=self.league, email="friend@example.com")
+        first_token = first.token
+
+        invites.send_league_email_invite(
+            self.request, self.league, "friend@example.com", season=self.season
+        )
+        first.refresh_from_db()
+        self.assertIsNotNone(first.revoked_at)
+
+        active = LeagueInvite.objects.filter(
+            league=self.league, email="friend@example.com", revoked_at__isnull=True
+        ).get()
+        self.assertNotEqual(active.token, first_token)
+        self.assertTrue(active.is_pending)
+
+
+@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+class PersonalInviteFlowTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user("owner", "owner@example.com", "pass")
+        self.league = League.objects.create(name="Invite League", created_by=self.owner)
+        LeagueMembership.objects.create(league=self.league, user=self.owner, role="owner")
+        self.invite = LeagueInvite.create_for_email(
+            self.league, "invitee@example.com", invited_by=self.owner
+        )
+        self.invite_path = reverse("personal_invite", kwargs={"token": self.invite.token})
+
+    def test_existing_user_accepts_matching_personal_invite(self):
+        user = User.objects.create_user("invitee", "invitee@example.com", "pass")
+        _verify_email(user)
+        self.client.force_login(user)
+
+        response = self.client.get(self.invite_path)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], f"/leagues/{self.league.id}/")
+
+        self.invite.refresh_from_db()
+        self.assertIsNotNone(self.invite.accepted_at)
+        membership = LeagueMembership.objects.get(league=self.league, user=user)
+        self.assertTrue(membership.is_active)
+
+    def test_new_user_accepts_invite_using_password_signup(self):
+        response = self.client.post(
+            reverse("personal_invite_signup", kwargs={"token": self.invite.token}),
+            {
+                "username": "newinvitee",
+                "password1": "ComplexPass123!",
+                "password2": "ComplexPass123!",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], f"/leagues/{self.league.id}/")
+
+        user = User.objects.get(username="newinvitee")
+        self.assertEqual(user.email, "invitee@example.com")
+        address = EmailAddress.objects.get(user=user)
+        self.assertTrue(address.verified)
+        self.invite.refresh_from_db()
+        self.assertIsNotNone(self.invite.accepted_at)
+
+    def test_existing_user_accepts_invite_using_google_without_duplicate_user(self):
+        user = User.objects.create_user("googleuser", "invitee@example.com", "pass")
+        _verify_email(user)
+        self.client.force_login(user)
+
+        response = self.client.get(self.invite_path)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(User.objects.filter(email__iexact="invitee@example.com").count(), 1)
+
+    def test_wrong_account_cannot_consume_invite(self):
+        other = User.objects.create_user("other", "other@example.com", "pass")
+        _verify_email(other)
+        self.client.force_login(other)
+
+        response = self.client.get(self.invite_path)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "invitee@example.com")
+        self.assertContains(response, "other@example.com")
+        self.invite.refresh_from_db()
+        self.assertIsNone(self.invite.accepted_at)
+
+    def test_forwarded_invite_cannot_be_consumed_by_different_email(self):
+        user = User.objects.create_user("stranger", "stranger@example.com", "pass")
+        _verify_email(user)
+        result = invites.accept_personal_invite(self.invite, user)
+        self.assertEqual(result, "email_mismatch")
+
+    def test_already_accepted_invite_handled_gracefully(self):
+        user = User.objects.create_user("invitee", "invitee@example.com", "pass")
+        _verify_email(user)
+        self.invite.accepted_at = timezone.now()
+        self.invite.save(update_fields=["accepted_at"])
+        LeagueMembership.objects.create(league=self.league, user=user, role="member")
+        self.client.force_login(user)
+
+        response = self.client.get(self.invite_path)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], f"/leagues/{self.league.id}/")
+
+    def test_expired_invite_rejected(self):
+        self.invite.expires_at = timezone.now() - timedelta(days=1)
+        self.invite.save(update_fields=["expires_at"])
+
+        response = self.client.get(self.invite_path)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "/leagues/")
+
+    def test_revoked_invite_rejected(self):
+        self.invite.revoke()
+
+        response = self.client.get(self.invite_path)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "/leagues/")
+
+    def test_inactive_membership_reactivated(self):
+        user = User.objects.create_user("invitee", "invitee@example.com", "pass")
+        _verify_email(user)
+        membership = LeagueMembership.objects.create(
+            league=self.league, user=user, role="member", is_active=False
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(self.invite_path)
+        self.assertEqual(response.status_code, 302)
+        membership.refresh_from_db()
+        self.assertTrue(membership.is_active)
+
+    def test_active_member_gets_sensible_behavior(self):
+        user = User.objects.create_user("invitee", "invitee@example.com", "pass")
+        _verify_email(user)
+        LeagueMembership.objects.create(league=self.league, user=user, role="member", is_active=True)
+        self.client.force_login(user)
+
+        response = self.client.get(self.invite_path)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], f"/leagues/{self.league.id}/")
+        self.invite.refresh_from_db()
+        self.assertIsNotNone(self.invite.accepted_at)
+
+    def test_unauthenticated_user_sees_auth_options(self):
+        response = self.client.get(self.invite_path)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Continue with Google")
+        self.assertContains(response, "Create account with email and password")
+        self.assertContains(response, "invitee@example.com")
+
+
+class GenericLeagueInviteTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user("owner", "owner@example.com", "pass")
+        self.league = League.objects.create(name="Generic League", created_by=self.owner)
+        LeagueMembership.objects.create(league=self.league, user=self.owner, role="owner")
+        self.token = self.league.get_invite_token()
+
+    def test_generic_league_invite_still_works(self):
+        user = User.objects.create_user("joiner", "joiner@example.com", "pass")
+        _verify_email(user)
+        self.client.force_login(user)
+
+        path = reverse("league_invite", kwargs={"token": self.token})
+        confirm = self.client.get(path)
+        self.assertEqual(confirm.status_code, 200)
+
+        response = self.client.post(path)
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            LeagueMembership.objects.filter(league=self.league, user=user, is_active=True).exists()
+        )
+
+
+class OrdinarySignupEmailVerificationTests(TestCase):
+    def test_ordinary_signup_still_requires_email_verification(self):
+        response = self.client.post(
+            "/accounts/signup/",
+            {
+                "username": "regular",
+                "email": "regular@example.com",
+                "password1": "ComplexPass123!",
+                "password2": "ComplexPass123!",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/confirm-email/", response["Location"])
+
+        address = EmailAddress.objects.get(email="regular@example.com")
+        self.assertFalse(address.verified)
 
 
 class PayoutSummaryTests(TestCase):

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Season, Team, Game, GameSpread, Pick, League, LeagueMembership, LeagueGame, LeagueRules, Location, Week, Ranking, MemberWeek, MemberSeason, TeamStat
+from .models import Season, Team, Game, GameSpread, Pick, League, LeagueInvite, LeagueMembership, LeagueGame, LeagueRules, Location, Week, Ranking, MemberWeek, MemberSeason, TeamStat
 
 
 @admin.register(Season)
@@ -105,6 +105,15 @@ class LeagueMembershipAdmin(admin.ModelAdmin):
     search_fields = ("league__name", "user__username")
     autocomplete_fields = ("league", "user")
     readonly_fields = ("joined_at",)
+
+
+@admin.register(LeagueInvite)
+class LeagueInviteAdmin(admin.ModelAdmin):
+    list_display = ("league", "email", "created_at", "expires_at", "accepted_at", "revoked_at")
+    list_filter = ("league", "accepted_at", "revoked_at")
+    search_fields = ("email", "league__name", "token")
+    readonly_fields = ("token", "created_at", "accepted_at", "revoked_at")
+    autocomplete_fields = ("league", "invited_by")
 
 
 @admin.register(LeagueRules)

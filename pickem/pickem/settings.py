@@ -336,6 +336,7 @@ ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_SESSION_REMEMBER = None  # Let the form control remember-me behavior
 ACCOUNT_ADAPTER = 'cfb.adapters.AccountAdapter'
+SOCIALACCOUNT_ADAPTER = 'cfb.adapters.SocialAccountAdapter'
 
 # Google already verified the address. Match that email to the existing User
 # instead of starting a new signup that loops on "confirm your email".

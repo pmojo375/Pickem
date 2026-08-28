@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.contrib.auth import get_user_model, login
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
@@ -7,6 +8,7 @@ from django.db.models import Case, Count, IntegerField, Q, Sum, Value, When
 from django.views.decorators.http import require_POST
 from django.views.decorators.debug import sensitive_post_parameters
 from allauth.account.forms import ChangePasswordForm, SetPasswordForm
+from allauth.account.models import EmailAddress
 from allauth.socialaccount.forms import DisconnectForm
 from allauth.socialaccount.models import SocialAccount
 from .models import (
@@ -15,6 +17,7 @@ from .models import (
     Pick,
     Team,
     League,
+    LeagueInvite,
     LeagueMembership,
     LeagueGame,
     LeagueRules,
@@ -26,8 +29,17 @@ from .models import (
 )
 from django.utils import timezone
 from . import services
-from .forms import AccountNameForm
+from .forms import AccountNameForm, PersonalInviteSignupForm
+from .services.invites import (
+    PERSONAL_INVITE_TOKEN_SESSION_KEY,
+    accept_personal_invite,
+    get_personal_invite,
+    invite_status,
+    user_has_verified_email,
+)
 from django.conf import settings
+
+User = get_user_model()
 
 
 def _active_member_user_ids(league):
@@ -1748,6 +1760,166 @@ def _complete_league_join(request, league):
     )
     messages.success(request, f"You have joined '{league.name}'!")
     return redirect("league_detail", league_id=league.id)
+
+
+def _personal_invite_redirect_after_accept(request, invite, result):
+    league = invite.league
+    if result == "joined":
+        messages.success(request, f"You have joined '{league.name}'!")
+    elif result == "reactivated":
+        messages.success(request, f"Your membership in '{league.name}' is active again.")
+    elif result == "already_member":
+        messages.info(request, f"You are already a member of '{league.name}'.")
+    elif result == "already_accepted":
+        messages.info(request, f"This invitation to '{league.name}' was already accepted.")
+    return redirect("league_detail", league_id=league.id)
+
+
+def personal_invite_view(request, token):
+    """Accept a recipient-specific league invitation."""
+    invite = get_personal_invite(token)
+    status = invite_status(invite)
+
+    if status == "missing":
+        messages.error(request, "This invitation link is invalid.")
+        return redirect("leagues_list")
+
+    request.session[PERSONAL_INVITE_TOKEN_SESSION_KEY] = token
+    league = invite.league
+
+    if status == "revoked":
+        messages.error(request, "This invitation has been revoked.")
+        return redirect("leagues_list")
+
+    if status == "expired":
+        messages.error(request, "This invitation has expired.")
+        return redirect("leagues_list")
+
+    if not league.is_active or league.season_opt_in_required:
+        messages.error(request, "This league is not open for new members right now.")
+        return redirect("leagues_list")
+
+    if request.user.is_authenticated:
+        if not user_has_verified_email(request.user, invite.email):
+            return render(
+                request,
+                "cfb/personal_invite.html",
+                {
+                    "invite": invite,
+                    "league": league,
+                    "token": token,
+                    "email_mismatch": True,
+                    "expected_email": invite.email,
+                    "actual_email": request.user.email,
+                },
+            )
+
+        result = accept_personal_invite(invite, request.user)
+        if result == "email_mismatch":
+            return render(
+                request,
+                "cfb/personal_invite.html",
+                {
+                    "invite": invite,
+                    "league": league,
+                    "token": token,
+                    "email_mismatch": True,
+                    "expected_email": invite.email,
+                    "actual_email": request.user.email,
+                },
+            )
+        if result in ("joined", "reactivated", "already_member", "already_accepted"):
+            return _personal_invite_redirect_after_accept(request, invite, result)
+
+    if status == "accepted":
+        if request.user.is_authenticated:
+            membership = LeagueMembership.objects.filter(
+                league=league, user=request.user
+            ).first()
+            if membership:
+                return _personal_invite_redirect_after_accept(request, invite, "already_accepted")
+        return render(
+            request,
+            "cfb/personal_invite.html",
+            {
+                "invite": invite,
+                "league": league,
+                "token": token,
+                "already_accepted": True,
+            },
+        )
+
+    return render(
+        request,
+        "cfb/personal_invite.html",
+        {
+            "invite": invite,
+            "league": league,
+            "token": token,
+            "invite_path": invite.get_path(),
+        },
+    )
+
+
+@sensitive_post_parameters("password1", "password2")
+def personal_invite_signup_view(request, token):
+    """Create an account from a personal league invitation without email confirmation."""
+    invite = get_personal_invite(token)
+    status = invite_status(invite)
+
+    if status == "missing":
+        messages.error(request, "This invitation link is invalid.")
+        return redirect("leagues_list")
+    if status in ("revoked", "expired"):
+        messages.error(request, "This invitation is no longer valid.")
+        return redirect("leagues_list")
+    if status == "accepted":
+        messages.info(request, "This invitation has already been accepted.")
+        return redirect("personal_invite", token=token)
+
+    league = invite.league
+    if not league.is_active or league.season_opt_in_required:
+        messages.error(request, "This league is not open for new members right now.")
+        return redirect("leagues_list")
+
+    if request.user.is_authenticated:
+        return redirect("personal_invite", token=token)
+
+    request.session[PERSONAL_INVITE_TOKEN_SESSION_KEY] = token
+
+    if request.method == "POST":
+        form = PersonalInviteSignupForm(request.POST, invite_email=invite.email)
+        if form.is_valid():
+            user = User.objects.create_user(
+                username=form.cleaned_data["username"],
+                email=invite.email,
+                password=form.cleaned_data["password1"],
+            )
+            EmailAddress.objects.create(
+                user=user,
+                email=invite.email,
+                verified=True,
+                primary=True,
+            )
+            login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+            result = accept_personal_invite(invite, user)
+            if result in ("joined", "reactivated", "already_member", "already_accepted"):
+                return _personal_invite_redirect_after_accept(request, invite, result)
+            messages.error(request, "Unable to accept this invitation.")
+            return redirect("leagues_list")
+    else:
+        form = PersonalInviteSignupForm(invite_email=invite.email)
+
+    return render(
+        request,
+        "cfb/personal_invite_signup.html",
+        {
+            "invite": invite,
+            "league": league,
+            "token": token,
+            "form": form,
+        },
+    )
 
 
 def _active_league_admin(league, user):

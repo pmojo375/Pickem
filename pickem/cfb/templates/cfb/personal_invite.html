@@ -1,0 +1,66 @@
+{% extends "cfb/base.html" %}
+{% load socialaccount %}
+
+{% block title %}Join {{ league.name }} | BigPicks{% endblock %}
+
+{% block content %}
+<section class="max-w-2xl mx-auto">
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body space-y-4">
+            <h1 class="card-title text-2xl">You've been invited</h1>
+            <p class="text-sm text-base-content/70">
+                Join <span class="font-medium text-base-content">{{ league.name }}</span>
+                on BigPicks.
+            </p>
+            {% if league.description %}
+            <p class="text-sm text-base-content/70">{{ league.description }}</p>
+            {% endif %}
+
+            {% if email_mismatch %}
+            <div class="alert alert-error">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>
+                    This invitation was sent to <strong>{{ expected_email }}</strong>.
+                    You are signed in as <strong>{{ actual_email }}</strong>.
+                    Sign out and continue with the invited email address.
+                </span>
+            </div>
+            <form method="post" action="{% url 'account_logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline">Sign out</button>
+            </form>
+            {% elif already_accepted %}
+            <div class="alert">
+                <i class="fas fa-check text-success"></i>
+                <span>This invitation has already been accepted.</span>
+            </div>
+            <a href="{% url 'account_login' %}?next={{ invite_path|default:request.path }}" class="btn btn-primary">
+                Sign in
+            </a>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-envelope"></i>
+                <span>This personal invitation is for <strong>{{ invite.email }}</strong>.</span>
+            </div>
+
+            <a href="{% provider_login_url 'google' next=invite_path %}" class="btn btn-outline gap-2 btn-block">
+                <i class="fab fa-google"></i>
+                Continue with Google
+            </a>
+
+            <div class="divider">Or</div>
+
+            <a href="{% url 'personal_invite_signup' token %}" class="btn btn-primary btn-block">
+                <i class="fas fa-user-plus mr-2"></i>
+                Create account with email and password
+            </a>
+
+            <p class="text-sm text-base-content/70 text-center">
+                Already have an account?
+                <a href="{% url 'account_login' %}?next={{ invite_path }}" class="link link-primary link-hover">Sign in</a>
+            </p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

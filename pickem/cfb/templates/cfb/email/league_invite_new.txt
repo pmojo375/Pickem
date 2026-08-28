@@ -2,10 +2,9 @@ Hi,
 
 {{ inviter.get_username }} invited you to join {{ league.name }} on BigPicks.
 
-Create your account here:
-{{ signup_url }}
-
-After you sign up (and confirm your email), use this link to join the league:
+Open your personal invitation here:
 {{ invite_url }}
+
+This link is for your email address only. Create an account or sign in with Google when you arrive.
 
 — BigPicks
