@@ -993,7 +993,7 @@ def account_view(request):
             name_form = AccountNameForm(request.POST, instance=user)
             if name_form.is_valid():
                 name_form.save()
-                messages.success(request, "Your name has been updated.")
+                messages.success(request, "Your profile has been updated.")
                 return redirect("account")
 
         elif action == "change_password":

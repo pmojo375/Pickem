@@ -8,12 +8,20 @@ User = get_user_model()
 class AccountNameForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ("first_name", "last_name")
+        fields = ("username", "first_name", "last_name")
         labels = {
+            "username": "Username",
             "first_name": "First name",
             "last_name": "Last name",
         }
         widgets = {
+            "username": forms.TextInput(
+                attrs={
+                    "class": "input input-bordered w-full",
+                    "placeholder": "Username",
+                    "autocomplete": "username",
+                }
+            ),
             "first_name": forms.TextInput(
                 attrs={
                     "class": "input input-bordered w-full",
@@ -34,6 +42,17 @@ class AccountNameForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["first_name"].required = False
         self.fields["last_name"].required = False
+
+    def clean_username(self):
+        username = self.cleaned_data["username"].strip().lower()
+        if not username:
+            raise forms.ValidationError("Enter a username.")
+        taken = User.objects.filter(username__iexact=username)
+        if self.instance.pk:
+            taken = taken.exclude(pk=self.instance.pk)
+        if taken.exists():
+            raise forms.ValidationError("That username is already taken.")
+        return username
 
 
 class PersonalInviteSignupForm(forms.Form):

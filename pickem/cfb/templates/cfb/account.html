@@ -10,7 +10,7 @@
     <div>
         <h1 class="text-3xl font-bold">Account</h1>
         <p class="text-sm text-base-content/70 mt-1">
-            Update your display name, password, and connected sign-in providers.
+            Update your username, display name, password, and connected sign-in providers.
         </p>
     </div>
 
@@ -25,16 +25,12 @@
                 <div>
                     <h2 class="text-xl font-semibold">Profile</h2>
                     <p class="text-sm text-base-content/70">
-                        Your name appears in standings and league rosters.
+                        Your username is used to sign in. Your name appears in standings and league rosters.
                     </p>
                 </div>
             </div>
 
             <div class="grid gap-2 text-sm">
-                <div class="flex justify-between gap-4">
-                    <span class="text-base-content/60">Username</span>
-                    <span class="font-medium">{{ request.user.username }}</span>
-                </div>
                 <div class="flex justify-between gap-4">
                     <span class="text-base-content/60">Email</span>
                     <span class="font-medium">{{ request.user.email|default:"—" }}</span>
@@ -53,6 +49,17 @@
                 {% endif %}
 
                 <div class="grid gap-4 sm:grid-cols-2">
+                    <div class="form-control sm:col-span-2">
+                        <label class="label" for="{{ name_form.username.id_for_label }}">
+                            <span class="label-text">{{ name_form.username.label }}</span>
+                        </label>
+                        {{ name_form.username }}
+                        {% if name_form.username.errors %}
+                            <label class="label">
+                                <span class="label-text-alt text-error">{{ name_form.username.errors|striptags }}</span>
+                            </label>
+                        {% endif %}
+                    </div>
                     <div class="form-control">
                         <label class="label" for="{{ name_form.first_name.id_for_label }}">
                             <span class="label-text">{{ name_form.first_name.label }}</span>
@@ -78,7 +85,7 @@
                 </div>
 
                 <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-save mr-2"></i> Save name
+                    <i class="fas fa-save mr-2"></i> Save profile
                 </button>
             </form>
         </div>

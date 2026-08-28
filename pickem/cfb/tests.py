@@ -426,3 +426,88 @@ class SyncVerifiedEmailsCommandTests(TestCase):
         self.assertTrue(address.verified)
         self.assertTrue(address.primary)
 
+
+class AccountProfileTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("oldname", "user@example.com", "pass")
+        _verify_email(self.user)
+        self.client.force_login(self.user)
+        User.objects.create_user("taken", "other@example.com", "pass")
+
+    def test_user_can_change_username(self):
+        response = self.client.post(
+            reverse("account"),
+            {
+                "action": "update_name",
+                "username": "newname",
+                "first_name": "Pat",
+                "last_name": "Mojo",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, "newname")
+        self.assertEqual(self.user.first_name, "Pat")
+        self.assertEqual(self.user.last_name, "Mojo")
+
+    def test_username_normalized_to_lowercase(self):
+        response = self.client.post(
+            reverse("account"),
+            {
+                "action": "update_name",
+                "username": "NewName",
+                "first_name": "",
+                "last_name": "",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, "newname")
+
+    def test_cannot_take_existing_username(self):
+        response = self.client.post(
+            reverse("account"),
+            {
+                "action": "update_name",
+                "username": "taken",
+                "first_name": "",
+                "last_name": "",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "That username is already taken.")
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, "oldname")
+
+    def test_unchanged_username_is_allowed(self):
+        response = self.client.post(
+            reverse("account"),
+            {
+                "action": "update_name",
+                "username": "oldname",
+                "first_name": "Pat",
+                "last_name": "",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, "oldname")
+        self.assertEqual(self.user.first_name, "Pat")
+
+    def test_login_works_with_new_username(self):
+        from django.contrib.auth import authenticate
+
+        self.client.post(
+            reverse("account"),
+            {
+                "action": "update_name",
+                "username": "newname",
+                "first_name": "",
+                "last_name": "",
+            },
+        )
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, "newname")
+        self.assertIsNotNone(authenticate(username="newname", password="pass"))
+        self.assertIsNone(authenticate(username="oldname", password="pass"))
+
