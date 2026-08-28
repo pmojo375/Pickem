@@ -358,9 +358,10 @@
             const path = window.location.pathname;
             const shouldUseLeagueSelection = !path.includes('/leagues/') && 
                                             !path.includes('/league/') &&
+                                            !path.startsWith('/accounts/') &&
+                                            !path.startsWith('/invite/') &&
                                             path !== '/login/' &&
-                                            path !== '/logout/' &&
-                                            path !== '/accounts/';
+                                            path !== '/logout/';
             
             if (shouldUseLeagueSelection && savedLeagueId && !currentLeagueId) {
                 // Redirect to include the saved league_id
