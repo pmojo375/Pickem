@@ -58,6 +58,20 @@ def user_has_verified_email(user, email: str) -> bool:
     ).exists()
 
 
+def get_user_for_invite_email(email: str):
+    """Return an existing account for this invite email, if any."""
+    normalized = (email or "").strip().lower()
+    if not normalized:
+        return None
+    return User.objects.filter(email__iexact=normalized).first()
+
+
+def invite_needs_password_setup(invite) -> bool:
+    """True when the invite targets a pre-entered account without a password."""
+    user = get_user_for_invite_email(invite.email)
+    return user is not None and not user.has_usable_password()
+
+
 def accept_personal_invite(invite, user):
     """
     Accept a personal invite for the given user.

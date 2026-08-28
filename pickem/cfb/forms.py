@@ -112,3 +112,40 @@ class PersonalInviteSignupForm(forms.Form):
         if password1 and password2 and password1 != password2:
             self.add_error("password2", "Passwords do not match.")
         return cleaned
+
+
+class PersonalInviteSetPasswordForm(forms.Form):
+    password1 = forms.CharField(
+        label="Password",
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "input input-bordered w-full",
+                "placeholder": "Password",
+                "autocomplete": "new-password",
+            }
+        ),
+    )
+    password2 = forms.CharField(
+        label="Confirm password",
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "input input-bordered w-full",
+                "placeholder": "Confirm password",
+                "autocomplete": "new-password",
+            }
+        ),
+    )
+
+    def clean_password1(self):
+        password = self.cleaned_data.get("password1")
+        if password:
+            validate_password(password)
+        return password
+
+    def clean(self):
+        cleaned = super().clean()
+        password1 = cleaned.get("password1")
+        password2 = cleaned.get("password2")
+        if password1 and password2 and password1 != password2:
+            self.add_error("password2", "Passwords do not match.")
+        return cleaned

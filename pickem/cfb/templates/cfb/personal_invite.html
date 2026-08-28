@@ -50,6 +50,12 @@
 
             <div class="divider">Or</div>
 
+            {% if needs_password_setup %}
+            <a href="{% url 'personal_invite_set_password' token %}" class="btn btn-primary btn-block">
+                <i class="fas fa-key mr-2"></i>
+                Set your password
+            </a>
+            {% else %}
             <a href="{% url 'personal_invite_signup' token %}" class="btn btn-primary btn-block">
                 <i class="fas fa-user-plus mr-2"></i>
                 Create account with email and password
@@ -59,6 +65,7 @@
                 Already have an account?
                 <a href="{% url 'account_login' %}?next={{ invite_path }}" class="link link-primary link-hover">Sign in</a>
             </p>
+            {% endif %}
             {% endif %}
         </div>
     </div>

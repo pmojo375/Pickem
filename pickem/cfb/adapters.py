@@ -5,7 +5,12 @@ from allauth.account.adapter import DefaultAccountAdapter
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from django.core.mail import BadHeaderError
 
-from cfb.services.invites import PERSONAL_INVITE_TOKEN_SESSION_KEY, accept_personal_invite, get_personal_invite
+from cfb.services.invites import (
+    PERSONAL_INVITE_TOKEN_SESSION_KEY,
+    accept_personal_invite,
+    get_personal_invite,
+    get_user_for_invite_email,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +44,22 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         social_email = (sociallogin.user.email or "").strip().lower()
         if social_email != invite.email.lower():
             sociallogin.state["personal_invite_email_mismatch"] = True
+            return
+
+        existing_user = get_user_for_invite_email(invite.email)
+        if existing_user is None:
+            return
+
+        from allauth.account.models import EmailAddress
+
+        EmailAddress.objects.update_or_create(
+            user=existing_user,
+            email=invite.email.lower(),
+            defaults={"verified": True, "primary": True},
+        )
+        if existing_user.email.lower() != invite.email.lower():
+            existing_user.email = invite.email.lower()
+            existing_user.save(update_fields=["email"])
 
     def save_user(self, request, sociallogin, form=None):
         user = super().save_user(request, sociallogin, form=form)

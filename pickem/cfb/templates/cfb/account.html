@@ -101,13 +101,15 @@
                 </div>
                 <div>
                     <h2 class="text-xl font-semibold">
-                        {% if has_usable_password %}Change password{% else %}Set password{% endif %}
+                        {% if has_usable_password %}Change password{% else %}Create password{% endif %}
                     </h2>
                     <p class="text-sm text-base-content/70">
                         {% if has_usable_password %}
                             Choose a new password for signing in with your username or email.
+                        {% elif google_account %}
+                            You signed in with Google. Create a password to also sign in directly.
                         {% else %}
-                            You signed in with Google. Set a password to also sign in directly.
+                            Create a password to sign in with your username or email.
                         {% endif %}
                     </p>
                 </div>
@@ -164,7 +166,7 @@
 
                 <button type="submit" class="btn btn-primary">
                     <i class="fas fa-key mr-2"></i>
-                    {% if has_usable_password %}Update password{% else %}Set password{% endif %}
+                    {% if has_usable_password %}Update password{% else %}Create password{% endif %}
                 </button>
             </form>
         </div>

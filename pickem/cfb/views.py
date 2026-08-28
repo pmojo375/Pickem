@@ -1,8 +1,9 @@
 from django.contrib import messages
-from django.contrib.auth import get_user_model, login
+from django.contrib.auth import get_user_model, login, update_session_auth_hash
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.core.exceptions import ValidationError
 from django.db.models import Case, Count, IntegerField, Q, Sum, Value, When
 from django.views.decorators.http import require_POST
@@ -29,11 +30,13 @@ from .models import (
 )
 from django.utils import timezone
 from . import services
-from .forms import AccountNameForm, PersonalInviteSignupForm
+from .forms import AccountNameForm, PersonalInviteSignupForm, PersonalInviteSetPasswordForm
 from .services.invites import (
     PERSONAL_INVITE_TOKEN_SESSION_KEY,
     accept_personal_invite,
     get_personal_invite,
+    get_user_for_invite_email,
+    invite_needs_password_setup,
     invite_status,
     user_has_verified_email,
 )
@@ -1003,7 +1006,11 @@ def account_view(request):
                 password_form = SetPasswordForm(user=user, data=request.POST)
             if password_form.is_valid():
                 password_form.save()
-                messages.success(request, "Your password has been updated.")
+                update_session_auth_hash(request, password_form.user)
+                if has_usable_password:
+                    messages.success(request, "Your password has been updated.")
+                else:
+                    messages.success(request, "Your password has been created.")
                 return redirect("account")
 
         elif action == "disconnect_social":
@@ -1857,6 +1864,8 @@ def personal_invite_view(request, token):
             "league": league,
             "token": token,
             "invite_path": invite.get_path(),
+            "needs_password_setup": invite_needs_password_setup(invite),
+            "existing_user": get_user_for_invite_email(invite.email),
         },
     )
 
@@ -1884,6 +1893,16 @@ def personal_invite_signup_view(request, token):
 
     if request.user.is_authenticated:
         return redirect("personal_invite", token=token)
+
+    existing_user = get_user_for_invite_email(invite.email)
+    if existing_user is not None:
+        if not existing_user.has_usable_password():
+            return redirect("personal_invite_set_password", token=token)
+        messages.info(
+            request,
+            "You already have an account. Sign in to accept this invitation.",
+        )
+        return redirect(f"{reverse('account_login')}?next={invite.get_path()}")
 
     request.session[PERSONAL_INVITE_TOKEN_SESSION_KEY] = token
 
@@ -1918,6 +1937,72 @@ def personal_invite_signup_view(request, token):
             "league": league,
             "token": token,
             "form": form,
+        },
+    )
+
+
+@sensitive_post_parameters("password1", "password2")
+def personal_invite_set_password_view(request, token):
+    """Let a pre-entered account set its first password from a personal invite."""
+    invite = get_personal_invite(token)
+    status = invite_status(invite)
+
+    if status == "missing":
+        messages.error(request, "This invitation link is invalid.")
+        return redirect("leagues_list")
+    if status in ("revoked", "expired"):
+        messages.error(request, "This invitation is no longer valid.")
+        return redirect("leagues_list")
+    if status == "accepted":
+        messages.info(request, "This invitation has already been accepted.")
+        return redirect("personal_invite", token=token)
+
+    league = invite.league
+    if not league.is_active or league.season_opt_in_required:
+        messages.error(request, "This league is not open for new members right now.")
+        return redirect("leagues_list")
+
+    if request.user.is_authenticated:
+        return redirect("personal_invite", token=token)
+
+    existing_user = get_user_for_invite_email(invite.email)
+    if existing_user is None or existing_user.has_usable_password():
+        return redirect("personal_invite", token=token)
+
+    request.session[PERSONAL_INVITE_TOKEN_SESSION_KEY] = token
+
+    if request.method == "POST":
+        form = PersonalInviteSetPasswordForm(request.POST)
+        if form.is_valid():
+            existing_user.set_password(form.cleaned_data["password1"])
+            update_fields = ["password"]
+            if not existing_user.email:
+                existing_user.email = invite.email
+                update_fields.append("email")
+            existing_user.save(update_fields=update_fields)
+            EmailAddress.objects.update_or_create(
+                user=existing_user,
+                email=invite.email.lower(),
+                defaults={"verified": True, "primary": True},
+            )
+            login(request, existing_user, backend="django.contrib.auth.backends.ModelBackend")
+            result = accept_personal_invite(invite, existing_user)
+            if result in ("joined", "reactivated", "already_member", "already_accepted"):
+                return _personal_invite_redirect_after_accept(request, invite, result)
+            messages.error(request, "Unable to accept this invitation.")
+            return redirect("leagues_list")
+    else:
+        form = PersonalInviteSetPasswordForm()
+
+    return render(
+        request,
+        "cfb/personal_invite_set_password.html",
+        {
+            "invite": invite,
+            "league": league,
+            "token": token,
+            "form": form,
+            "existing_user": existing_user,
         },
     )
 

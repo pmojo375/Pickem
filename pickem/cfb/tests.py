@@ -247,6 +247,55 @@ class PersonalInviteFlowTests(TestCase):
         self.assertContains(response, "Create account with email and password")
         self.assertContains(response, "invitee@example.com")
 
+    def test_preentered_user_sees_set_password_option(self):
+        user = User(username="preentered", email="invitee@example.com")
+        user.set_unusable_password()
+        user.save()
+
+        response = self.client.get(self.invite_path)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Continue with Google")
+        self.assertContains(response, "Set your password")
+        self.assertNotContains(response, "Create account with email and password")
+        self.assertNotContains(response, "Already have an account?")
+
+    def test_preentered_user_can_set_password_and_join(self):
+        user = User(username="preentered", email="invitee@example.com")
+        user.set_unusable_password()
+        user.save()
+
+        response = self.client.post(
+            reverse("personal_invite_set_password", kwargs={"token": self.invite.token}),
+            {
+                "password1": "ComplexPass123!",
+                "password2": "ComplexPass123!",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], f"/leagues/{self.league.id}/")
+
+        user.refresh_from_db()
+        self.assertTrue(user.has_usable_password())
+        self.assertTrue(user.check_password("ComplexPass123!"))
+        address = EmailAddress.objects.get(user=user)
+        self.assertTrue(address.verified)
+        self.invite.refresh_from_db()
+        self.assertIsNotNone(self.invite.accepted_at)
+
+    def test_preentered_user_signup_redirects_to_set_password(self):
+        user = User(username="preentered", email="invitee@example.com")
+        user.set_unusable_password()
+        user.save()
+
+        response = self.client.get(
+            reverse("personal_invite_signup", kwargs={"token": self.invite.token})
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response["Location"],
+            reverse("personal_invite_set_password", kwargs={"token": self.invite.token}),
+        )
+
 
 class GenericLeagueInviteTests(TestCase):
     def setUp(self):
@@ -510,4 +559,32 @@ class AccountProfileTests(TestCase):
         self.assertEqual(self.user.username, "newname")
         self.assertIsNotNone(authenticate(username="newname", password="pass"))
         self.assertIsNone(authenticate(username="oldname", password="pass"))
+
+    def test_account_shows_create_password_without_usable_password(self):
+        self.user.set_unusable_password()
+        self.user.save()
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse("account"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Create password")
+        self.assertNotContains(response, "Change password")
+        self.assertNotContains(response, "Current password")
+
+    def test_user_can_create_password_from_account_page(self):
+        self.user.set_unusable_password()
+        self.user.save()
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("account"),
+            {
+                "action": "change_password",
+                "password1": "NewComplexPass123!",
+                "password2": "NewComplexPass123!",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("NewComplexPass123!"))
 

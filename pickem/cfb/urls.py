@@ -22,6 +22,7 @@ urlpatterns = [
     path('leagues/join/', views.league_join_by_name_view, name='league_join_by_name'),
     path('invite/<str:token>/', views.personal_invite_view, name='personal_invite'),
     path('invite/<str:token>/signup/', views.personal_invite_signup_view, name='personal_invite_signup'),
+    path('invite/<str:token>/set-password/', views.personal_invite_set_password_view, name='personal_invite_set_password'),
     path('leagues/invite/<path:token>/', views.league_invite_view, name='league_invite'),
     path('leagues/opt-in/<path:token>/', views.league_opt_in_view, name='league_opt_in'),
     path('leagues/<int:league_id>/', views.league_detail_view, name='league_detail'),
