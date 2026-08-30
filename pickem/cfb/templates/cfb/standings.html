@@ -88,15 +88,23 @@
             <h2 class="card-title">
                 <i class="fas fa-medal text-warning mr-2"></i>
                 {{ current_league.name }}
-                {% if show_week_standings and selected_week %}
+                {% if show_pick_status_only and pick_status_week %}
+                    - Week {{ pick_status_week.number }} Pick Status
+                {% elif show_week_standings and selected_week %}
                     - Week {{ selected_week.number }}
                 {% else %}
                     Leaderboard
                 {% endif %}
             </h2>
             
+            {% if show_pick_status_only %}
+            <p class="text-sm text-base-content/70">
+                Picks are hidden until games start — this only shows how many each player has submitted.
+            </p>
+            {% endif %}
+            
             <!-- Standings Toggle (only show for season standings) -->
-            {% if not show_week_standings and league_rules and league_rules.drop_weeks > 0 %}
+            {% if not show_week_standings and not show_pick_status_only and league_rules and league_rules.drop_weeks > 0 %}
             <div class="flex items-center gap-3">
                 <span class="text-sm text-base-content/70">
                     {% if show_full_standings %}
@@ -158,6 +166,7 @@
                                 </span>
                             </div>
                         </h3>
+                        {% if not show_pick_status_only %}
                         <div class="flex items-center gap-2">
                             {% if standing.display_rank == 1 %}
                                 <i class="fas fa-crown text-yellow-400 text-xl"></i>
@@ -168,7 +177,16 @@
                             {% endif %}
                             <span class="font-bold text-lg">#{{ standing.display_rank }}</span>
                         </div>
+                        {% endif %}
                     </div>
+                    {% if show_pick_status_only %}
+                    <div class="flex flex-col">
+                        <span class="text-xs text-base-content/70 mb-1">Week {{ pick_status_week.number }} Picks</span>
+                        <span class="font-bold text-xl">
+                            {{ standing.week_picks_made|default:0 }}/{{ standing.week_picks_total|default:0 }}
+                        </span>
+                    </div>
+                    {% else %}
                     <div class="grid grid-cols-2 gap-4">
                         <div class="flex flex-col">
                             <span class="text-xs text-base-content/70 mb-1">Points</span>
@@ -233,6 +251,21 @@
                         </div>
                         {% endif %}
                     </div>
+                    {% if show_week_pick_status and not show_pick_status_only %}
+                    <div class="flex flex-col col-span-2 mt-2 pt-2 border-t border-base-content/10">
+                        <span class="text-xs text-base-content/70 mb-1">Week {{ pick_status_week.number }} Picks</span>
+                        <span class="font-medium">
+                            {% if standing.week_picks_made >= standing.week_picks_total %}
+                            <span class="badge badge-success">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
+                            {% elif standing.week_picks_made > 0 %}
+                            <span class="badge badge-warning">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
+                            {% else %}
+                            <span class="badge badge-ghost">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% endif %}
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}
@@ -243,6 +276,10 @@
             <table class="table table-zebra w-full">
                 <thead>
                     <tr>
+                        {% if show_pick_status_only %}
+                        <th class="bg-base-200">Player</th>
+                        <th class="bg-base-200">Week {{ pick_status_week.number }} Picks</th>
+                        {% else %}
                         <th class="bg-base-200">Rank</th>
                         <th class="bg-base-200">Player</th>
                         <th class="bg-base-200">Points</th>
@@ -254,11 +291,55 @@
                         <th class="bg-base-200">Key Picks</th>
                         {% endif %}
                         <th class="bg-base-200">Total Picks</th>
+                        {% if show_week_pick_status %}
+                        <th class="bg-base-200">Week {{ pick_status_week.number }} Picks</th>
+                        {% endif %}
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody>
                     {% for standing in standings %}
                     <tr class="hover {% if standing.user == request.user %}bg-primary/10{% endif %}">
+                        {% if show_pick_status_only %}
+                        <td>
+                            <div class="flex items-center gap-3">
+                                <div class="avatar placeholder">
+                                    <div class="bg-primary text-primary-content rounded-full w-10">
+                                        <span>
+                                            {% if standing.user.first_name %}
+                                                {{ standing.user.first_name|slice:":1"|upper }}
+                                            {% else %}
+                                                {{ standing.user.username|slice:":1"|upper }}
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                <span class="font-bold">
+                                    {% if standing.user.first_name and standing.user.last_name %}
+                                        {{ standing.user.first_name }} {{ standing.user.last_name }}
+                                    {% elif standing.user.first_name %}
+                                        {{ standing.user.first_name }}
+                                    {% elif standing.user.last_name %}
+                                        {{ standing.user.last_name }}
+                                    {% else %}
+                                        {{ standing.user.username }}
+                                    {% endif %}
+                                    {% if standing.user == request.user %}
+                                    <span class="text-xs text-primary">(You)</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </td>
+                        <td>
+                            {% if standing.week_picks_made >= standing.week_picks_total %}
+                            <span class="badge badge-success font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
+                            {% elif standing.week_picks_made > 0 %}
+                            <span class="badge badge-warning font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
+                            {% else %}
+                            <span class="badge badge-ghost font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
+                            {% endif %}
+                        </td>
+                        {% else %}
                         <td>
                             <div class="flex items-center gap-2">
                                 {% if standing.display_rank == 1 %}
@@ -335,6 +416,18 @@
                             </div>
                             {% endif %}
                         </td>
+                        {% if show_week_pick_status %}
+                        <td>
+                            {% if standing.week_picks_made >= standing.week_picks_total %}
+                            <span class="badge badge-success font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
+                            {% elif standing.week_picks_made > 0 %}
+                            <span class="badge badge-warning font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
+                            {% else %}
+                            <span class="badge badge-ghost font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                        {% endif %}
                     </tr>
                     {% endfor %}
                 </tbody>

@@ -630,6 +630,110 @@ def live_view(request):
     return render(request, "cfb/live.html", context)
 
 
+def _get_display_week_pick_status(league, season):
+    """
+    Pick counts (not choices) for the display week when league games are set.
+    Returns None if the display week has no pickable games for this league,
+    or if we are still too far before that week starts.
+    """
+    from datetime import timedelta
+
+    display_week = services.schedule.get_display_week(season)
+    if not display_week:
+        return None
+
+    now = timezone.now()
+    current_week = services.schedule.get_current_week(season, now=now)
+    if not current_week:
+        days_until_week = (display_week.start_date - now.date()).days
+        if days_until_week > 7:
+            return None
+
+    start, end = services.schedule.get_week_datetime_range(display_week)
+    week_game_ids = list(
+        LeagueGame.objects.filter(
+            league=league,
+            is_active=True,
+            game__week=display_week,
+            game__season=season,
+            game__kickoff__range=(start, end),
+        ).values_list("game_id", flat=True)
+    )
+    if not week_game_ids:
+        return None
+
+    picks_total = len(week_game_ids)
+    members = User.objects.filter(
+        id__in=_active_member_user_ids(league),
+    ).order_by("username")
+
+    pick_counts = {
+        row["user_id"]: row["count"]
+        for row in Pick.objects.filter(
+            league=league,
+            game_id__in=week_game_ids,
+        )
+        .values("user_id")
+        .annotate(count=Count("id"))
+    }
+
+    members_data = [
+        {
+            "user": member,
+            "week_picks_made": pick_counts.get(member.id, 0),
+            "week_picks_total": picks_total,
+        }
+        for member in members
+    ]
+
+    return {
+        "week": display_week,
+        "picks_total": picks_total,
+        "members": members_data,
+    }
+
+
+def _empty_standing_row(user, week_picks_made=0, week_picks_total=0):
+    return {
+        "user": user,
+        "wins": 0,
+        "losses": 0,
+        "ties": 0,
+        "total": 0,
+        "picks_made": 0,
+        "win_pct": 0,
+        "points": 0,
+        "correct_key": 0,
+        "key_pick_pct": 0,
+        "display_rank": 999,
+        "week_picks_made": week_picks_made,
+        "week_picks_total": week_picks_total,
+    }
+
+
+def _apply_display_week_pick_status(standings, pick_status):
+    """Merge display-week pick counts into season standings rows."""
+    counts_by_user = {m["user"].id: m for m in pick_status["members"]}
+    existing_user_ids = set()
+
+    for standing in standings:
+        existing_user_ids.add(standing["user"].id)
+        member_data = counts_by_user.get(standing["user"].id)
+        if member_data:
+            standing["week_picks_made"] = member_data["week_picks_made"]
+            standing["week_picks_total"] = member_data["week_picks_total"]
+
+    for member_data in pick_status["members"]:
+        if member_data["user"].id not in existing_user_ids:
+            standings.append(_empty_standing_row(
+                member_data["user"],
+                member_data["week_picks_made"],
+                member_data["week_picks_total"],
+            ))
+
+    return standings
+
+
 @login_required
 def standings_view(request):
     league, user_leagues = _resolve_user_league(request)
@@ -656,6 +760,9 @@ def standings_view(request):
         'league_picks_data': None,  # Will be set if showing league picks
         'is_league_manager': False,  # Will be set based on user role
         'key_picks_enabled': False,  # Will be set based on league rules
+        'show_week_pick_status': False,
+        'show_pick_status_only': False,
+        'pick_status_week': None,
     }
     
     if league:
@@ -865,6 +972,25 @@ def standings_view(request):
                 # Sort standings by display rank (ascending)
                 standings.sort(key=lambda x: x['display_rank'])
                 context['standings'] = standings
+
+            if not week_id and not show_league_picks:
+                pick_status = _get_display_week_pick_status(league, active_season)
+                if pick_status:
+                    context['show_week_pick_status'] = True
+                    context['pick_status_week'] = pick_status['week']
+                    if context['standings']:
+                        context['show_pick_status_only'] = False
+                        _apply_display_week_pick_status(context['standings'], pick_status)
+                    else:
+                        context['show_pick_status_only'] = True
+                        context['standings'] = [
+                            _empty_standing_row(
+                                member_data['user'],
+                                member_data['week_picks_made'],
+                                member_data['week_picks_total'],
+                            )
+                            for member_data in pick_status['members']
+                        ]
             
             context['league_rules'] = league_rules
             context['key_picks_enabled'] = league_rules and league_rules.key_picks_enabled
