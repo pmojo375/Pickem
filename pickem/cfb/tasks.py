@@ -16,6 +16,7 @@ from django.utils import timezone
 from .models import Game, Team, Season, Location, Week, Ranking, GameSpread, League, LeagueRules, LeagueGame
 from .services.cfbd_api import get_cfbd_client
 from .services.live import grade_picks_for_game, fetch_and_store_live_scores, fetch_single_game_score
+from .services.spreads import get_spread_to_lock
 
 logger = logging.getLogger(__name__)
 
@@ -928,9 +929,10 @@ def lock_league_spreads_for_week(season_year: int = None, season_type: str = 're
     This task should run after update_spreads to ensure we have the latest spread data.
     
     Spread locking logic:
-    1. If a spread exists from the spread_lock_weekday, use it
-    2. Otherwise, use the next spread pulled after that day
-    3. If no future spreads exist, use the latest available spread
+    1. Lock day is the configured weekday before each game's kickoff
+    2. If a spread exists from the lock day, use it
+    3. Otherwise, use the next spread pulled after that day
+    4. If no future spreads exist, use the latest available spread
     
     Args:
         season_year: Year of the season (if None, uses active season)
@@ -999,62 +1001,29 @@ def lock_league_spreads_for_week(season_year: int = None, season_type: str = 're
             
             for league_game in league_games:
                 game = league_game.game
-                
-                # Get the spread lock target date (the specified weekday of the game week)
-                # Calculate which day is the spread_lock_weekday in the week
-                week_start = week_obj.start_date
-                
-                # Calculate the target lock date (spread_lock_weekday within the week)
-                days_until_lock_day = (spread_lock_weekday - week_start.weekday()) % 7
-                lock_target_date = week_start + timedelta(days=days_until_lock_day)
-                
-                # Get all spreads for this game ordered by timestamp
-                game_spreads = GameSpread.objects.filter(game=game).order_by('timestamp')
-                
-                if not game_spreads.exists():
-                    logger.warning(f"No spreads found for game {game.id} ({game})")
+                spread_to_use, lock_target_date = get_spread_to_lock(game, spread_lock_weekday)
+
+                if not spread_to_use:
+                    if timezone.now().date() < lock_target_date:
+                        logger.debug(
+                            f"Skipping game {game.id} ({game}) until lock day {lock_target_date}"
+                        )
+                    else:
+                        logger.warning(f"No spreads found for game {game.id} ({game})")
                     total_skipped += 1
                     continue
-                
-                # Find the best spread according to the locking rules:
-                # 1. Prefer spread from lock_target_date
-                # 2. Otherwise, use next spread after lock_target_date
-                # 3. Otherwise, use latest spread
-                
-                spread_to_use = None
-                
-                # Try to find spread from the lock target date
-                for spread in game_spreads:
-                    if spread.timestamp.date() == lock_target_date:
-                        spread_to_use = spread
-                        logger.debug(f"Found spread from lock day {lock_target_date} for game {game.id}")
-                        break
-                
-                # If no spread from lock day, find the next spread after lock day
-                if not spread_to_use:
-                    for spread in game_spreads:
-                        if spread.timestamp.date() > lock_target_date:
-                            spread_to_use = spread
-                            logger.debug(f"Using next spread after {lock_target_date} (from {spread.timestamp.date()}) for game {game.id}")
-                            break
-                
-                # If still no spread, use the latest one
-                if not spread_to_use:
-                    spread_to_use = game_spreads.last()
-                    logger.debug(f"Using latest spread (from {spread_to_use.timestamp.date()}) for game {game.id}")
-                
+
                 # Lock the spread
-                if spread_to_use:
-                    league_game.locked_home_spread = spread_to_use.home_spread
-                    league_game.locked_away_spread = spread_to_use.away_spread
-                    league_game.spread_locked_at = timezone.now()
-                    league_game.save(update_fields=['locked_home_spread', 'locked_away_spread', 'spread_locked_at'])
-                    
-                    total_locked += 1
-                    logger.debug(f"Locked spread for {game} in league '{league.name}': {spread_to_use.home_spread}/{spread_to_use.away_spread}")
-                else:
-                    logger.warning(f"Could not find suitable spread for game {game.id} ({game})")
-                    total_skipped += 1
+                league_game.locked_home_spread = spread_to_use.home_spread
+                league_game.locked_away_spread = spread_to_use.away_spread
+                league_game.spread_locked_at = timezone.now()
+                league_game.save(update_fields=['locked_home_spread', 'locked_away_spread', 'spread_locked_at'])
+
+                total_locked += 1
+                logger.debug(
+                    f"Locked spread for {game} in league '{league.name}': "
+                    f"{spread_to_use.home_spread}/{spread_to_use.away_spread}"
+                )
         
         logger.info(
             f"Spread locking complete for {season_year} week {week}: "
