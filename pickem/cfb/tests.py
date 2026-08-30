@@ -1,7 +1,10 @@
 from decimal import Decimal
+from unittest.mock import Mock, patch
 
 from allauth.account.models import EmailAddress
+from allauth.core.exceptions import ImmediateHttpResponse
 from django.contrib.auth import get_user_model
+from django.contrib.messages import get_messages
 from django.core import mail
 from django.core.exceptions import ValidationError
 from django.test import RequestFactory, TestCase, override_settings
@@ -9,6 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
 
+from cfb.adapters import SocialAccountAdapter
 from cfb.models import League, LeagueInvite, LeagueMembership, LeagueRules, Season
 from cfb.services import invites
 from cfb.services.payouts import build_payout_summary
@@ -120,6 +124,7 @@ class LeagueEmailInviteTests(TestCase):
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
 class PersonalInviteFlowTests(TestCase):
     def setUp(self):
+        self.factory = RequestFactory()
         self.owner = User.objects.create_user("owner", "owner@example.com", "pass")
         self.league = League.objects.create(name="Invite League", created_by=self.owner)
         LeagueMembership.objects.create(league=self.league, user=self.owner, role="owner")
@@ -181,6 +186,60 @@ class PersonalInviteFlowTests(TestCase):
         self.assertContains(response, "other@example.com")
         self.invite.refresh_from_db()
         self.assertIsNone(self.invite.accepted_at)
+
+    def _invite_session_request(self):
+        session = self.client.session
+        session[invites.PERSONAL_INVITE_TOKEN_SESSION_KEY] = self.invite.token
+        session.save()
+        request = self.factory.get(self.invite_path)
+        request.session = session
+        return request
+
+    def test_google_sign_in_with_wrong_email_is_blocked(self):
+        request = self._invite_session_request()
+        sociallogin = Mock()
+        sociallogin.user = Mock()
+        sociallogin.user.email = "wrong@gmail.com"
+
+        adapter = SocialAccountAdapter()
+        with self.assertRaises(ImmediateHttpResponse) as raised:
+            adapter.pre_social_login(request, sociallogin)
+
+        response = raised.exception.response
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, self.invite_path)
+        message_list = list(get_messages(request))
+        self.assertEqual(len(message_list), 1)
+        self.assertIn("invitee@example.com", str(message_list[0]))
+        self.assertIn("wrong@gmail.com", str(message_list[0]))
+
+    def test_google_sign_in_with_matching_email_is_allowed(self):
+        request = self._invite_session_request()
+        sociallogin = Mock()
+        sociallogin.user = Mock()
+        sociallogin.user.email = "invitee@example.com"
+
+        adapter = SocialAccountAdapter()
+        adapter.pre_social_login(request, sociallogin)
+
+    @patch("cfb.adapters.DefaultSocialAccountAdapter.save_user")
+    def test_save_user_does_not_sync_invite_email_on_mismatch(self, mock_super_save):
+        user = User.objects.create_user("wronggoogle", "wrong@gmail.com", "pass")
+        mock_super_save.return_value = user
+
+        request = self._invite_session_request()
+        sociallogin = Mock()
+        sociallogin.user = user
+
+        adapter = SocialAccountAdapter()
+        result = adapter.save_user(request, sociallogin)
+
+        self.assertEqual(result.email, "wrong@gmail.com")
+        self.assertFalse(
+            EmailAddress.objects.filter(
+                user=user, email__iexact="invitee@example.com"
+            ).exists()
+        )
 
     def test_forwarded_invite_cannot_be_consumed_by_different_email(self):
         user = User.objects.create_user("stranger", "stranger@example.com", "pass")

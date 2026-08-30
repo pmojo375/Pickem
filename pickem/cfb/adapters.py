@@ -2,12 +2,14 @@ import logging
 import smtplib
 
 from allauth.account.adapter import DefaultAccountAdapter
+from allauth.core.exceptions import ImmediateHttpResponse
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
+from django.contrib import messages
 from django.core.mail import BadHeaderError
+from django.shortcuts import redirect
 
 from cfb.services.invites import (
     PERSONAL_INVITE_TOKEN_SESSION_KEY,
-    accept_personal_invite,
     get_personal_invite,
     get_user_for_invite_email,
 )
@@ -43,8 +45,21 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
 
         social_email = (sociallogin.user.email or "").strip().lower()
         if social_email != invite.email.lower():
-            sociallogin.state["personal_invite_email_mismatch"] = True
-            return
+            if social_email:
+                messages.error(
+                    request,
+                    f"This invitation was sent to {invite.email}, but you signed in "
+                    f"with {social_email}. Sign in with the invited email address, "
+                    f"or create an account with email and password below.",
+                )
+            else:
+                messages.error(
+                    request,
+                    f"This invitation was sent to {invite.email}. Your Google account "
+                    f"did not provide an email address. Create an account with email "
+                    f"and password below instead.",
+                )
+            raise ImmediateHttpResponse(redirect(invite.get_path()))
 
         existing_user = get_user_for_invite_email(invite.email)
         if existing_user is None:
@@ -69,6 +84,10 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
 
         invite = get_personal_invite(token)
         if invite is None or not invite.is_pending:
+            return user
+
+        social_email = (sociallogin.user.email or "").strip().lower()
+        if social_email != invite.email.lower():
             return user
 
         from allauth.account.models import EmailAddress
