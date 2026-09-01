@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Season, Team, Game, GameSpread, Pick, League, LeagueInvite, LeagueMembership, LeagueGame, LeagueRules, Location, Week, Ranking, MemberWeek, MemberSeason, TeamStat
+from .models import Season, Team, Game, GameSpread, Pick, League, LeagueInvite, LeagueMembership, LeagueGame, LeagueRules, Location, Week, Ranking, MemberWeek, MemberSeason, MemberSeasonPayment, TeamStat
 
 
 @admin.register(Season)
@@ -296,6 +296,14 @@ class MemberSeasonAdmin(admin.ModelAdmin):
             "classes": ("collapse",)
         }),
     )
+
+
+@admin.register(MemberSeasonPayment)
+class MemberSeasonPaymentAdmin(admin.ModelAdmin):
+    list_display = ("league", "season", "user", "paid")
+    list_filter = ("paid", "season", "league")
+    search_fields = ("league__name", "user__username", "season__year")
+    autocomplete_fields = ("league", "season", "user")
 
 
 @admin.register(TeamStat)

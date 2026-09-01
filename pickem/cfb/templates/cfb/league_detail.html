@@ -340,6 +340,9 @@
                             <th>Member</th>
                             <th>Role</th>
                             <th>Status</th>
+                            {% if payout_summary and payout_summary.has_entry %}
+                            <th>Paid</th>
+                            {% endif %}
                             <th>Joined</th>
                             {% if is_admin %}
                             <th>Actions</th>
@@ -391,6 +394,31 @@
                                 </div>
                                 {% endif %}
                             </td>
+                            {% if payout_summary and payout_summary.has_entry %}
+                            <td>
+                                {% if membership.season_paid %}
+                                <div class="badge badge-success gap-2">
+                                    <i class="fas fa-dollar-sign"></i>Paid
+                                </div>
+                                {% else %}
+                                <div class="badge badge-warning gap-2">
+                                    <i class="fas fa-clock"></i>Unpaid
+                                </div>
+                                {% endif %}
+                                {% if is_admin %}
+                                <form method="post" action="{% url 'league_member_paid' league.id membership.id %}" class="inline-block ml-1">
+                                    {% csrf_token %}
+                                    {% if membership.season_paid %}
+                                    <input type="hidden" name="paid" value="unpaid">
+                                    <button type="submit" class="btn btn-ghost btn-xs">Mark unpaid</button>
+                                    {% else %}
+                                    <input type="hidden" name="paid" value="paid">
+                                    <button type="submit" class="btn btn-success btn-xs">Mark paid</button>
+                                    {% endif %}
+                                </form>
+                                {% endif %}
+                            </td>
+                            {% endif %}
                             <td class="text-sm text-base-content/70">{{ membership.joined_at|date:"M d, Y" }}</td>
                             {% if is_admin %}
                             <td>

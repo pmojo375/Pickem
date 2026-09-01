@@ -26,6 +26,7 @@ from .models import (
     Ranking,
     Week,
     MemberSeason,
+    MemberSeasonPayment,
     MemberWeek,
 )
 from django.utils import timezone
@@ -47,6 +48,25 @@ User = get_user_model()
 
 def _active_member_user_ids(league):
     return LeagueMembership.objects.filter(league=league, is_active=True).values_list("user_id", flat=True)
+
+
+def _season_paid_map(league, season):
+    if not season:
+        return {}
+    return dict(
+        MemberSeasonPayment.objects.filter(league=league, season=season).values_list("user_id", "paid")
+    )
+
+
+def _ensure_season_payment_row(league, season, user):
+    if not season:
+        return
+    MemberSeasonPayment.objects.get_or_create(
+        league=league,
+        season=season,
+        user=user,
+        defaults={"paid": False},
+    )
 
 
 def _user_is_active_member(league, user):
@@ -2187,6 +2207,9 @@ def league_detail_view(request, league_id):
     active_member_count = memberships.filter(is_active=True).count()
     pending_opt_in_count = memberships.filter(is_active=False, role="member").count()
     active_season = Season.objects.filter(is_active=True).first()
+    season_paid = _season_paid_map(league, active_season)
+    for membership in memberships:
+        membership.season_paid = season_paid.get(membership.user_id, False)
 
     context = {
         "league": league,
@@ -2476,6 +2499,8 @@ def league_self_activate_view(request, league_id):
 
     membership.is_active = True
     membership.save(update_fields=["is_active"])
+    active_season = Season.objects.filter(is_active=True).first()
+    _ensure_season_payment_row(league, active_season, membership.user)
     messages.success(request, f"You are active in '{league.name}' for this season.")
     return redirect("league_detail", league_id=league.id)
 
@@ -2510,6 +2535,7 @@ def league_opt_in_view(request, token):
             return redirect("league_detail", league_id=league.id)
         membership.is_active = True
         membership.save(update_fields=["is_active"])
+        _ensure_season_payment_row(league, active_season, membership.user)
         messages.success(request, f"You are active in '{league.name}' for this season.")
         return redirect("league_detail", league_id=league.id)
 
@@ -2604,5 +2630,51 @@ def league_member_status_view(request, league_id, membership_id):
 
     label = "active" if membership.is_active else "inactive"
     messages.success(request, f"{membership.user.username} is now {label} in '{league.name}'.")
+    return redirect("league_detail", league_id=league.id)
+
+
+@login_required
+@require_POST
+def league_member_paid_view(request, league_id, membership_id):
+    """Allow league owners and admins to mark a member as paid or unpaid."""
+    league = get_object_or_404(League, pk=league_id)
+    actor = LeagueMembership.objects.filter(
+        league=league, user=request.user, is_active=True
+    ).first()
+
+    if not actor or actor.role not in ("owner", "admin"):
+        messages.error(request, "You do not have permission to manage payments in this league.")
+        return redirect("league_detail", league_id=league.id)
+
+    active_season = Season.objects.filter(is_active=True).first()
+    if not active_season:
+        messages.error(request, "There is no active season.")
+        return redirect("league_detail", league_id=league.id)
+
+    league_rules = LeagueRules.objects.filter(league=league, season=active_season).first()
+    entry_fee = league_rules.entry_fee if league_rules and league_rules.entry_fee else 0
+    if entry_fee <= 0:
+        messages.error(request, "This league has no entry fee.")
+        return redirect("league_detail", league_id=league.id)
+
+    membership = get_object_or_404(LeagueMembership, pk=membership_id, league=league)
+
+    paid = request.POST.get("paid")
+    if paid not in ("paid", "unpaid"):
+        messages.error(request, "Invalid payment status.")
+        return redirect("league_detail", league_id=league.id)
+
+    payment, _ = MemberSeasonPayment.objects.update_or_create(
+        league=league,
+        season=active_season,
+        user=membership.user,
+        defaults={"paid": paid == "paid"},
+    )
+
+    label = "paid" if payment.paid else "unpaid"
+    messages.success(
+        request,
+        f"{membership.user.username} is marked as {label} for {active_season.year} in '{league.name}'.",
+    )
     return redirect("league_detail", league_id=league.id)
 

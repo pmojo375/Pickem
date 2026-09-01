@@ -654,7 +654,27 @@ class MemberSeason(models.Model):
     class Meta:
         unique_together = ("league", "season", "user")
         indexes = [models.Index(fields=["league", "season"]), models.Index(fields=["league", "points"])]
-        
+
+
+class MemberSeasonPayment(models.Model):
+    league = models.ForeignKey(League, on_delete=models.CASCADE, related_name="season_payments")
+    season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="member_payments")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="season_payments")
+    paid = models.BooleanField(
+        default=False,
+        help_text="Whether this member has paid the season entry fee.",
+    )
+
+    class Meta:
+        unique_together = ("league", "season", "user")
+        verbose_name = "Member Season Payment"
+        verbose_name_plural = "Member Season Payments"
+
+    def __str__(self) -> str:
+        status = "paid" if self.paid else "unpaid"
+        return f"{self.user.username} in {self.league.name} {self.season.year} ({status})"
+
+
 class TeamStat(models.Model):
     season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="team_stats")
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="team_stats")
