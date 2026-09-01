@@ -117,7 +117,10 @@
                     max-width: 100% !important;
                     transform: none !important;
                     flex-shrink: 0;
-                    min-height: 4rem;
+                    height: 4rem;
+                    /* Flex shell already sits at the viewport bottom; safe-area
+                       padding would stack on top of the 4rem content box. */
+                    padding-bottom: 0 !important;
                 }
             }
         }
