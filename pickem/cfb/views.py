@@ -69,6 +69,38 @@ def _ensure_season_payment_row(league, season, user):
     )
 
 
+def _user_entry_fee_statuses(user, user_leagues, active_season):
+    if not active_season:
+        return []
+
+    league_ids = list(user_leagues.values_list("id", flat=True))
+    if not league_ids:
+        return []
+
+    rules_with_fee = LeagueRules.objects.filter(
+        league_id__in=league_ids,
+        season=active_season,
+        entry_fee__gt=0,
+    ).select_related("league")
+    paid_by_league = dict(
+        MemberSeasonPayment.objects.filter(
+            league_id__in=league_ids,
+            season=active_season,
+            user=user,
+        ).values_list("league_id", "paid")
+    )
+
+    return [
+        {
+            "league": rules.league,
+            "entry_fee": rules.entry_fee,
+            "paid": paid_by_league.get(rules.league_id, False),
+            "season_year": active_season.year,
+        }
+        for rules in rules_with_fee
+    ]
+
+
 def _user_is_active_member(league, user):
     return LeagueMembership.objects.filter(league=league, user=user, is_active=True).exists()
 
@@ -115,14 +147,17 @@ def home_view(request):
     
     if request.user.is_authenticated:
         league, user_leagues = _resolve_user_league(request)
+        active_season = Season.objects.filter(is_active=True).first()
         context["user_leagues"] = user_leagues
         context["current_league"] = league
-        
+        context["entry_fee_statuses"] = _user_entry_fee_statuses(
+            request.user, user_leagues, active_season
+        )
+
         if league:
             from django.db.models import Count, Q
 
             current_week = services.schedule.get_display_week()
-            active_season = Season.objects.filter(is_active=True).first()
             now = timezone.now()
 
             week_picks_count = 0

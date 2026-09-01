@@ -69,6 +69,31 @@
         </div>
     </section>
 
+    {% if entry_fee_statuses %}
+    <div class="space-y-3 mb-8">
+        {% for status in entry_fee_statuses %}
+        {% if status.paid %}
+        <div class="alert alert-success shadow-md">
+            <i class="fas fa-check-circle"></i>
+            <span>
+                Entry fee received for <strong>{{ status.league.name }}</strong>
+                {% if status.season_year %}({{ status.season_year }}){% endif %}
+            </span>
+        </div>
+        {% else %}
+        <div class="alert alert-warning shadow-md">
+            <i class="fas fa-dollar-sign"></i>
+            <div>
+                <span class="font-semibold">${{ status.entry_fee|floatformat:2 }} entry fee due</span>
+                for <strong>{{ status.league.name }}</strong>
+                {% if status.season_year %}({{ status.season_year }}){% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+
     {% if current_league %}
         <div class="card bg-base-100 shadow-xl mb-8">
             <div class="card-body">
