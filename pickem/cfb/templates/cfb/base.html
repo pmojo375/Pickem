@@ -2,7 +2,7 @@
 <html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{% block title %}BigPicks{% endblock %}</title>
     
     <!-- Tailwind CSS + DaisyUI -->
@@ -117,12 +117,9 @@
                     max-width: 100% !important;
                     transform: none !important;
                     flex-shrink: 0;
-                    height: 4rem;
-                    box-sizing: border-box;
-                    padding-bottom: 0 !important;
+                    min-height: 4rem;
                 }
             }
-        }
         }
     </style>
     
@@ -175,7 +172,7 @@
     </div>
 
     <!-- Mobile Bottom Navigation -->
-    <div class="btm-nav btm-nav-md md:hidden bottom-nav bg-base-100 border-t border-base-300">
+    <div class="btm-nav btm-nav-md md:hidden bottom-nav box-content bg-base-100 border-t border-base-300">
         <a href="/" class="{% if request.path == '/' %}active text-primary{% endif %}">
             <i class="fas fa-home text-lg"></i>
             <span class="btm-nav-label text-xs">Home</span>
