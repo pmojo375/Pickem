@@ -294,6 +294,20 @@ class LiveScoreUpdater {
                     this.updateGameUI(game, changes);
                     
                     updatedGames.push({ game, changes });
+                } else if (
+                    (game.home_score === null || game.away_score === null) &&
+                    this.isGameStarted(game)
+                ) {
+                    // Kickoff may have passed with scores still null — refresh 0 vs —
+                    const gameElement = document.querySelector(`[data-game-id="${game.id}"]`);
+                    if (gameElement) {
+                        if (game.home_score === null) {
+                            this.updateScore(gameElement, 'home', game.home_score, game);
+                        }
+                        if (game.away_score === null) {
+                            this.updateScore(gameElement, 'away', game.away_score, game);
+                        }
+                    }
                 }
             }
         });
@@ -327,6 +341,19 @@ class LiveScoreUpdater {
      */
     isGameLive(game) {
         return !game.is_final && game.quarter > 0;
+    }
+
+    /**
+     * Check if a game has started (kickoff passed or quarter set)
+     */
+    isGameStarted(game) {
+        if (game.quarter != null && game.quarter > 0) {
+            return true;
+        }
+        if (game.kickoff) {
+            return new Date(game.kickoff) <= new Date();
+        }
+        return false;
     }
     
     /**
@@ -405,11 +432,11 @@ class LiveScoreUpdater {
         changes.forEach(change => {
             switch (change.type) {
                 case 'home_score':
-                    this.updateScore(gameElement, 'home', game.home_score);
+                    this.updateScore(gameElement, 'home', game.home_score, game);
                     break;
                     
                 case 'away_score':
-                    this.updateScore(gameElement, 'away', game.away_score);
+                    this.updateScore(gameElement, 'away', game.away_score, game);
                     break;
                     
                 case 'quarter':
@@ -434,9 +461,25 @@ class LiveScoreUpdater {
     }
     
     /**
+     * Format score for display — matches server-side display_score filter:
+     * - Actual score when available (including 0)
+     * - "0" if game has started but no score recorded yet
+     * - "—" if game hasn't started
+     */
+    formatScore(score, game) {
+        if (score !== null && score !== undefined) {
+            return String(score);
+        }
+
+        const hasQuarter = game && game.quarter != null && game.quarter > 0;
+        const kickoffPassed = game && game.kickoff && new Date(game.kickoff) <= new Date();
+        return (hasQuarter || kickoffPassed) ? '0' : '—';
+    }
+
+    /**
      * Update score display with animation
      */
-    updateScore(gameElement, team, newScore) {
+    updateScore(gameElement, team, newScore, game = null) {
         const scoreSelector = `[data-score="${team}"]`;
         const scoreElement = gameElement.querySelector(scoreSelector);
         
@@ -444,8 +487,13 @@ class LiveScoreUpdater {
             return;
         }
         
+        const display = this.formatScore(newScore, game);
+        if (scoreElement.textContent === display) {
+            return;
+        }
+
         // Update score value
-        scoreElement.textContent = newScore || '-';
+        scoreElement.textContent = display;
         
         // Add pulse animation
         scoreElement.classList.remove('score-pulse');
