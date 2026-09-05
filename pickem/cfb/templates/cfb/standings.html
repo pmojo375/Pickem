@@ -619,7 +619,7 @@
                                     {% if game.away_team|team_logo_url %}
                                     <img src="{% static game.away_team|team_logo_url %}" 
                                          alt="{{ game.away_team.name }}" 
-                                         class="w-6 h-6 object-contain"
+                                         class="team-logo w-6 h-6 object-contain"
                                          onerror="this.style.display='none'">
                                     {% endif %}
                                     <span class="text-xs md:text-sm font-medium league-picks-team-name">{{ game.away_team.abbreviation|default:game.away_team.name }}</span>
@@ -632,7 +632,7 @@
                                     {% if game.home_team|team_logo_url %}
                                     <img src="{% static game.home_team|team_logo_url %}" 
                                          alt="{{ game.home_team.name }}" 
-                                         class="w-6 h-6 object-contain"
+                                         class="team-logo w-6 h-6 object-contain"
                                          onerror="this.style.display='none'">
                                     {% endif %}
                                     <span class="text-xs md:text-sm font-medium league-picks-team-name">{{ game.home_team.abbreviation|default:game.home_team.name }}</span>
@@ -707,7 +707,7 @@
                                                 {% if pick.picked_team|team_logo_url %}
                                                 <img src="{% static pick.picked_team|team_logo_url %}" 
                                                      alt="{{ pick.picked_team.name }}" 
-                                                     class="w-5 h-5 object-contain"
+                                                     class="team-logo w-5 h-5 object-contain"
                                                      onerror="this.style.display='none'">
                                                 {% endif %}
                                                 <span>{{ pick.picked_team.abbreviation|default:pick.picked_team.name }}</span>

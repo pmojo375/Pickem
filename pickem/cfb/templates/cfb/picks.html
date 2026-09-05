@@ -134,7 +134,7 @@
                                 {% if lg.game.away_team|team_logo_url %}
                                 <img src="{% static lg.game.away_team|team_logo_url %}" 
                                      alt="{{ lg.game.away_team.name }}" 
-                                     class="w-10 h-10 md:w-12 md:h-12 object-contain transition-transform flex-shrink-0" />
+                                     class="team-logo w-10 h-10 md:w-12 md:h-12 object-contain transition-transform flex-shrink-0" />
                                 {% endif %}
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-center gap-1">
@@ -163,7 +163,7 @@
                                 {% if lg.game.home_team|team_logo_url %}
                                 <img src="{% static lg.game.home_team|team_logo_url %}" 
                                      alt="{{ lg.game.home_team.name }}" 
-                                     class="w-10 h-10 md:w-12 md:h-12 object-contain transition-transform flex-shrink-0" />
+                                     class="team-logo w-10 h-10 md:w-12 md:h-12 object-contain transition-transform flex-shrink-0" />
                                 {% endif %}
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-center gap-1">
