@@ -277,7 +277,8 @@ class LiveScoreUpdater {
                     { type: 'home_score', old: null, new: game.home_score },
                     { type: 'away_score', old: null, new: game.away_score },
                     { type: 'quarter', old: null, new: game.quarter },
-                    { type: 'clock', old: null, new: game.clock }
+                    { type: 'clock', old: null, new: game.clock },
+                    { type: 'possession', old: null, new: game.possession }
                 ];
                 this.updateGameUI(game, initialChanges);
             } else {
@@ -407,6 +408,17 @@ class LiveScoreUpdater {
                 new: newGame.is_final
             });
         }
+
+        // Possession (home / away / empty)
+        const oldPoss = oldGame.possession || '';
+        const newPoss = newGame.possession || '';
+        if (oldPoss !== newPoss) {
+            changes.push({
+                type: 'possession',
+                old: oldPoss,
+                new: newPoss
+            });
+        }
         
         return changes;
     }
@@ -447,6 +459,11 @@ class LiveScoreUpdater {
                 case 'is_final':
                     this.updateGameStatus(gameElement, game);
                     this.updateGameFinalIndicators(gameElement, game);
+                    this.updatePossession(gameElement, game);
+                    break;
+
+                case 'possession':
+                    this.updatePossession(gameElement, game);
                     break;
             }
         });
@@ -460,6 +477,17 @@ class LiveScoreUpdater {
         window.scrollTo(0, scrollY);
     }
     
+    /**
+     * Show/hide football icon for which team has possession
+     */
+    updatePossession(gameElement, game) {
+        const possession = (!game.is_final && game.possession) ? game.possession : '';
+        gameElement.querySelectorAll('[data-possession-icon]').forEach(icon => {
+            const side = icon.getAttribute('data-possession-icon');
+            icon.classList.toggle('hidden', side !== possession);
+        });
+    }
+
     /**
      * Format score for display — matches server-side display_score filter:
      * - Actual score when available (including 0)

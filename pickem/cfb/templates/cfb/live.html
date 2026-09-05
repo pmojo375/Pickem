@@ -104,6 +104,9 @@
                                     <span class="badge badge-warning badge-xs font-bold mr-1">#{{ team_rankings|get_item:p.game.away_team.id }}</span>
                                 {% endif %}
                                 <span class="font-bold text-xs md:text-sm leading-tight">{{ p.game.away_team.name }}</span>
+                                <i class="fas fa-football text-warning text-xs {% if p.game.possession != 'away' or p.game.is_final %}hidden{% endif %}"
+                                   data-possession-icon="away"
+                                   title="Has possession"></i>
                                 {% if p.game.away_team|team_won_game:p.game %}
                                     <i class="fas fa-trophy text-success text-xs" title="Winner"></i>
                                 {% endif %}
@@ -186,6 +189,9 @@
                                     <span class="badge badge-warning badge-xs font-bold mr-1">#{{ team_rankings|get_item:p.game.home_team.id }}</span>
                                 {% endif %}
                                 <span class="font-bold text-xs md:text-sm leading-tight">{{ p.game.home_team.name }}</span>
+                                <i class="fas fa-football text-warning text-xs {% if p.game.possession != 'home' or p.game.is_final %}hidden{% endif %}"
+                                   data-possession-icon="home"
+                                   title="Has possession"></i>
                                 {% if p.game.home_team|team_won_game:p.game %}
                                     <i class="fas fa-trophy text-success text-xs" title="Winner"></i>
                                 {% endif %}
@@ -261,7 +267,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/live-score-updater.js' %}?v=9"></script>
+<script src="{% static 'js/live-score-updater.js' %}?v=10"></script>
 <script>
 /**
  * Initialize Live Score Updates

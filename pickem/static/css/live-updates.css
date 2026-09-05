@@ -52,6 +52,11 @@
     animation: live-pulse 2s ease-in-out infinite;
 }
 
+/* Possession football indicator */
+[data-possession-icon]:not(.hidden) {
+    animation: live-pulse 2s ease-in-out infinite;
+}
+
 /* Status badge transition */
 [data-game-status] {
     transition: all 0.3s ease-in-out;

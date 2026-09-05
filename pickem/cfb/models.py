@@ -472,6 +472,8 @@ class Game(models.Model):
     away_score = models.PositiveIntegerField(null=True, blank=True)
     quarter = models.PositiveIntegerField(null=True, blank=True)
     clock = models.CharField(max_length=16, blank=True)
+    # 'home', 'away', or blank when unknown / not in progress
+    possession = models.CharField(max_length=4, blank=True, default="")
     is_final = models.BooleanField(default=False)
 
     class Meta:

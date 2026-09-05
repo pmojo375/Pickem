@@ -2,15 +2,120 @@ from ..models import Game, Pick, LeagueGame, Season
 import requests
 from django.utils import timezone
 from datetime import timedelta
+from typing import Optional, Dict, Any
 
 
-ESPN_SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard"
+# Prefer site.web — site.api is intermittently blocked / rate-limited
+ESPN_SCOREBOARD_URLS = (
+    "https://site.web.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard",
+    "https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard",
+)
+
+
+def _fetch_scoreboard(params: dict) -> Optional[Dict[str, Any]]:
+    """Fetch ESPN scoreboard JSON, trying web then site.api."""
+    last_error = None
+    for url in ESPN_SCOREBOARD_URLS:
+        try:
+            resp = requests.get(
+                url,
+                params=params,
+                timeout=20,
+                headers={"User-Agent": "Mozilla/5.0"},
+            )
+            resp.raise_for_status()
+            return resp.json()
+        except requests.RequestException as e:
+            last_error = e
+            continue
+    if last_error:
+        raise last_error
+    return None
+
+
+def _possession_side(competition, home_competitor, away_competitor, is_final: bool) -> str:
+    """
+    Map ESPN situation.possession (ESPN team id) to 'home' / 'away' / ''.
+    """
+    if is_final:
+        return ""
+    situation = competition.get("situation") or {}
+    possession_id = situation.get("possession")
+    if possession_id is None or possession_id == "":
+        return ""
+    possession_id = str(possession_id)
+    if str(home_competitor.get("id", "")) == possession_id:
+        return "home"
+    if str(away_competitor.get("id", "")) == possession_id:
+        return "away"
+    return ""
+
+
+def _apply_event_to_game(game: Game, event: dict) -> bool:
+    """Update a Game from an ESPN scoreboard event. Returns True if applied."""
+    status = event.get("status", {})
+    status_type = status.get("type", {})
+    status_state = status_type.get("state", "")
+
+    if status_state not in ["in", "post"]:
+        return False
+
+    competitions = event.get("competitions", [])
+    if not competitions:
+        return False
+
+    competition = competitions[0]
+    competitors = competition.get("competitors", [])
+
+    home_competitor = None
+    away_competitor = None
+    for competitor in competitors:
+        if competitor.get("homeAway") == "home":
+            home_competitor = competitor
+        elif competitor.get("homeAway") == "away":
+            away_competitor = competitor
+
+    if not home_competitor or not away_competitor:
+        return False
+
+    try:
+        home_score = int(home_competitor.get("score", 0))
+        away_score = int(away_competitor.get("score", 0))
+    except (ValueError, TypeError):
+        return False
+
+    is_final = status_state == "post"
+    period = status.get("period")
+    clock = status.get("displayClock", "")
+    possession = _possession_side(competition, home_competitor, away_competitor, is_final)
+
+    game.home_score = home_score
+    game.away_score = away_score
+    game.is_final = is_final
+    game.quarter = period
+    game.clock = clock
+    game.possession = possession
+    game.save(
+        update_fields=[
+            "home_score",
+            "away_score",
+            "is_final",
+            "quarter",
+            "clock",
+            "possession",
+        ]
+    )
+
+    if is_final:
+        grade_picks_for_game(game)
+
+    return True
 
 
 def fetch_single_game_score(game: Game) -> bool:
     """
     Fetch score for a single game from ESPN API.
-    Updates Game record with current score, quarter, clock, and final status.
+    Updates Game record with current score, quarter, clock, possession, and final status.
     
     Returns True if the game was updated, False otherwise.
     """
@@ -18,76 +123,19 @@ def fetch_single_game_score(game: Game) -> bool:
         return False
     
     try:
-        # Get the game date for the API request
-        game_date = game.kickoff.date()
-        params = {"dates": game_date.strftime("%Y%m%d")}
-        
-        resp = requests.get(ESPN_SCOREBOARD_URL, params=params, timeout=20)
-        resp.raise_for_status()
-        data = resp.json()
-        
-        events = data.get("events", [])
-        
-        # Find our game in the events
-        for event in events:
-            event_id = str(event.get("id", ""))
-            if event_id == game.external_id:
-                # Check game status
-                status = event.get("status", {})
-                status_type = status.get("type", {})
-                status_state = status_type.get("state", "")
-                
-                # Only update games that are in progress or completed
-                if status_state not in ["in", "post"]:
-                    return False
-                
-                # Get competitions (usually just one)
-                competitions = event.get("competitions", [])
-                if not competitions:
-                    return False
-                
-                competition = competitions[0]
-                competitors = competition.get("competitors", [])
-                
-                # Find home and away teams and their scores
-                home_competitor = None
-                away_competitor = None
-                
-                for competitor in competitors:
-                    if competitor.get("homeAway") == "home":
-                        home_competitor = competitor
-                    elif competitor.get("homeAway") == "away":
-                        away_competitor = competitor
-                
-                if not home_competitor or not away_competitor:
-                    return False
-                
-                # Extract scores
-                try:
-                    home_score = int(home_competitor.get("score", 0))
-                    away_score = int(away_competitor.get("score", 0))
-                except (ValueError, TypeError):
-                    return False
-                
-                # Extract game clock and period
-                is_final = status_state == "post"
-                period = status.get("period")
-                clock = status.get("displayClock", "")
-                
-                # Update the game
-                game.home_score = home_score
-                game.away_score = away_score
-                game.is_final = is_final
-                game.quarter = period
-                game.clock = clock
-                game.save(update_fields=["home_score", "away_score", "is_final", "quarter", "clock"])
-                
-                # If game is final, grade the picks
-                if is_final:
-                    grade_picks_for_game(game)
-                
-                return True
-        
+        import pytz
+        eastern = pytz.timezone("America/New_York")
+        game_date = game.kickoff.astimezone(eastern).date()
+        params = {"dates": game_date.strftime("%Y%m%d"), "limit": 300}
+
+        data = _fetch_scoreboard(params)
+        if not data:
+            return False
+
+        for event in data.get("events", []):
+            if str(event.get("id", "")) == game.external_id:
+                return _apply_event_to_game(game, event)
+
         return False
         
     except requests.RequestException as e:
@@ -149,7 +197,7 @@ def grade_picks_for_game(game: Game) -> int:
 def fetch_and_store_live_scores() -> int:
     """
     Fetch live scores from ESPN API for games that have started or finished.
-    Updates Game records with current scores, quarter, clock, and final status.
+    Updates Game records with current scores, quarter, clock, possession, and final status.
     """
     import pytz
 
@@ -183,9 +231,10 @@ def fetch_and_store_live_scores() -> int:
     for check_date in sorted(dates_needed):
         try:
             params = {"dates": check_date.strftime("%Y%m%d"), "limit": 300}
-            resp = requests.get(ESPN_SCOREBOARD_URL, params=params, timeout=20)
-            resp.raise_for_status()
-            for event in resp.json().get("events", []):
+            data = _fetch_scoreboard(params)
+            if not data:
+                continue
+            for event in data.get("events", []):
                 event_id = str(event.get("id", ""))
                 if event_id:
                     events_by_espn_id[event_id] = event
@@ -201,57 +250,7 @@ def fetch_and_store_live_scores() -> int:
         if not game.external_id or game.external_id not in events_by_espn_id:
             continue
 
-        event = events_by_espn_id[game.external_id]
-
-        status = event.get("status", {})
-        status_type = status.get("type", {})
-        status_state = status_type.get("state", "")
-
-        # Only update games that are in progress or completed
-        if status_state not in ["in", "post"]:
-            continue
-
-        competitions = event.get("competitions", [])
-        if not competitions:
-            continue
-
-        competition = competitions[0]
-        competitors = competition.get("competitors", [])
-
-        home_competitor = None
-        away_competitor = None
-
-        for competitor in competitors:
-            if competitor.get("homeAway") == "home":
-                home_competitor = competitor
-            elif competitor.get("homeAway") == "away":
-                away_competitor = competitor
-
-        if not home_competitor or not away_competitor:
-            continue
-
-        try:
-            home_score = int(home_competitor.get("score", 0))
-            away_score = int(away_competitor.get("score", 0))
-        except (ValueError, TypeError):
-            continue
-
-        is_final = status_state == "post"
-        period = status.get("period")
-        clock = status.get("displayClock", "")
-
-        game.home_score = home_score
-        game.away_score = away_score
-        game.is_final = is_final
-        game.quarter = period
-        game.clock = clock
-        game.save(update_fields=["home_score", "away_score", "is_final", "quarter", "clock"])
-
-        if is_final:
-            grade_picks_for_game(game)
-
-        updated += 1
+        if _apply_event_to_game(game, events_by_espn_id[game.external_id]):
+            updated += 1
 
     return updated
-
-
