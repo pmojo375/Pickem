@@ -17,7 +17,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+from pickem.admin_logs_viewer import logs_view as admin_logs_view
+
 urlpatterns = [
+    # Hardened viewer (package crashes on unmatched rows when filtering by level/time)
+    path('admin/logs/', admin_logs_view, name='logs_view'),
     path('admin/', admin.site.urls),
     path('accounts/', include('allauth.urls')),
     path('', include('cfb.urls')),

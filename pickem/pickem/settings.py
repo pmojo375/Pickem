@@ -61,6 +61,7 @@ CSRF_TRUSTED_ORIGINS = [
 # Application definition
 
 INSTALLED_APPS = [
+    'django_admin_logs_viewer',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -100,14 +101,34 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'cfb.context_processors.league_permissions',
+                'django_admin_logs_viewer.context_processors.logs_url',
             ],
         },
     },
 ]
 
-LBASE_DIR = Path(__file__).resolve().parent.parent
 LOG_DIR = Path(os.getenv("DJANGO_LOG_DIR", BASE_DIR / "logs"))
 LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+# django-admin-logs-viewer — staff UI over LOG_DIR files
+LOGS_PARSERS = {
+    "pickem": {
+        # Meta ([user=… req=…]) is optional so older / alternate formats still parse.
+        "pattern": (
+            r'^\[(?P<time>[^\]]+)\]\s+(?P<level>\w+)\s+'
+            r'(?P<source>\S+)'
+            r'(?:\s+\[(?P<meta>[^\]]+)\])?'
+            r'\s+-\s+(?P<message>.*)$'
+        ),
+        "column_names": ["Time", "Level", "Source", "Meta", "Message"],
+        "column_types": ["TIME", "LEVEL", "OTHER", "OTHER", "OTHER"],
+        "datetime_format": "%Y-%m-%d %H:%M:%S,%f",
+    },
+}
+LOGS_DIRS = [
+    {"path": str(LOG_DIR), "parser": "pickem"},
+]
+LOGS_ROWS_PER_PAGE = 100
 
 LOGGING = {
     "version": 1,
