@@ -607,14 +607,14 @@
             
             gameInputs.forEach(input => {
                 const gameId = input.value;
+                // Include started/locked games: their inputs are disabled but picks are already saved
                 const pickedTeam = document.querySelector(`input[name="game_${gameId}_picked_team"]:checked`);
                 
-                if (pickedTeam && !pickedTeam.disabled) {
+                if (pickedTeam) {
                     picksMade++;
                     
-                    // Check if this is a key pick
                     const keyPickCheckbox = document.querySelector(`input[name="game_${gameId}_is_key_pick"]`);
-                    if (keyPickCheckbox && keyPickCheckbox.checked && !keyPickCheckbox.disabled) {
+                    if (keyPickCheckbox && keyPickCheckbox.checked) {
                         keyPicksMade++;
                     }
                 }
