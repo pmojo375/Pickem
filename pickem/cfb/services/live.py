@@ -1,4 +1,4 @@
-from ..models import Game, Pick, LeagueGame, Season
+from ..models import Game, Season
 import requests
 from django.utils import timezone
 from datetime import timedelta
@@ -113,9 +113,8 @@ def _apply_event_to_game(game: Game, event: dict) -> bool:
             "possession",
         ]
     )
-
-    if is_final:
-        grade_picks_for_game(game)
+    # Grading + MemberWeek updates happen in the Game post_save signal
+    # (cfb.signals.game_finalized) when the game newly becomes final.
 
     return True
 
@@ -153,53 +152,14 @@ def fetch_single_game_score(game: Game) -> bool:
 
 def grade_picks_for_game(game: Game) -> int:
     """
-    Grade all picks for a completed game based on spread.
-    Returns the number of picks graded.
+    Grade picks and refresh MemberWeek/MemberSeason for a completed game.
+
+    Delegates to scoring.update_member_week_for_game so ATS / force_hooks /
+    push handling stays in one place.
     """
-    if not game.is_final:
-        return 0
-    
-    if game.home_score is None or game.away_score is None:
-        return 0
-    
-    graded_count = 0
-    
-    # Get all league games for this game
-    league_games = LeagueGame.objects.filter(game=game, is_active=True)
-    
-    for league_game in league_games:
-        # Skip if no locked spread
-        if league_game.locked_home_spread is None:
-            continue
-        
-        # Calculate the actual spread
-        # Home spread is the line for the home team
-        # Negative spread means home team is favored
-        # e.g., home_spread = -7 means home needs to win by more than 7 to cover
-        # e.g., home_spread = +3 means away is favored, home can lose by up to 3 and still cover
-        actual_margin = game.home_score - game.away_score
-        spread = float(league_game.locked_home_spread)
-        
-        # Determine which team covered the spread
-        # actual_margin > -spread means home covered
-        # Example: Home -7, wins by 10: margin=10 > -(-7)=7 → TRUE, home covers
-        # Example: Home -7, wins by 5: margin=5 > -(-7)=7 → FALSE, away covers
-        # Example: Home +3, loses by 2: margin=-2 > -(3)=-3 → TRUE, home covers
-        home_covered = actual_margin > -spread
-        
-        # Get all picks for this game in this league
-        picks = Pick.objects.filter(game=game, league=league_game.league, is_correct__isnull=True)
-        
-        for pick in picks:
-            if pick.picked_team_id == game.home_team_id:
-                pick.is_correct = home_covered
-            else:
-                pick.is_correct = not home_covered
-            
-            pick.save(update_fields=['is_correct'])
-            graded_count += 1
-    
-    return graded_count
+    from .scoring import update_member_week_for_game
+
+    return update_member_week_for_game(game)
 
 
 def fetch_and_store_live_scores() -> int:

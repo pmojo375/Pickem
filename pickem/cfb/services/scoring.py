@@ -22,7 +22,12 @@ def round_to_half(value: Decimal) -> Decimal:
     return (value * 2).quantize(Decimal('1')) / 2
 
 
-def is_pick_correct(pick: Pick, game: Game, league_rules: LeagueRules) -> Optional[bool]:
+def is_pick_correct(
+    pick: Pick,
+    game: Game,
+    league_rules: LeagueRules,
+    league_game: Optional[LeagueGame] = None,
+) -> Optional[bool]:
     """
     Determine if a pick is correct based on scoring rules.
     Returns True if correct, False if incorrect, None if it's a tie (no scoring).
@@ -31,6 +36,7 @@ def is_pick_correct(pick: Pick, game: Game, league_rules: LeagueRules) -> Option
         pick: The Pick object to grade
         game: The finished Game object
         league_rules: The LeagueRules for the league
+        league_game: Optional LeagueGame (avoids an extra query when already loaded)
     
     Returns:
         True/False for win/loss, None for tie
@@ -38,20 +44,20 @@ def is_pick_correct(pick: Pick, game: Game, league_rules: LeagueRules) -> Option
     if not game.is_final or game.home_score is None or game.away_score is None:
         return None
     
-    # Get the LeagueGame to check locked spread
-    try:
-        league_game = LeagueGame.objects.get(league=pick.league, game=game)
-    except LeagueGame.DoesNotExist:
-        return None
+    if league_game is None:
+        try:
+            league_game = LeagueGame.objects.get(league=pick.league, game=game)
+        except LeagueGame.DoesNotExist:
+            return None
     
-    actual_margin = game.home_score - game.away_score
+    actual_margin = Decimal(game.home_score - game.away_score)
     
     if league_rules.against_the_spread_enabled:
         # Scoring is based on ATS
         locked_spread = league_game.locked_home_spread
         if locked_spread is None:
             logger.warning(
-                "No locked spread for league_gawme %s (league=%s, game=%s); treating pick as tie.",
+                "No locked spread for league_game %s (league=%s, game=%s); treating pick as tie.",
                 league_game.id,
                 league_game.league_id,
                 league_game.game_id,
@@ -73,12 +79,12 @@ def is_pick_correct(pick: Pick, game: Game, league_rules: LeagueRules) -> Option
         if league_rules.force_hooks:
             spread = round_to_half(spread)
         
-        # Determine home team cover
-        home_covered = actual_margin > -spread
-        
         # Check for tie (no hook enforcement and exact spread match)
         if not league_rules.force_hooks and actual_margin == -spread:
             return None  # Tie
+
+        # Determine home team cover
+        home_covered = actual_margin > -spread
         
         # Determine if pick was correct
         if pick.picked_team_id == game.home_team_id:
@@ -93,19 +99,19 @@ def is_pick_correct(pick: Pick, game: Game, league_rules: LeagueRules) -> Option
             return actual_margin < 0
 
 
-def calculate_pick_points(pick: Pick, is_correct: bool, league_rules: LeagueRules) -> int:
+def calculate_pick_points(pick: Pick, is_correct: Optional[bool], league_rules: LeagueRules) -> int:
     """
     Calculate points earned for a pick.
     
     Args:
         pick: The Pick object
-        is_correct: Whether the pick was correct
+        is_correct: Whether the pick was correct (None = push/ungraded → 0 points)
         league_rules: The LeagueRules for the league
     
     Returns:
-        Points earned (0 if incorrect)
+        Points earned (0 if incorrect or push)
     """
-    if not is_correct:
+    if is_correct is not True:
         return 0
     
     points = league_rules.points_per_correct_pick
@@ -336,8 +342,11 @@ def update_member_week_for_game(game: Game) -> int:
         ).select_related('user')
         
         for pick in picks:
-            # Grade the pick
-            is_correct = is_pick_correct(pick, game, league_rules)
+            # Grade the pick (always overwrite so spread changes regrade cleanly)
+            is_correct = is_pick_correct(pick, game, league_rules, league_game=league_game)
+            if pick.is_correct != is_correct:
+                pick.is_correct = is_correct
+                pick.save(update_fields=['is_correct'])
             
             # Get or create MemberWeek
             member_week, created = MemberWeek.objects.get_or_create(
@@ -346,17 +355,13 @@ def update_member_week_for_game(game: Game) -> int:
                 user=pick.user
             )
             
-            # Update pick in database if not already graded
-            if pick.is_correct is None:
-                pick.is_correct = is_correct
-                pick.save(update_fields=['is_correct'])
-            
-            # Recalculate member week stats
+            # Stats from all picks on final games this week.
+            # is_correct=None on a final game means push/tie (not "ungraded").
             user_picks = Pick.objects.filter(
                 league=league,
                 user=pick.user,
                 game__week=game.week,
-                is_correct__isnull=False
+                game__is_final=True,
             )
             
             correct_count = user_picks.filter(is_correct=True).count()
@@ -641,12 +646,12 @@ def recalculate_all_member_stats(season) -> dict:
                         points=0
                     )
                     
-                    # Get all picks for this user/week/league that are graded
+                    # Picks on final games this week (None is_correct = push/tie)
                     week_picks = Pick.objects.filter(
                         league=league,
                         user=member.user,
                         game__week=week,
-                        is_correct__isnull=False
+                        game__is_final=True,
                     )
                     
                     if week_picks.exists():

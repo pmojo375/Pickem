@@ -131,18 +131,20 @@ def update_team_records(season_year, dry_run=False):
         )
         return result
 
-    logger.info('Resetting all team W-L and ATS records to 0')
-    reset_count = teams.update(
-        record_wins=0,
-        record_losses=0,
-        ats_wins=0,
-        ats_losses=0,
-        ats_pushes=0,
-    )
-    logger.info(f'Reset {reset_count} team records')
-
-    logger.info('Updating team records with calculated W-L and ATS')
+    # Reset + write must share one transaction so concurrent workers cannot
+    # interleave resets and leave teams partially updated / deadlocked.
     with transaction.atomic():
+        logger.info('Resetting all team W-L and ATS records to 0')
+        reset_count = teams.update(
+            record_wins=0,
+            record_losses=0,
+            ats_wins=0,
+            ats_losses=0,
+            ats_pushes=0,
+        )
+        logger.info(f'Reset {reset_count} team records')
+
+        logger.info('Updating team records with calculated W-L and ATS')
         for team_id in updated_teams:
             Team.objects.filter(id=team_id).update(
                 record_wins=wins_to_add.get(team_id, 0),

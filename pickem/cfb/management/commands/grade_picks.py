@@ -27,6 +27,11 @@ class Command(BaseCommand):
             help='Specific week number to grade (requires --season)',
         )
         parser.add_argument(
+            '--force',
+            action='store_true',
+            help='Regrade even when picks already have is_correct set (e.g. after locked-spread changes)',
+        )
+        parser.add_argument(
             '--dry-run',
             action='store_true',
             help='Show what would be graded without making changes',
@@ -35,6 +40,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         season_year = options.get('season')
         week_num = options.get('week')
+        force = options['force']
         dry_run = options['dry_run']
 
         # Build query
@@ -62,6 +68,9 @@ class Command(BaseCommand):
         else:
             self.stdout.write(self.style.SUCCESS('Grading picks for all final games'))
 
+        if force:
+            self.stdout.write(self.style.WARNING('Force mode: regrading already-graded picks'))
+
         final_games = games_query.select_related('home_team', 'away_team', 'week')
         game_count = final_games.count()
 
@@ -71,41 +80,43 @@ class Command(BaseCommand):
 
         self.stdout.write(f'\nFound {game_count} final games to process\n')
 
-        picked_count = 0
         graded_count = 0
         skipped_count = 0
         error_count = 0
 
         for game in final_games:
+            game_str = f'{game.away_team.name} @ {game.home_team.name}'
             try:
-                game_str = f'{game.away_team.name} @ {game.home_team.name}'
-                
+                pick_qs = game.picks.all()
+                if not force:
+                    pick_qs = pick_qs.filter(is_correct__isnull=True)
+                pick_count = pick_qs.count()
+
+                if pick_count == 0 and not force:
+                    skipped_count += 1
+                    continue
+
+                # With --force, still skip games that have no picks at all
+                if force and not game.picks.exists():
+                    skipped_count += 1
+                    continue
+
                 if dry_run:
-                    # Just count picks without grading
-                    pick_count = game.picks.filter(is_correct__isnull=True).count()
-                    if pick_count > 0:
-                        self.stdout.write(
-                            self.style.WARNING(
-                                f'[DRY RUN] Would grade {pick_count} picks for {game_str}'
-                            )
+                    label = 'regrade' if force else 'grade'
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f'[DRY RUN] Would {label} picks for {game_str} '
+                            f'({game.picks.count()} total picks)'
                         )
-                        picked_count += pick_count
-                    else:
-                        skipped_count += 1
-                else:
-                    # Grade picks for this game
-                    ungraded_picks = game.picks.filter(is_correct__isnull=True)
-                    if ungraded_picks.exists():
-                        # Call the update function
-                        result = update_member_week_for_game(game)
-                        graded_count += result
-                        picked_count += ungraded_picks.count()
-                        
-                        self.stdout.write(
-                            self.style.SUCCESS(f'Graded {result} picks for {game_str}')
-                        )
-                    else:
-                        skipped_count += 1
+                    )
+                    graded_count += 1
+                    continue
+
+                result = update_member_week_for_game(game)
+                graded_count += result
+                self.stdout.write(
+                    self.style.SUCCESS(f'Graded {result} pick updates for {game_str}')
+                )
 
             except Exception as e:
                 self.stdout.write(
@@ -117,8 +128,8 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f'\n=== Summary ===\n'
-                f'Picks graded: {graded_count}\n'
-                f'Games skipped (already graded): {skipped_count}\n'
+                f'Pick/member updates: {graded_count}\n'
+                f'Games skipped: {skipped_count}\n'
                 f'Errors: {error_count}'
             )
         )

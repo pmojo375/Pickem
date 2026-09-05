@@ -15,7 +15,7 @@ from django.utils import timezone
 
 from .models import Game, Team, Season, Location, Week, Ranking, GameSpread, League, LeagueRules, LeagueGame
 from .services.cfbd_api import get_cfbd_client
-from .services.live import grade_picks_for_game, fetch_and_store_live_scores, fetch_single_game_score
+from .services.live import fetch_and_store_live_scores, fetch_single_game_score
 from .services.spreads import get_spread_to_lock
 
 logger = logging.getLogger(__name__)
@@ -1087,43 +1087,119 @@ def initialize_season(season_year: int, force: bool = False):
         logger.error(f"Error initializing season {season_year}: {e}", exc_info=True)
 
 
-@shared_task(name='cfb.tasks.update_team_records_async', rate_limit='1/s')
+def _team_records_lock_key(season_year: int) -> str:
+    return f'team-records-lock:{season_year}'
+
+
+def _team_records_pending_key(season_year: int) -> str:
+    return f'team-records-pending:{season_year}'
+
+
+def _team_records_queued_key(season_year: int) -> str:
+    return f'team-records-queued:{season_year}'
+
+
+def queue_team_records_update(season_year: int, countdown: int = 10):
+    """
+    Debounce team-record rebuilds so a burst of final games only schedules
+    one Celery run (with a short delay to coalesce more finals).
+    """
+    from django.core.cache import cache
+
+    cache.set(_team_records_pending_key(season_year), True, timeout=300)
+    if cache.add(_team_records_queued_key(season_year), True, timeout=countdown + 5):
+        update_team_records_async.apply_async(args=[season_year], countdown=countdown)
+        logger.info(
+            "Queued debounced team records update for season %s (countdown=%ss)",
+            season_year,
+            countdown,
+        )
+    else:
+        logger.debug(
+            "Team records update already queued for season %s; marked pending",
+            season_year,
+        )
+
+
+@shared_task(name='cfb.tasks.update_team_records_async')
 def update_team_records_async(season_year: int):
     """
     Asynchronously update team records for a given season.
-    This task is called when games become final to keep team records up to date.
-    
-    Args:
-        season_year (int): The year of the season to update records for
+
+    Uses a cache lock so only one worker rebuilds a season at a time. If more
+    games finalize during the run, a follow-up pass runs before releasing.
     """
-    try:
-        from cfb.services.records import update_team_records
-        
-        logger.info(f"Starting team records update for season {season_year}")
-        result = update_team_records(season_year)
-        
+    from django.core.cache import cache
+    from cfb.services.records import update_team_records
+
+    lock_key = _team_records_lock_key(season_year)
+    pending_key = _team_records_pending_key(season_year)
+    queued_key = _team_records_queued_key(season_year)
+
+    # Allow a new debounce window as soon as we start executing.
+    cache.delete(queued_key)
+
+    if not cache.add(lock_key, True, timeout=180):
+        # Another worker holds the lock; ensure a follow-up happens.
+        cache.set(pending_key, True, timeout=300)
         logger.info(
-            f"Team records update complete for season {season_year}: "
-            f"{result['games_processed']} W-L games, "
-            f"{result.get('ats_games_processed', 0)} ATS games, "
-            f"{result['teams_updated']} teams updated"
+            "Team records update for season %s already in progress; marked pending",
+            season_year,
         )
-        
         return {
             'success': True,
             'season_year': season_year,
-            'games_processed': result['games_processed'],
-            'ats_games_processed': result.get('ats_games_processed', 0),
-            'teams_updated': result['teams_updated']
+            'skipped': 'locked',
         }
-        
+
+    try:
+        last_result = None
+        passes = 0
+        while True:
+            cache.delete(pending_key)
+            passes += 1
+            logger.info(
+                "Starting team records update for season %s (pass %s)",
+                season_year,
+                passes,
+            )
+            last_result = update_team_records(season_year)
+            logger.info(
+                "Team records update complete for season %s: "
+                "%s W-L games, %s ATS games, %s teams updated",
+                season_year,
+                last_result['games_processed'],
+                last_result.get('ats_games_processed', 0),
+                last_result['teams_updated'],
+            )
+            if not cache.get(pending_key):
+                break
+            logger.info(
+                "Pending team records refresh for season %s; running another pass",
+                season_year,
+            )
+
+        return {
+            'success': True,
+            'season_year': season_year,
+            'games_processed': last_result['games_processed'],
+            'ats_games_processed': last_result.get('ats_games_processed', 0),
+            'teams_updated': last_result['teams_updated'],
+            'passes': passes,
+        }
+
     except Exception as e:
         logger.error(f"Error updating team records for season {season_year}: {e}", exc_info=True)
         return {
             'success': False,
             'season_year': season_year,
-            'error': str(e)
+            'error': str(e),
         }
+    finally:
+        cache.delete(lock_key)
+        # If something set pending after our last check, schedule one more run.
+        if cache.get(pending_key):
+            queue_team_records_update(season_year, countdown=5)
 
 
 @shared_task(bind=True, name='cfb.tasks.update_team_stats', max_retries=3, default_retry_delay=300)
