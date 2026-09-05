@@ -70,7 +70,7 @@ def _serialize_game(game: Game, include_cached_data: bool = True) -> Dict[str, A
 
 
 @require_GET
-@cache_page(30)  # Cache for 30 seconds
+@cache_page(5)  # Short cache so live clocks aren't stuck behind CDN/page cache
 def games_list(request):
     """
     Public API endpoint to list games with optional filtering.

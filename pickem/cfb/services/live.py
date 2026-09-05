@@ -151,6 +151,8 @@ def fetch_and_store_live_scores() -> int:
     Fetch live scores from ESPN API for games that have started or finished.
     Updates Game records with current scores, quarter, clock, and final status.
     """
+    import pytz
+
     updated = 0
     
     # Get all games from the current week that aren't finalized yet or need checking
@@ -158,105 +160,98 @@ def fetch_and_store_live_scores() -> int:
     start_of_week = now - timedelta(days=7)
     
     # Get all games in current window for the active season
-    games = Game.objects.filter(
+    games_qs = Game.objects.filter(
         kickoff__gte=start_of_week,
         kickoff__lte=now + timedelta(days=1)
     ).select_related('home_team', 'away_team')
     active_season = Season.objects.filter(is_active=True).first()
     if active_season:
-        games = games.filter(season=active_season)
-    
-    if not games.exists():
+        games_qs = games_qs.filter(season=active_season)
+
+    games = list(games_qs)
+    if not games:
         return 0
-    
-    # Fetch scores from ESPN for current date range
-    # ESPN API works best with date parameters
-    try:
-        # Fetch scoreboard data for a range of days
-        events_by_espn_id = {}
-        
-        # Try fetching for the last 7 days
-        for days_ago in range(7):
-            check_date = (now - timedelta(days=days_ago)).date()
-            params = {"dates": check_date.strftime("%Y%m%d")}
-            
+
+    # ESPN scoreboard dates are US/Eastern calendar days, not UTC.
+    eastern = pytz.timezone("America/New_York")
+    dates_needed = {now.astimezone(eastern).date()}
+    for game in games:
+        if game.kickoff:
+            dates_needed.add(game.kickoff.astimezone(eastern).date())
+
+    events_by_espn_id = {}
+    for check_date in sorted(dates_needed):
+        try:
+            params = {"dates": check_date.strftime("%Y%m%d"), "limit": 300}
             resp = requests.get(ESPN_SCOREBOARD_URL, params=params, timeout=20)
             resp.raise_for_status()
-            data = resp.json()
-            
-            events = data.get("events", [])
-            for event in events:
+            for event in resp.json().get("events", []):
                 event_id = str(event.get("id", ""))
                 if event_id:
                     events_by_espn_id[event_id] = event
-        
-        # Now update our games with the fetched data
-        for game in games:
-            if not game.external_id or game.external_id not in events_by_espn_id:
-                continue
-            
-            event = events_by_espn_id[game.external_id]
-            
-            # Check game status
-            status = event.get("status", {})
-            status_type = status.get("type", {})
-            status_state = status_type.get("state", "")
-            
-            # Only update games that are in progress or completed
-            if status_state not in ["in", "post"]:
-                continue
-            
-            # Get competitions (usually just one)
-            competitions = event.get("competitions", [])
-            if not competitions:
-                continue
-            
-            competition = competitions[0]
-            competitors = competition.get("competitors", [])
-            
-            # Find home and away teams and their scores
-            home_competitor = None
-            away_competitor = None
-            
-            for competitor in competitors:
-                if competitor.get("homeAway") == "home":
-                    home_competitor = competitor
-                elif competitor.get("homeAway") == "away":
-                    away_competitor = competitor
-            
-            if not home_competitor or not away_competitor:
-                continue
-            
-            # Extract scores
-            try:
-                home_score = int(home_competitor.get("score", 0))
-                away_score = int(away_competitor.get("score", 0))
-            except (ValueError, TypeError):
-                continue
-            
-            # Extract game clock and period
-            is_final = status_state == "post"
-            period = status.get("period")
-            clock = status.get("displayClock", "")
-            
-            # Update the game
-            game.home_score = home_score
-            game.away_score = away_score
-            game.is_final = is_final
-            game.quarter = period
-            game.clock = clock
-            game.save(update_fields=["home_score", "away_score", "is_final", "quarter", "clock"])
-            
-            # If game is final, grade the picks
-            if is_final:
-                grade_picks_for_game(game)
-            
-            updated += 1
-    
-    except requests.RequestException as e:
-        print(f"Error fetching ESPN scores: {e}")
-        return updated
-    
+        except requests.RequestException as e:
+            # Don't abort the whole poll if one day fails — other dates can still update.
+            print(f"Error fetching ESPN scores for {check_date}: {e}")
+            continue
+
+    if not events_by_espn_id:
+        return 0
+
+    for game in games:
+        if not game.external_id or game.external_id not in events_by_espn_id:
+            continue
+
+        event = events_by_espn_id[game.external_id]
+
+        status = event.get("status", {})
+        status_type = status.get("type", {})
+        status_state = status_type.get("state", "")
+
+        # Only update games that are in progress or completed
+        if status_state not in ["in", "post"]:
+            continue
+
+        competitions = event.get("competitions", [])
+        if not competitions:
+            continue
+
+        competition = competitions[0]
+        competitors = competition.get("competitors", [])
+
+        home_competitor = None
+        away_competitor = None
+
+        for competitor in competitors:
+            if competitor.get("homeAway") == "home":
+                home_competitor = competitor
+            elif competitor.get("homeAway") == "away":
+                away_competitor = competitor
+
+        if not home_competitor or not away_competitor:
+            continue
+
+        try:
+            home_score = int(home_competitor.get("score", 0))
+            away_score = int(away_competitor.get("score", 0))
+        except (ValueError, TypeError):
+            continue
+
+        is_final = status_state == "post"
+        period = status.get("period")
+        clock = status.get("displayClock", "")
+
+        game.home_score = home_score
+        game.away_score = away_score
+        game.is_final = is_final
+        game.quarter = period
+        game.clock = clock
+        game.save(update_fields=["home_score", "away_score", "is_final", "quarter", "clock"])
+
+        if is_final:
+            grade_picks_for_game(game)
+
+        updated += 1
+
     return updated
 
 

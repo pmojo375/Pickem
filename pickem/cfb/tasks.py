@@ -68,9 +68,6 @@ def poll_espn_scores(self):
                 logger.debug(f"Skipping poll, last poll was {time_since_poll:.1f}s ago")
                 return
 
-        # Record this poll attempt
-        cache.set(settings.REDIS_KEY_LAST_POLL, timezone.now().timestamp(), timeout=300)
-
         logger.info("Starting ESPN live score polling")
         
         # Check if there are active games
@@ -81,7 +78,6 @@ def poll_espn_scores(self):
             return
 
         start_date = now - timedelta(days=settings.GAME_CHECK_WINDOW_PAST)
-        end_date = now + timedelta(days=settings.GAME_CHECK_WINDOW_FUTURE)
 
         active_games = Game.objects.filter(
             season=active_season,
@@ -98,6 +94,9 @@ def poll_espn_scores(self):
 
         # Fetch and store live scores
         updated_count = fetch_and_store_live_scores()
+
+        # Only stamp success so a failed ESPN pull can retry on the next beat
+        cache.set(settings.REDIS_KEY_LAST_POLL, timezone.now().timestamp(), timeout=300)
         
         logger.info(f"ESPN polling complete: {updated_count} games updated")
 

@@ -43,7 +43,8 @@ app.conf.beat_schedule = {
     'poll-espn-scores': {
         'task': 'cfb.tasks.poll_espn_scores',
         'schedule': 60.0,  # Run every minute by default, task will self-regulate
-        'options': {'expires': 55},  # Expire if not executed within 55 seconds
+        # Keep expiry above the schedule so a briefly busy worker doesn't drop polls
+        'options': {'expires': 120},
     },
     'adjust-polling-interval': {
         'task': 'cfb.tasks.adjust_polling_interval',
