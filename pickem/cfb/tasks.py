@@ -1104,7 +1104,8 @@ def update_team_records_async(season_year: int):
         
         logger.info(
             f"Team records update complete for season {season_year}: "
-            f"{result['games_processed']} games processed, "
+            f"{result['games_processed']} W-L games, "
+            f"{result.get('ats_games_processed', 0)} ATS games, "
             f"{result['teams_updated']} teams updated"
         )
         
@@ -1112,6 +1113,7 @@ def update_team_records_async(season_year: int):
             'success': True,
             'season_year': season_year,
             'games_processed': result['games_processed'],
+            'ats_games_processed': result.get('ats_games_processed', 0),
             'teams_updated': result['teams_updated']
         }
         

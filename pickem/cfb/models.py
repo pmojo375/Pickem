@@ -422,6 +422,9 @@ class Team(models.Model):
     # Record tracking
     record_wins = models.PositiveIntegerField(default=0)
     record_losses = models.PositiveIntegerField(default=0)
+    ats_wins = models.PositiveIntegerField(default=0)
+    ats_losses = models.PositiveIntegerField(default=0)
+    ats_pushes = models.PositiveIntegerField(default=0)
 
     class Meta:
         unique_together = ("season", "name")
@@ -695,3 +698,48 @@ class TeamStat(models.Model):
         
     def __str__(self) -> str:
         return f"{self.team.name} - {self.stat}: {self.value}"
+
+
+class UserProfile(models.Model):
+    """Per-user settings that don't belong on Django's auth User."""
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="profile",
+    )
+    secondary_email = models.EmailField(
+        blank=True,
+        default="",
+        help_text="Optional. Reminders, invites, and opt-in emails are also sent here.",
+    )
+
+    class Meta:
+        verbose_name = "User Profile"
+        verbose_name_plural = "User Profiles"
+
+    def __str__(self) -> str:
+        return f"Profile for {self.user.username}"
+
+
+def user_notification_emails(user) -> list[str]:
+    """Primary account email plus optional secondary, de-duplicated."""
+    emails: list[str] = []
+    seen: set[str] = set()
+
+    def add(raw: str | None) -> None:
+        email = (raw or "").strip()
+        if not email:
+            return
+        key = email.lower()
+        if key in seen:
+            return
+        seen.add(key)
+        emails.append(email)
+
+    add(getattr(user, "email", None))
+    try:
+        add(user.profile.secondary_email)
+    except UserProfile.DoesNotExist:
+        pass
+    return emails

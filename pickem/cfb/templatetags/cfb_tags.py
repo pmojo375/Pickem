@@ -426,10 +426,11 @@ def get_team_stats_organized(team_stats, team_id):
 @register.simple_tag
 def team_record_display(team_records, team_id, show_zero=True):
     """
-    Display team record in a nice format (e.g., "8-2" or "0-0").
+    Display team record in a nice format (e.g., "8-2" or "8-2 · ATS 5-3").
 
     Args:
-        team_records: Dictionary mapping team_id to (wins, losses) tuples
+        team_records: Dict mapping team_id to (wins, losses) or
+            (wins, losses, ats_wins, ats_losses, ats_pushes)
         team_id: The team ID to get record for
         show_zero: Whether to show "0-0" for teams with no games or hide it
 
@@ -440,17 +441,27 @@ def team_record_display(team_records, team_id, show_zero=True):
         return ""
 
     try:
-        wins, losses = team_records[team_id]
+        record = team_records[team_id]
+        wins, losses = record[0], record[1]
+        ats_wins = record[2] if len(record) > 2 else 0
+        ats_losses = record[3] if len(record) > 3 else 0
+        ats_pushes = record[4] if len(record) > 4 else 0
 
-        # Ensure wins and losses are valid numbers
-        if not isinstance(wins, int) or not isinstance(losses, int):
+        if not all(isinstance(v, int) for v in (wins, losses, ats_wins, ats_losses, ats_pushes)):
             return ""
 
         # Don't show record if both are zero and show_zero is False
         if not show_zero and wins == 0 and losses == 0:
             return ""
 
-        return mark_safe(f'<span class="text-xs text-base-content/60">{wins}-{losses}</span>')
+        text = f"{wins}-{losses}"
+        if ats_wins or ats_losses or ats_pushes:
+            ats_text = f"{ats_wins}-{ats_losses}"
+            if ats_pushes:
+                ats_text = f"{ats_text}-{ats_pushes}"
+            text = f"{text} · ATS {ats_text}"
+
+        return mark_safe(f'<span class="text-xs text-base-content/60">{text}</span>')
 
     except (ValueError, TypeError, IndexError):
         # Handle any unexpected data format issues

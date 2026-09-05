@@ -29,6 +29,11 @@ def _serialize_team(team) -> Dict[str, Any]:
         'conference': team.conference,
         'primary_color': team.primary_color,
         'record': f"{team.record_wins}-{team.record_losses}",
+        'ats_record': (
+            f"{team.ats_wins}-{team.ats_losses}-{team.ats_pushes}"
+            if team.ats_pushes
+            else f"{team.ats_wins}-{team.ats_losses}"
+        ),
     }
 
 

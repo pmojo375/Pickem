@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = 'Update team win/loss records based on completed games for a given season'
+    help = 'Update team win/loss and ATS records based on completed games for a given season'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -83,23 +83,31 @@ class Command(BaseCommand):
             
             if dry_run:
                 self.stdout.write(self.style.SUCCESS(f'\nDRY RUN Results:'))
-                self.stdout.write(f'  Games processed: {result["games_processed"]}')
+                self.stdout.write(f'  W-L games processed: {result["games_processed"]}')
+                self.stdout.write(f'  ATS games processed: {result["ats_games_processed"]}')
                 self.stdout.write(f'  Teams to update: {result["teams_updated"]}')
 
                 # Show what records would be updated
-                if result["wins_to_add"] or result["losses_to_add"]:
+                if result["updated_teams"]:
                     self.stdout.write(self.style.SUCCESS('\nRecord changes that would be made:'))
                     for team_id in sorted(result["updated_teams"]):
                         team = teams.get(id=team_id)
                         new_wins = result["wins_to_add"].get(team_id, 0)
                         new_losses = result["losses_to_add"].get(team_id, 0)
-                        self.stdout.write(f'  {team.name}: 0-0 → {new_wins}-{new_losses}')
+                        ats_w = result["ats_wins_to_add"].get(team_id, 0)
+                        ats_l = result["ats_losses_to_add"].get(team_id, 0)
+                        ats_p = result["ats_pushes_to_add"].get(team_id, 0)
+                        ats = f'{ats_w}-{ats_l}' + (f'-{ats_p}' if ats_p else '')
+                        self.stdout.write(
+                            f'  {team.name}: 0-0 → {new_wins}-{new_losses} (ATS {ats})'
+                        )
                 return
 
             self.stdout.write(
                 self.style.SUCCESS(f'\n✓ Record update complete!')
             )
-            self.stdout.write(f'  Games processed: {result["games_processed"]}')
+            self.stdout.write(f'  W-L games processed: {result["games_processed"]}')
+            self.stdout.write(f'  ATS games processed: {result["ats_games_processed"]}')
             self.stdout.write(f'  Teams updated: {result["teams_updated"]}')
 
             # Show some sample records
@@ -107,7 +115,12 @@ class Command(BaseCommand):
             if sample_teams:
                 self.stdout.write(self.style.SUCCESS('\nTop 10 teams by wins:'))
                 for team in sample_teams:
-                    self.stdout.write(f'  {team.name}: {team.record_wins}-{team.record_losses}')
+                    ats = f'{team.ats_wins}-{team.ats_losses}'
+                    if team.ats_pushes:
+                        ats = f'{ats}-{team.ats_pushes}'
+                    self.stdout.write(
+                        f'  {team.name}: {team.record_wins}-{team.record_losses} (ATS {ats})'
+                    )
 
         except Exception as e:
             raise CommandError(f'Error updating team records: {str(e)}')

@@ -499,9 +499,15 @@ def picks_view(request):
                 id__in=game_teams
             )
 
-            # Create a dict mapping team_id to (wins, losses) tuple
+            # (wins, losses, ats_wins, ats_losses, ats_pushes) for display tag
             team_records = {
-                team.id: (team.record_wins, team.record_losses)
+                team.id: (
+                    team.record_wins,
+                    team.record_losses,
+                    team.ats_wins,
+                    team.ats_losses,
+                    team.ats_pushes,
+                )
                 for team in teams_with_records
             }
 
