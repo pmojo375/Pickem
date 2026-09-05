@@ -79,7 +79,8 @@ class Command(BaseCommand):
 
         self.stdout.write(
             f"Week {week.number} ({week.season_type}) {week.season.year} | "
-            f"hours_before={settings.PICK_REMINDER_HOURS_BEFORE_KICKOFF} | "
+            f"before_kickoff={settings.PICK_REMINDER_BEFORE_KICKOFF} "
+            f"({settings.PICK_REMINDER_HOURS_BEFORE_KICKOFF}h) | "
             f"now={timezone.localtime()} | "
             f"dry_run={dry_run} force={force}"
         )

@@ -278,7 +278,9 @@
                                 Pick Reminder Emails
                             </span>
                             <p class="text-sm text-base-content/60">
-                                Email members who haven't finished their picks or key picks before the week's first kickoff
+                                Email members who haven't finished their picks or key picks
+                                {{ pick_reminder_hours_before_kickoff }} hour{{ pick_reminder_hours_before_kickoff|pluralize }}
+                                before the week's first kickoff
                             </p>
                         </div>
                     </label>

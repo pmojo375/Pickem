@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+from datetime import timedelta
 try:
     from dotenv import load_dotenv  # type: ignore
 except Exception:
@@ -362,11 +363,12 @@ EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'false').lower() in ('1', 'true', 'ye
 # Absolute site URL for links in emails sent outside a request (e.g. Celery).
 SITE_URL = os.getenv('SITE_URL', 'https://bigpicks.app').rstrip('/')
 
-# Hours before a league's first kickoff to email members with incomplete picks.
+# Lead time before a league's first kickoff to email members with incomplete picks.
 # Will become a per-league user-adjustable setting later.
 PICK_REMINDER_HOURS_BEFORE_KICKOFF = int(
     os.getenv('PICK_REMINDER_HOURS_BEFORE_KICKOFF', '3')
 )
+PICK_REMINDER_BEFORE_KICKOFF = timedelta(hours=PICK_REMINDER_HOURS_BEFORE_KICKOFF)
 
 # Session behavior
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 30  # 30 days

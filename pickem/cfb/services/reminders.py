@@ -164,25 +164,25 @@ def process_league_reminders(
     rules: LeagueRules,
     week: Week,
     *,
-    hours_before: Optional[int] = None,
+    before_kickoff: Optional[timedelta] = None,
     now=None,
     force: bool = False,
     dry_run: bool = False,
     clear_sent: bool = False,
 ) -> dict:
     """
-    If now is within [first_kickoff - hours, first_kickoff), email incomplete
-    active members once per league/week.
+    If now is within [first_kickoff - before_kickoff, first_kickoff), email
+    incomplete active members once per league/week.
 
     force: ignore the time window (still respects already_sent unless clear_sent).
     dry_run: report recipients without sending or marking sent.
     clear_sent: drop the Redis dedupe key before running.
     """
     now = now or timezone.now()
-    hours_before = (
-        settings.PICK_REMINDER_HOURS_BEFORE_KICKOFF
-        if hours_before is None
-        else hours_before
+    before_kickoff = (
+        settings.PICK_REMINDER_BEFORE_KICKOFF
+        if before_kickoff is None
+        else before_kickoff
     )
     league = rules.league
     result = {
@@ -210,7 +210,7 @@ def process_league_reminders(
         result["status"] = "no_games"
         return result
 
-    reminder_at = first_kickoff - timedelta(hours=hours_before)
+    reminder_at = first_kickoff - before_kickoff
     result["first_kickoff"] = first_kickoff
     result["reminder_at"] = reminder_at
 

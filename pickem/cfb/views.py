@@ -1624,7 +1624,8 @@ def settings_view(request):
         "end": end,
         "team_rankings": team_rankings,
         "team_records": team_records,
-        "cfbd_enabled": bool(settings.CFBD_API_KEY)
+        "cfbd_enabled": bool(settings.CFBD_API_KEY),
+        "pick_reminder_hours_before_kickoff": settings.PICK_REMINDER_HOURS_BEFORE_KICKOFF,
     }
     return render(request, "cfb/settings.html", context)
 
