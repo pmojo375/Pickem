@@ -480,6 +480,33 @@
                     </label>
                 </div>
             </div>
+
+            <!-- Season End Week -->
+            <div class="mt-6">
+                <div class="form-control max-w-xl">
+                    <label class="label">
+                        <span class="label-text font-semibold">
+                            <i class="fas fa-flag-checkered text-primary mr-1"></i>
+                            Season End Week
+                        </span>
+                    </label>
+                    <select name="season_end_week" id="season_end_week" class="select select-bordered">
+                        <option value="">Not set — season stays open</option>
+                        {% for week in season_weeks %}
+                        <option value="{{ week.id }}"
+                                {% if league_rules.season_end_week_id == week.id %}selected{% endif %}>
+                            Week {{ week.number }}{% if week.season_type != 'regular' %} ({{ week.season_type }}){% endif %}
+                            · {{ week.start_date }} – {{ week.end_date }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <label class="label">
+                        <span class="label-text-alt text-base-content/60">
+                            When this week's league slate is all final, or its end date has passed, the season is final and prize money shows on standings. Requires games selected for that week.
+                        </span>
+                    </label>
+                </div>
+            </div>
             
             <!-- Payout Calculator -->
             <div class="divider my-6">

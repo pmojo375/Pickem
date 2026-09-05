@@ -830,6 +830,9 @@ def standings_view(request):
         'show_week_pick_status': False,
         'show_pick_status_only': False,
         'pick_status_week': None,
+        'league_is_final': False,
+        'show_season_prizes': False,
+        'payout_summary': None,
     }
     
     if league:
@@ -1038,6 +1041,25 @@ def standings_view(request):
                 
                 # Sort standings by display rank (ascending)
                 standings.sort(key=lambda x: x['display_rank'])
+
+                league_is_final = services.payouts.is_league_season_final(league, league_rules)
+                context['league_is_final'] = league_is_final
+                if league_is_final and league_rules:
+                    member_count = LeagueMembership.objects.filter(
+                        league=league, is_active=True
+                    ).count()
+                    payout_summary = services.payouts.build_payout_summary(
+                        league_rules, member_count
+                    )
+                    context['payout_summary'] = payout_summary
+                    context['show_season_prizes'] = bool(
+                        payout_summary and payout_summary.get('has_season')
+                    )
+                    if context['show_season_prizes']:
+                        services.payouts.attach_season_prize_amounts(
+                            standings, payout_summary
+                        )
+
                 context['standings'] = standings
 
             if not week_id and not show_league_picks:
@@ -1336,6 +1358,15 @@ def settings_view(request):
                     
                     season_payout_last_percent = request.POST.get("season_payout_last_percent", "").strip()
                     season_payout_last_percent_value = Decimal(season_payout_last_percent) if season_payout_last_percent else None
+
+                    season_end_week = None
+                    season_end_week_id = request.POST.get("season_end_week", "").strip()
+                    if season_end_week_id:
+                        season_end_week = get_object_or_404(
+                            Week,
+                            pk=season_end_week_id,
+                            season=target_season,
+                        )
                     
                     league_rules, created = LeagueRules.objects.get_or_create(
                         league=target_league,
@@ -1359,6 +1390,7 @@ def settings_view(request):
                             'weekly_payout_structure': weekly_payout_structure,
                             'season_payout_structure': season_payout_structure,
                             'season_payout_last_percent': season_payout_last_percent_value,
+                            'season_end_week': season_end_week,
                         }
                     )
                     
@@ -1382,6 +1414,7 @@ def settings_view(request):
                         league_rules.weekly_payout_structure = weekly_payout_structure
                         league_rules.season_payout_structure = season_payout_structure
                         league_rules.season_payout_last_percent = season_payout_last_percent_value
+                        league_rules.season_end_week = season_end_week
                         league_rules.save()
                     
                     action_word = "created" if created else "updated"
@@ -1632,6 +1665,20 @@ def settings_view(request):
     league_member_count = 0
     if league:
         league_member_count = LeagueMembership.objects.filter(league=league, is_active=True).count()
+
+    season_weeks = []
+    if active_season:
+        season_weeks = list(
+            Week.objects.filter(season=active_season).order_by(
+                Case(
+                    When(season_type='regular', then=Value(0)),
+                    When(season_type='postseason', then=Value(1)),
+                    default=Value(2),
+                    output_field=IntegerField(),
+                ),
+                'number',
+            )
+        )
     
     context = {
         "games_with_selection": games_with_selection,
@@ -1641,6 +1688,7 @@ def settings_view(request):
         "league_rules": league_rules,
         "all_seasons": all_seasons,
         "active_season": active_season,
+        "season_weeks": season_weeks,
         "weekly_payout_structure_json": weekly_payout_structure_json,
         "season_payout_structure_json": season_payout_structure_json,
         "league_member_count": league_member_count,

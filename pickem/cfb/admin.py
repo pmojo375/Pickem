@@ -144,7 +144,7 @@ class LeagueRulesAdmin(admin.ModelAdmin):
         "tiebreaker",
     )
     search_fields = ("league__name", "season__year")
-    autocomplete_fields = ("league", "season")
+    autocomplete_fields = ("league", "season", "season_end_week")
     readonly_fields = ("created_at", "updated_at")
     
     fieldsets = (
@@ -174,6 +174,7 @@ class LeagueRulesAdmin(admin.ModelAdmin):
                 "weekly_payout_structure",
                 "season_payout_structure",
                 "season_payout_last_percent",
+                "season_end_week",
             ),
             "classes": ("collapse",)
         }),

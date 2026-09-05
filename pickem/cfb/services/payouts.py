@@ -1,7 +1,9 @@
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Any, Dict, List, Optional
 
-from cfb.models import LeagueRules
+from django.utils import timezone
+
+from cfb.models import Game, League, LeagueRules
 
 WEEKS_IN_SEASON = 12
 MONEY = Decimal("0.01")
@@ -50,6 +52,60 @@ def _place_rows(structure, pool: Decimal) -> List[Dict[str, Any]]:
         }
         for place, percent in items
     ]
+
+
+def is_league_season_final(league: Optional[League], league_rules: Optional[LeagueRules]) -> bool:
+    """
+    True when the manager-set season end week has an active slate and either
+    all those games are final or the week's end date has passed.
+    """
+    if not league or not league_rules or not league_rules.season_end_week_id:
+        return False
+
+    week = league_rules.season_end_week
+    slate = Game.objects.filter(
+        week=week,
+        league_selections__league=league,
+        league_selections__is_active=True,
+    )
+    if not slate.exists():
+        return False
+
+    if timezone.localdate() > week.end_date:
+        return True
+
+    return not slate.exclude(is_final=True).exists()
+
+
+def attach_season_prize_amounts(
+    standings: List[Dict[str, Any]],
+    payout_summary: Optional[Dict[str, Any]],
+) -> None:
+    """Attach season prize dollars to ranked standings rows (mutates in place)."""
+    for row in standings:
+        row["prize_amount"] = None
+        row["prize_label"] = None
+
+    if not standings or not payout_summary or not payout_summary.get("has_season"):
+        return
+
+    place_amounts = {
+        place["place"]: place
+        for place in (payout_summary.get("season_places") or [])
+    }
+    for row in standings:
+        place = place_amounts.get(row.get("display_rank"))
+        if place:
+            row["prize_amount"] = place["amount"]
+            row["prize_label"] = place["label"]
+
+    last_place = payout_summary.get("last_place")
+    if last_place and standings:
+        last_rank = max(row.get("display_rank") or 0 for row in standings)
+        for row in standings:
+            if row.get("display_rank") == last_rank and row.get("prize_amount") is None:
+                row["prize_amount"] = last_place["amount"]
+                row["prize_label"] = last_place["label"]
 
 
 def build_payout_summary(league_rules: Optional[LeagueRules], member_count: int) -> Optional[Dict[str, Any]]:

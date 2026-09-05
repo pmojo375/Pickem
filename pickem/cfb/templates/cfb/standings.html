@@ -94,6 +94,9 @@
                     - Week {{ selected_week.number }}
                 {% else %}
                     Leaderboard
+                    {% if league_is_final %}
+                    <span class="badge badge-success badge-sm ml-2">Final</span>
+                    {% endif %}
                 {% endif %}
             </h2>
             
@@ -179,6 +182,15 @@
                         </div>
                         {% endif %}
                     </div>
+                    {% if show_season_prizes and standing.prize_amount != None %}
+                    <div class="mb-3">
+                        <span class="badge badge-success gap-1">
+                            <i class="fas fa-dollar-sign"></i>
+                            ${{ standing.prize_amount|floatformat:2 }}
+                            {% if standing.prize_label %} · {{ standing.prize_label }}{% endif %}
+                        </span>
+                    </div>
+                    {% endif %}
                     {% if show_pick_status_only %}
                     <div class="flex flex-col">
                         <span class="text-xs text-base-content/70 mb-1">Week {{ pick_status_week.number }} Picks</span>
@@ -282,6 +294,9 @@
                         {% else %}
                         <th class="bg-base-200">Rank</th>
                         <th class="bg-base-200">Player</th>
+                        {% if show_season_prizes %}
+                        <th class="bg-base-200">Prize</th>
+                        {% endif %}
                         <th class="bg-base-200">Points</th>
                         <th class="bg-base-200">Wins</th>
                         <th class="bg-base-200">Losses</th>
@@ -381,6 +396,18 @@
                                 </span>
                             </div>
                         </td>
+                        {% if show_season_prizes %}
+                        <td>
+                            {% if standing.prize_amount != None %}
+                            <span class="font-semibold text-success">${{ standing.prize_amount|floatformat:2 }}</span>
+                            {% if standing.prize_label %}
+                            <div class="text-xs text-base-content/60">{{ standing.prize_label }}</div>
+                            {% endif %}
+                            {% else %}
+                            <span class="text-base-content/40">—</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
                         <td><span class="font-bold text-lg">{{ standing.points }}</span></td>
                         <td>{{ standing.wins }}</td>
                         <td>{{ standing.losses }}</td>

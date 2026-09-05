@@ -9,7 +9,17 @@ from cfb.models import League, LeagueRules, Season
 
 logger = logging.getLogger(__name__)
 
-RULES_SKIP_FIELDS = {"id", "pk", "season", "season_id", "created_at", "updated_at"}
+# season_end_week is season-specific (points at a Week in the old season).
+RULES_SKIP_FIELDS = {
+    "id",
+    "pk",
+    "season",
+    "season_id",
+    "season_end_week",
+    "season_end_week_id",
+    "created_at",
+    "updated_at",
+}
 
 
 class SeasonAlreadyExistsError(ValueError):

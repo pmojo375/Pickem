@@ -292,6 +292,14 @@ class LeagueRules(models.Model):
         blank=True,
         help_text="Optional: Percentage of season payout allocated to last place"
     )
+    season_end_week = models.ForeignKey(
+        'Week',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+        help_text="When this week's slate is final (or its end date has passed), the league season is final and prize money can show on standings",
+    )
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
