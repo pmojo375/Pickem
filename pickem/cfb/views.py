@@ -801,6 +801,157 @@ def _apply_display_week_pick_status(standings, pick_status):
     return standings
 
 
+def _season_rank_by_user(league, season, league_rules, show_full_standings=False):
+    """Map user_id -> display rank for current season standings."""
+    ranks = {}
+    member_seasons = MemberSeason.objects.filter(
+        league=league,
+        season=season,
+        user_id__in=_active_member_user_ids(league),
+    )
+    for member_season in member_seasons:
+        if show_full_standings:
+            ranks[member_season.user_id] = member_season.rank or 999
+        elif league_rules and league_rules.drop_weeks > 0 and member_season.rank_with_drops:
+            ranks[member_season.user_id] = member_season.rank_with_drops
+        else:
+            ranks[member_season.user_id] = member_season.rank or 999
+    return ranks
+
+
+def _week_rank_by_user(league, week):
+    """Map user_id -> display rank for a week's standings."""
+    if not week:
+        return {}
+    return {
+        mw.user_id: (mw.rank or 999)
+        for mw in MemberWeek.objects.filter(
+            league=league,
+            week=week,
+            user_id__in=_active_member_user_ids(league),
+        )
+    }
+
+
+def _league_slate_weeks(league, season):
+    """Weeks that have an active league slate, in season order."""
+    weeks = Week.objects.filter(season=season).order_by(
+        Case(
+            When(season_type="regular", then=Value(0)),
+            When(season_type="postseason", then=Value(1)),
+            default=Value(2),
+            output_field=IntegerField(),
+        ),
+        "number",
+    )
+    return [
+        week
+        for week in weeks
+        if services.payouts.league_week_slate(league, week).exists()
+    ]
+
+
+def _apply_standings_prizes(
+    context,
+    standings,
+    league,
+    league_rules,
+    *,
+    show_projected_prizes,
+    league_is_final=False,
+    show_full_standings=False,
+    season=None,
+    preferred_projected_week=None,
+):
+    """
+    Money columns:
+    - Weeks won: sum of completed weekly payouts (default)
+    - Season: only when season is final (or projected season when toggle on)
+    - Projected toggle (hidden when season final): this-week projected + season projected + total
+    """
+    if not league_rules or not season:
+        return standings
+
+    member_count = LeagueMembership.objects.filter(league=league, is_active=True).count()
+    payout_summary = services.payouts.build_payout_summary(league_rules, member_count)
+    context["payout_summary"] = payout_summary
+
+    has_weekly = bool(payout_summary and payout_summary.get("has_weekly"))
+    has_season = bool(payout_summary and payout_summary.get("has_season"))
+    context["prizes_available"] = has_weekly or has_season
+
+    slate_weeks = _league_slate_weeks(league, season) if (has_weekly or has_season) else []
+    completed_weeks = [
+        week
+        for week in slate_weeks
+        if services.payouts.is_week_slate_final(league, week)
+    ]
+    in_progress_week = None
+    if preferred_projected_week and preferred_projected_week in slate_weeks:
+        if not services.payouts.is_week_slate_final(league, preferred_projected_week):
+            in_progress_week = preferred_projected_week
+    if in_progress_week is None:
+        for week in reversed(slate_weeks):
+            if not services.payouts.is_week_slate_final(league, week):
+                in_progress_week = week
+                break
+
+    # Projected toggle does nothing once the season is final.
+    project = bool(show_projected_prizes and not league_is_final)
+
+    include_weeks_won = bool(has_weekly and completed_weeks)
+    include_projected_week = bool(project and has_weekly and in_progress_week)
+    include_season = bool(has_season and (league_is_final or project))
+    show_prizes = include_weeks_won or include_projected_week or include_season
+    include_total = bool(
+        show_prizes
+        and (
+            league_is_final
+            or project
+            or (include_weeks_won and include_season)
+        )
+    )
+
+    context["show_prizes"] = show_prizes
+    context["show_weeks_won_col"] = include_weeks_won
+    context["show_projected_week_col"] = include_projected_week
+    context["show_season_prize_col"] = include_season
+    context["show_total_prize_col"] = include_total
+    context["prize_week"] = in_progress_week if include_projected_week else None
+    context["completed_prize_weeks"] = len(completed_weeks)
+    context["can_project_prizes"] = bool(
+        not league_is_final and context["prizes_available"]
+    )
+    context["prizes_are_projected"] = project and show_prizes
+
+    if show_prizes:
+        completed_ranks = [
+            _week_rank_by_user(league, week) for week in completed_weeks
+        ] if include_weeks_won else []
+        projected_ranks = (
+            _week_rank_by_user(league, in_progress_week)
+            if include_projected_week
+            else {}
+        )
+        season_ranks = (
+            _season_rank_by_user(league, season, league_rules, show_full_standings)
+            if include_season
+            else {}
+        )
+        services.payouts.apply_standings_money_columns(
+            standings,
+            payout_summary,
+            completed_week_ranks=completed_ranks,
+            projected_week_ranks=projected_ranks,
+            season_ranks=season_ranks,
+            include_weeks_won=include_weeks_won,
+            include_projected_week=include_projected_week,
+            include_season=include_season,
+        )
+
+    return standings
+
+
 @login_required
 def standings_view(request):
     league, user_leagues = _resolve_user_league(request)
@@ -812,6 +963,7 @@ def standings_view(request):
     week_id = request.GET.get('week')
     show_league_picks = request.GET.get('league_picks', 'false').lower() == 'true'
     show_unstarted_picks = request.GET.get('show_unstarted', 'false').lower() == 'true'
+    show_projected_prizes = request.GET.get('prizes', 'false').lower() in ('true', '1', 'on')
     selected_week = None
     
     context = {
@@ -824,6 +976,7 @@ def standings_view(request):
         'show_week_standings': False,  # Will be set later based on logic
         'show_league_picks': show_league_picks,
         'show_unstarted_picks': show_unstarted_picks,
+        'show_projected_prizes': show_projected_prizes,
         'league_picks_data': None,  # Will be set if showing league picks
         'is_league_manager': False,  # Will be set based on user role
         'key_picks_enabled': False,  # Will be set based on league rules
@@ -831,7 +984,17 @@ def standings_view(request):
         'show_pick_status_only': False,
         'pick_status_week': None,
         'league_is_final': False,
-        'show_season_prizes': False,
+        'week_is_final': False,
+        'show_prizes': False,
+        'prizes_available': False,
+        'prizes_are_projected': False,
+        'can_project_prizes': False,
+        'show_weeks_won_col': False,
+        'show_projected_week_col': False,
+        'show_season_prize_col': False,
+        'show_total_prize_col': False,
+        'prize_week': None,
+        'completed_prize_weeks': 0,
         'payout_summary': None,
     }
     
@@ -961,6 +1124,27 @@ def standings_view(request):
                         
                         # Sort by rank (ascending)
                         standings.sort(key=lambda x: x['display_rank'])
+
+                        week_is_final = services.payouts.is_week_slate_final(
+                            league, selected_week
+                        )
+                        league_is_final = services.payouts.is_league_season_final(
+                            league, league_rules
+                        )
+                        context['week_is_final'] = week_is_final
+                        context['league_is_final'] = league_is_final
+                        _apply_standings_prizes(
+                            context,
+                            standings,
+                            league,
+                            league_rules,
+                            show_projected_prizes=show_projected_prizes,
+                            league_is_final=league_is_final,
+                            show_full_standings=show_full_standings,
+                            season=active_season,
+                            preferred_projected_week=selected_week,
+                        )
+
                         context['standings'] = standings
                         context['key_picks_enabled'] = league_rules and league_rules.key_picks_enabled
                     
@@ -1044,21 +1228,17 @@ def standings_view(request):
 
                 league_is_final = services.payouts.is_league_season_final(league, league_rules)
                 context['league_is_final'] = league_is_final
-                if league_is_final and league_rules:
-                    member_count = LeagueMembership.objects.filter(
-                        league=league, is_active=True
-                    ).count()
-                    payout_summary = services.payouts.build_payout_summary(
-                        league_rules, member_count
-                    )
-                    context['payout_summary'] = payout_summary
-                    context['show_season_prizes'] = bool(
-                        payout_summary and payout_summary.get('has_season')
-                    )
-                    if context['show_season_prizes']:
-                        services.payouts.attach_season_prize_amounts(
-                            standings, payout_summary
-                        )
+
+                _apply_standings_prizes(
+                    context,
+                    standings,
+                    league,
+                    league_rules,
+                    show_projected_prizes=show_projected_prizes,
+                    league_is_final=league_is_final,
+                    show_full_standings=show_full_standings,
+                    season=active_season,
+                )
 
                 context['standings'] = standings
 

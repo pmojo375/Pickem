@@ -84,54 +84,86 @@
 {% if current_league and standings|length > 0 %}
 <div class="card bg-base-100 shadow-xl">
     <div class="card-body">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-            <h2 class="card-title">
-                <i class="fas fa-medal text-warning mr-2"></i>
-                {{ current_league.name }}
-                {% if show_pick_status_only and pick_status_week %}
-                    - Week {{ pick_status_week.number }} Pick Status
-                {% elif show_week_standings and selected_week %}
-                    - Week {{ selected_week.number }}
-                {% else %}
-                    Leaderboard
-                    {% if league_is_final %}
-                    <span class="badge badge-success badge-sm ml-2">Final</span>
-                    {% endif %}
-                {% endif %}
-            </h2>
-            
-            {% if show_pick_status_only %}
-            <p class="text-sm text-base-content/70">
-                Picks are hidden until games start — this only shows how many each player has submitted.
-            </p>
-            {% endif %}
-            
-            <!-- Standings Toggle (only show for season standings) -->
-            {% if not show_week_standings and not show_pick_status_only and league_rules and league_rules.drop_weeks > 0 %}
-            <div class="flex items-center gap-3">
-                <span class="text-sm text-base-content/70">
-                    {% if show_full_standings %}
-                        Showing full season standings
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 items-start">
+            <div class="min-w-0">
+                <h2 class="card-title flex-wrap gap-2">
+                    <span class="inline-flex items-center gap-2">
+                        <i class="fas fa-medal text-warning"></i>
+                        {{ current_league.name }}
+                    </span>
+                    {% if show_pick_status_only and pick_status_week %}
+                        <span class="font-normal text-base-content/80">Week {{ pick_status_week.number }} Pick Status</span>
+                    {% elif show_week_standings and selected_week %}
+                        <span class="font-normal text-base-content/80">Week {{ selected_week.number }}</span>
+                        {% if week_is_final %}
+                        <span class="badge badge-success badge-sm">Final</span>
+                        {% elif prizes_are_projected %}
+                        <span class="badge badge-warning badge-sm">Projected</span>
+                        {% endif %}
                     {% else %}
-                        Showing standings with {{ league_rules.drop_weeks }} worst week{{ league_rules.drop_weeks|pluralize }} dropped
+                        <span class="font-normal text-base-content/80">Leaderboard</span>
+                        {% if league_is_final %}
+                        <span class="badge badge-success badge-sm">Final</span>
+                        {% elif prizes_are_projected %}
+                        <span class="badge badge-warning badge-sm">Projected</span>
+                        {% endif %}
                     {% endif %}
-                </span>
-                <div class="form-control">
-                    <label class="label cursor-pointer gap-3">
-                        <span class="label-text text-sm font-medium">
-                            {% if show_full_standings %}
-                                Full Season
-                            {% else %}
-                                Adjusted (Dropped Weeks)
-                            {% endif %}
-                        </span>
-                        <input type="checkbox" 
-                               class="toggle toggle-primary" 
-                               {% if show_full_standings %}checked{% endif %}
-                               onchange="toggleStandings(this.checked)" />
-                    </label>
-                </div>
+                </h2>
+                {% if show_pick_status_only %}
+                <p class="text-sm text-base-content/70 mt-2">
+                    Picks are hidden until games start — this only shows how many each player has submitted.
+                </p>
+                {% endif %}
             </div>
+
+            {% if not show_league_picks and not show_pick_status_only %}
+                {% if can_project_prizes or not show_week_standings and league_rules and league_rules.drop_weeks > 0 %}
+                <div class="w-full flex flex-col gap-3">
+                    {% if can_project_prizes %}
+                    <div class="rounded-lg bg-base-200/70 px-3 py-2">
+                        <label class="flex items-start justify-between gap-3 cursor-pointer">
+                            <span class="min-w-0">
+                                <span class="block text-sm font-medium leading-snug">Show as-is winnings</span>
+                                <span class="block text-xs text-base-content/60 mt-0.5 leading-snug">
+                                    Adds projected this-week and season payouts from current standings.
+                                </span>
+                            </span>
+                            <input type="checkbox"
+                                   class="toggle toggle-success shrink-0 mt-0.5"
+                                   {% if show_projected_prizes %}checked{% endif %}
+                                   onchange="toggleProjectedPrizes(this.checked)" />
+                        </label>
+                    </div>
+                    {% endif %}
+
+                    {% if not show_week_standings and league_rules and league_rules.drop_weeks > 0 %}
+                    <div class="rounded-lg bg-base-200/70 px-3 py-2">
+                        <label class="flex items-start justify-between gap-3 cursor-pointer">
+                            <span class="min-w-0">
+                                <span class="block text-sm font-medium leading-snug">
+                                    {% if show_full_standings %}
+                                        Full season standings
+                                    {% else %}
+                                        Drop {{ league_rules.drop_weeks }} worst week{{ league_rules.drop_weeks|pluralize }}
+                                    {% endif %}
+                                </span>
+                                <span class="block text-xs text-base-content/60 mt-0.5 leading-snug">
+                                    {% if show_full_standings %}
+                                        Showing every week with no drops applied.
+                                    {% else %}
+                                        Showing adjusted standings with worst weeks removed.
+                                    {% endif %}
+                                </span>
+                            </span>
+                            <input type="checkbox"
+                                   class="toggle toggle-primary shrink-0 mt-0.5"
+                                   {% if show_full_standings %}checked{% endif %}
+                                   onchange="toggleStandings(this.checked)" />
+                        </label>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
             {% endif %}
         </div>
         <!-- Mobile Card Layout -->
@@ -182,13 +214,48 @@
                         </div>
                         {% endif %}
                     </div>
-                    {% if show_season_prizes and standing.prize_amount != None %}
-                    <div class="mb-3">
-                        <span class="badge badge-success gap-1">
-                            <i class="fas fa-dollar-sign"></i>
-                            ${{ standing.prize_amount|floatformat:2 }}
-                            {% if standing.prize_label %} · {{ standing.prize_label }}{% endif %}
-                        </span>
+                    {% if show_prizes %}
+                    <div class="mb-3 grid grid-cols-2 gap-2">
+                        {% if show_weeks_won_col %}
+                        <div class="flex flex-col">
+                            <span class="text-xs text-base-content/70 mb-1">Weeks won</span>
+                            {% if standing.weeks_won_amount != None %}
+                            <span class="font-semibold text-success">${{ standing.weeks_won_amount|floatformat:2 }}</span>
+                            {% else %}
+                            <span class="text-base-content/40">—</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        {% if show_projected_week_col %}
+                        <div class="flex flex-col">
+                            <span class="text-xs text-base-content/70 mb-1">Week{% if prize_week %} {{ prize_week.number }}{% endif %} proj.</span>
+                            {% if standing.projected_week_amount != None %}
+                            <span class="font-semibold text-warning">${{ standing.projected_week_amount|floatformat:2 }}</span>
+                            {% else %}
+                            <span class="text-base-content/40">—</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        {% if show_season_prize_col %}
+                        <div class="flex flex-col">
+                            <span class="text-xs text-base-content/70 mb-1">Season{% if prizes_are_projected and not league_is_final %} proj.{% endif %}</span>
+                            {% if standing.season_prize_amount != None %}
+                            <span class="font-semibold {% if prizes_are_projected and not league_is_final %}text-warning{% else %}text-success{% endif %}">${{ standing.season_prize_amount|floatformat:2 }}</span>
+                            {% else %}
+                            <span class="text-base-content/40">—</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        {% if show_total_prize_col %}
+                        <div class="flex flex-col">
+                            <span class="text-xs text-base-content/70 mb-1">Total</span>
+                            {% if standing.prize_total_amount != None %}
+                            <span class="font-bold {% if prizes_are_projected %}text-warning{% else %}text-success{% endif %}">${{ standing.prize_total_amount|floatformat:2 }}</span>
+                            {% else %}
+                            <span class="text-base-content/40">—</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
                     </div>
                     {% endif %}
                     {% if show_pick_status_only %}
@@ -294,8 +361,19 @@
                         {% else %}
                         <th class="bg-base-200">Rank</th>
                         <th class="bg-base-200">Player</th>
-                        {% if show_season_prizes %}
-                        <th class="bg-base-200">Prize</th>
+                        {% if show_prizes %}
+                            {% if show_weeks_won_col %}
+                            <th class="bg-base-200">Weeks $</th>
+                            {% endif %}
+                            {% if show_projected_week_col %}
+                            <th class="bg-base-200">Week{% if prize_week %} {{ prize_week.number }}{% endif %} proj. $</th>
+                            {% endif %}
+                            {% if show_season_prize_col %}
+                            <th class="bg-base-200">Season{% if prizes_are_projected and not league_is_final %} proj.{% endif %} $</th>
+                            {% endif %}
+                            {% if show_total_prize_col %}
+                            <th class="bg-base-200">Total $</th>
+                            {% endif %}
                         {% endif %}
                         <th class="bg-base-200">Points</th>
                         <th class="bg-base-200">Wins</th>
@@ -396,17 +474,49 @@
                                 </span>
                             </div>
                         </td>
-                        {% if show_season_prizes %}
-                        <td>
-                            {% if standing.prize_amount != None %}
-                            <span class="font-semibold text-success">${{ standing.prize_amount|floatformat:2 }}</span>
-                            {% if standing.prize_label %}
-                            <div class="text-xs text-base-content/60">{{ standing.prize_label }}</div>
+                        {% if show_prizes %}
+                            {% if show_weeks_won_col %}
+                            <td>
+                                {% if standing.weeks_won_amount != None %}
+                                <span class="font-semibold text-success">${{ standing.weeks_won_amount|floatformat:2 }}</span>
+                                {% else %}
+                                <span class="text-base-content/40">—</span>
+                                {% endif %}
+                            </td>
                             {% endif %}
-                            {% else %}
-                            <span class="text-base-content/40">—</span>
+                            {% if show_projected_week_col %}
+                            <td>
+                                {% if standing.projected_week_amount != None %}
+                                <span class="font-semibold text-warning">${{ standing.projected_week_amount|floatformat:2 }}</span>
+                                {% if standing.projected_week_label %}
+                                <div class="text-xs text-base-content/60">{{ standing.projected_week_label }}</div>
+                                {% endif %}
+                                {% else %}
+                                <span class="text-base-content/40">—</span>
+                                {% endif %}
+                            </td>
                             {% endif %}
-                        </td>
+                            {% if show_season_prize_col %}
+                            <td>
+                                {% if standing.season_prize_amount != None %}
+                                <span class="font-semibold {% if prizes_are_projected and not league_is_final %}text-warning{% else %}text-success{% endif %}">${{ standing.season_prize_amount|floatformat:2 }}</span>
+                                {% if standing.season_prize_label %}
+                                <div class="text-xs text-base-content/60">{{ standing.season_prize_label }}</div>
+                                {% endif %}
+                                {% else %}
+                                <span class="text-base-content/40">—</span>
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                            {% if show_total_prize_col %}
+                            <td>
+                                {% if standing.prize_total_amount != None %}
+                                <span class="font-bold {% if prizes_are_projected %}text-warning{% else %}text-success{% endif %}">${{ standing.prize_total_amount|floatformat:2 }}</span>
+                                {% else %}
+                                <span class="text-base-content/40">—</span>
+                                {% endif %}
+                            </td>
+                            {% endif %}
                         {% endif %}
                         <td><span class="font-bold text-lg">{{ standing.points }}</span></td>
                         <td>{{ standing.wins }}</td>
@@ -828,6 +938,16 @@ function toggleStandings(showFull) {
     window.location.href = url.toString();
 }
 
+function toggleProjectedPrizes(showPrizes) {
+    const url = new URL(window.location);
+    if (showPrizes) {
+        url.searchParams.set('prizes', 'true');
+    } else {
+        url.searchParams.delete('prizes');
+    }
+    window.location.href = url.toString();
+}
+
 function switchToSeasonStandings() {
     const url = new URL(window.location);
     url.searchParams.delete('week');
@@ -855,6 +975,7 @@ function switchToLeaguePicks() {
     
     // Remove full parameter when switching to league picks view
     url.searchParams.delete('full');
+    url.searchParams.delete('prizes');
     
     // Add league_picks parameter to trigger league picks view
     url.searchParams.set('league_picks', 'true');
@@ -878,8 +999,8 @@ function changeWeek(weekId) {
     // Remove full parameter when switching weeks
     url.searchParams.delete('full');
     
-    // Preserve league_picks parameter if it exists
-    // (don't delete it, just keep it as is)
+    // Preserve league_picks / prizes parameters if they exist
+    // (don't delete them, just keep as is)
     
     window.location.href = url.toString();
 }
