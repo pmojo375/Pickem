@@ -40,18 +40,6 @@
             {% elif current_league %}
             <div class="badge badge-primary badge-lg">{{ current_league.name }}</div>
             {% endif %}
-            
-            <!-- Update Scores Button -->
-            {% if current_league %}
-            <form method="POST" action="{% url 'update_live_scores' %}" class="inline-block">
-                {% csrf_token %}
-                <input type="hidden" name="league_id" value="{{ current_league.id }}">
-                <button type="submit" class="btn btn-secondary btn-sm md:btn-md">
-                    <i class="fas fa-sync-alt mr-2"></i>
-                    Update Scores
-                </button>
-            </form>
-            {% endif %}
         </div>
     </div>
 </div>
