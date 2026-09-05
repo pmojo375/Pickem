@@ -6,7 +6,7 @@ from django.core.mail import BadHeaderError, send_mail
 from django.template.loader import render_to_string
 from django.urls import reverse
 
-from cfb.models import LeagueMembership
+from cfb.models import LeagueMembership, user_notification_emails
 
 logger = logging.getLogger(__name__)
 
@@ -14,15 +14,15 @@ logger = logging.getLogger(__name__)
 def pending_opt_in_members(league):
     return (
         LeagueMembership.objects.filter(league=league, is_active=False, role="member")
-        .select_related("user")
+        .select_related("user", "user__profile")
         .order_by("user__username")
     )
 
 
 def send_single_season_opt_in_email(request, membership, season) -> bool:
     """Email one inactive member a personal opt-in link. Returns True on success."""
-    email = (membership.user.email or "").strip()
-    if not email:
+    emails = user_notification_emails(membership.user)
+    if not emails:
         return False
 
     token = membership.get_opt_in_token(season.year)
@@ -43,13 +43,13 @@ def send_single_season_opt_in_email(request, membership, season) -> bool:
             subject=f"Rejoin {membership.league.name} for {season.year}",
             message=body,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
+            recipient_list=emails,
             fail_silently=False,
         )
     except (OSError, smtplib.SMTPException, BadHeaderError):
         logger.exception(
             "Failed to send season opt-in email to %s for league %s",
-            email,
+            ", ".join(emails),
             membership.league_id,
         )
         return False
@@ -63,8 +63,8 @@ def send_season_opt_in_emails(request, league, season):
     failed = 0
 
     for membership in pending_opt_in_members(league):
-        email = (membership.user.email or "").strip()
-        if not email:
+        emails = user_notification_emails(membership.user)
+        if not emails:
             skipped += 1
             continue
 

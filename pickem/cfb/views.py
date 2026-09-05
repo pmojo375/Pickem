@@ -28,10 +28,16 @@ from .models import (
     MemberSeason,
     MemberSeasonPayment,
     MemberWeek,
+    UserProfile,
 )
 from django.utils import timezone
 from . import services
-from .forms import AccountNameForm, PersonalInviteSignupForm, PersonalInviteSetPasswordForm
+from .forms import (
+    AccountNameForm,
+    PersonalInviteSignupForm,
+    PersonalInviteSetPasswordForm,
+    SecondaryEmailForm,
+)
 from .services.invites import (
     PERSONAL_INVITE_TOKEN_SESSION_KEY,
     accept_personal_invite,
@@ -1168,8 +1174,10 @@ def account_view(request):
     has_usable_password = user.has_usable_password()
     social_accounts = SocialAccount.objects.filter(user=user)
     google_account = social_accounts.filter(provider="google").first()
+    profile, _ = UserProfile.objects.get_or_create(user=user)
 
     name_form = AccountNameForm(instance=user)
+    secondary_email_form = SecondaryEmailForm(instance=profile, user=user)
     if has_usable_password:
         password_form = ChangePasswordForm(user=user)
     else:
@@ -1184,6 +1192,15 @@ def account_view(request):
             if name_form.is_valid():
                 name_form.save()
                 messages.success(request, "Your profile has been updated.")
+                return redirect("account")
+
+        elif action == "update_secondary_email":
+            secondary_email_form = SecondaryEmailForm(
+                request.POST, instance=profile, user=user
+            )
+            if secondary_email_form.is_valid():
+                secondary_email_form.save()
+                messages.success(request, "Your secondary email has been updated.")
                 return redirect("account")
 
         elif action == "change_password":
@@ -1217,6 +1234,7 @@ def account_view(request):
         "cfb/account.html",
         {
             "name_form": name_form,
+            "secondary_email_form": secondary_email_form,
             "password_form": password_form,
             "has_usable_password": has_usable_password,
             "google_account": google_account,

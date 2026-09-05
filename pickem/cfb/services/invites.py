@@ -10,7 +10,7 @@ from django.core.validators import validate_email
 from django.template.loader import render_to_string
 from django.utils import timezone
 
-from cfb.models import LeagueInvite, LeagueMembership
+from cfb.models import LeagueInvite, LeagueMembership, user_notification_emails
 
 from . import opt_in
 
@@ -114,6 +114,28 @@ def create_personal_invite(league, raw_email: str, invited_by=None) -> LeagueInv
     return LeagueInvite.create_for_email(league, email, invited_by=invited_by)
 
 
+def _invite_recipient_list(invite, user=None) -> list:
+    """Invite address plus the matched user's secondary email, if any."""
+    emails = []
+    seen = set()
+
+    def add(raw):
+        email = (raw or "").strip()
+        if not email:
+            return
+        key = email.lower()
+        if key in seen:
+            return
+        seen.add(key)
+        emails.append(email)
+
+    add(invite.email)
+    if user is not None:
+        for email in user_notification_emails(user):
+            add(email)
+    return emails
+
+
 def _send_personal_invite_email(request, league, invite, inviter, user=None) -> bool:
     invite_url = request.build_absolute_uri(invite.get_path())
     if user:
@@ -138,18 +160,19 @@ def _send_personal_invite_email(request, league, invite, inviter, user=None) -> 
         )
         subject = f"Join BigPicks and play in {league.name}"
 
+    recipients = _invite_recipient_list(invite, user=user)
     try:
         send_mail(
             subject=subject,
             message=body,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[invite.email],
+            recipient_list=recipients,
             fail_silently=False,
         )
     except (OSError, smtplib.SMTPException, BadHeaderError):
         logger.exception(
             "Failed to send personal league invite email to %s for league %s",
-            invite.email,
+            ", ".join(recipients),
             league.pk,
         )
         return False
@@ -165,7 +188,7 @@ def send_league_email_invite(request, league, raw_email, season=None):
     - Unknown email: personal invite link (signup handled on the invite page)
     """
     email = normalize_invite_email(raw_email)
-    user = User.objects.filter(email__iexact=email).first()
+    user = User.objects.filter(email__iexact=email).select_related("profile").first()
 
     if user:
         membership = LeagueMembership.objects.filter(league=league, user=user).first()

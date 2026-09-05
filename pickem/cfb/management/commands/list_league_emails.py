@@ -1,7 +1,7 @@
 """Print active league member emails for group BCC / mailing."""
 from django.core.management.base import BaseCommand, CommandError
 
-from cfb.models import League, LeagueMembership
+from cfb.models import League, LeagueMembership, user_notification_emails
 
 
 class Command(BaseCommand):
@@ -36,26 +36,30 @@ class Command(BaseCommand):
 
         memberships = (
             LeagueMembership.objects.filter(league=league, is_active=True)
-            .select_related("user")
+            .select_related("user", "user__profile")
             .order_by("user__username")
         )
 
         rows = []
         missing = []
+        member_count = 0
         for membership in memberships:
+            member_count += 1
             user = membership.user
-            email = (user.email or "").strip()
-            if not email:
+            emails = user_notification_emails(user)
+            if not emails:
                 missing.append(user.username)
                 continue
-            if options["include_names"]:
-                rows.append(f"{user.username} <{email}>")
-            else:
-                rows.append(email)
+            for email in emails:
+                if options["include_names"]:
+                    rows.append(f"{user.username} <{email}>")
+                else:
+                    rows.append(email)
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"{league.name}: {len(rows)} active member email(s)"
+                f"{league.name}: {len(rows)} email address(es) "
+                f"across {member_count} active member(s)"
                 + (f", {len(missing)} missing email" if missing else "")
             )
         )

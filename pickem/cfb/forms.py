@@ -1,6 +1,10 @@
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import validate_email
+
+from .models import UserProfile
 
 User = get_user_model()
 
@@ -53,6 +57,51 @@ class AccountNameForm(forms.ModelForm):
         if taken.exists():
             raise forms.ValidationError("That username is already taken.")
         return username
+
+
+class SecondaryEmailForm(forms.ModelForm):
+    class Meta:
+        model = UserProfile
+        fields = ("secondary_email",)
+        labels = {
+            "secondary_email": "Secondary email",
+        }
+        help_texts = {
+            "secondary_email": (
+                "Optional. Pick reminders, league invites, and season opt-in emails "
+                "are sent to both your primary and secondary addresses."
+            ),
+        }
+        widgets = {
+            "secondary_email": forms.EmailInput(
+                attrs={
+                    "class": "input input-bordered w-full",
+                    "placeholder": "you@example.com",
+                    "autocomplete": "email",
+                }
+            ),
+        }
+
+    def __init__(self, *args, user=None, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+        self.fields["secondary_email"].required = False
+
+    def clean_secondary_email(self):
+        raw = (self.cleaned_data.get("secondary_email") or "").strip()
+        if not raw:
+            return ""
+        try:
+            validate_email(raw)
+        except DjangoValidationError as exc:
+            raise forms.ValidationError("Enter a valid email address.") from exc
+        email = raw.lower()
+        primary = ((self.user.email if self.user else "") or "").strip().lower()
+        if primary and email == primary:
+            raise forms.ValidationError(
+                "Secondary email must be different from your primary email."
+            )
+        return email
 
 
 class PersonalInviteSignupForm(forms.Form):

@@ -10,7 +10,7 @@
     <div>
         <h1 class="text-3xl font-bold">Account</h1>
         <p class="text-sm text-base-content/70 mt-1">
-            Update your username, display name, password, and connected sign-in providers.
+            Update your username, display name, secondary email, password, and connected sign-in providers.
         </p>
     </div>
 
@@ -32,10 +32,43 @@
 
             <div class="grid gap-2 text-sm">
                 <div class="flex justify-between gap-4">
-                    <span class="text-base-content/60">Email</span>
+                    <span class="text-base-content/60">Primary email</span>
                     <span class="font-medium">{{ request.user.email|default:"—" }}</span>
                 </div>
             </div>
+
+            <form method="post" action="{% url 'account' %}" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_secondary_email">
+
+                {% if secondary_email_form.non_field_errors %}
+                    <div class="alert alert-error">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>{{ secondary_email_form.non_field_errors|striptags }}</span>
+                    </div>
+                {% endif %}
+
+                <div class="form-control">
+                    <label class="label" for="{{ secondary_email_form.secondary_email.id_for_label }}">
+                        <span class="label-text">{{ secondary_email_form.secondary_email.label }}</span>
+                    </label>
+                    {{ secondary_email_form.secondary_email }}
+                    {% if secondary_email_form.secondary_email.help_text %}
+                        <label class="label">
+                            <span class="label-text-alt text-base-content/60">{{ secondary_email_form.secondary_email.help_text }}</span>
+                        </label>
+                    {% endif %}
+                    {% if secondary_email_form.secondary_email.errors %}
+                        <label class="label">
+                            <span class="label-text-alt text-error">{{ secondary_email_form.secondary_email.errors|striptags }}</span>
+                        </label>
+                    {% endif %}
+                </div>
+
+                <button type="submit" class="btn btn-outline btn-sm">
+                    <i class="fas fa-envelope mr-2"></i> Save secondary email
+                </button>
+            </form>
 
             <form method="post" action="{% url 'account' %}" class="space-y-4">
                 {% csrf_token %}

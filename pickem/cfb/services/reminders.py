@@ -13,7 +13,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 
-from cfb.models import LeagueGame, LeagueMembership, LeagueRules, Pick, Week
+from cfb.models import LeagueGame, LeagueMembership, LeagueRules, Pick, Week, user_notification_emails
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +87,7 @@ def incomplete_members(league, week: Week, rules: LeagueRules):
     incomplete = []
     memberships = (
         LeagueMembership.objects.filter(league=league, is_active=True)
-        .select_related("user")
+        .select_related("user", "user__profile")
         .order_by("user__username")
     )
     for membership in memberships:
@@ -119,8 +119,8 @@ def _absolute_picks_url(league_id: int) -> str:
 
 
 def send_pick_reminder_email(user, league, week: Week, first_kickoff, status: dict) -> bool:
-    email = (user.email or "").strip()
-    if not email:
+    emails = user_notification_emails(user)
+    if not emails:
         return False
 
     body = render_to_string(
@@ -146,13 +146,13 @@ def send_pick_reminder_email(user, league, week: Week, first_kickoff, status: di
             subject=f"Reminder: finish your {league.name} picks (Week {week.number})",
             message=body,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
+            recipient_list=emails,
             fail_silently=False,
         )
     except (OSError, smtplib.SMTPException, BadHeaderError):
         logger.exception(
             "Failed to send pick reminder to %s for league %s week %s",
-            email,
+            ", ".join(emails),
             league.id,
             week.id,
         )
@@ -224,15 +224,15 @@ def process_league_reminders(
 
     members = incomplete_members(league, week, rules)
     for status in members:
-        email = (status["user"].email or "").strip()
-        if not email:
+        emails = user_notification_emails(status["user"])
+        if not emails:
             result["skipped"] += 1
             continue
 
         result["recipients"].append(
             {
                 "username": status["user"].username,
-                "email": email,
+                "email": ", ".join(emails),
                 "picks_made": status["picks_made"],
                 "picks_required": status["picks_required"],
                 "key_picks_made": status["key_picks_made"],
