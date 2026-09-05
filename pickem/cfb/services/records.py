@@ -60,11 +60,6 @@ def update_team_records(season_year, dry_run=False):
 
     completed_game_count = completed_games.count()
 
-    logger.info(
-        f'Updating team records for {season.year}: '
-        f'{team_count} teams, {completed_game_count} completed games'
-    )
-
     wins_to_add = defaultdict(int)
     losses_to_add = defaultdict(int)
     ats_wins_to_add = defaultdict(int)
@@ -126,25 +121,27 @@ def update_team_records(season_year, dry_run=False):
 
     if dry_run:
         logger.info(
-            f'DRY RUN: Would process {games_processed} W-L games, '
-            f'{ats_games_processed} ATS games, update {len(updated_teams)} teams'
+            "DRY RUN team records %s: %s W-L, %s ATS, %s teams "
+            "(of %s teams / %s completed games)",
+            season_year,
+            games_processed,
+            ats_games_processed,
+            len(updated_teams),
+            team_count,
+            completed_game_count,
         )
         return result
 
     # Reset + write must share one transaction so concurrent workers cannot
     # interleave resets and leave teams partially updated / deadlocked.
     with transaction.atomic():
-        logger.info('Resetting all team W-L and ATS records to 0')
-        reset_count = teams.update(
+        teams.update(
             record_wins=0,
             record_losses=0,
             ats_wins=0,
             ats_losses=0,
             ats_pushes=0,
         )
-        logger.info(f'Reset {reset_count} team records')
-
-        logger.info('Updating team records with calculated W-L and ATS')
         for team_id in updated_teams:
             Team.objects.filter(id=team_id).update(
                 record_wins=wins_to_add.get(team_id, 0),
@@ -155,9 +152,11 @@ def update_team_records(season_year, dry_run=False):
             )
 
     logger.info(
-        f"Updated team records for season {season_year}: "
-        f"{games_processed} W-L games, {ats_games_processed} ATS games, "
-        f"{len(updated_teams)} teams updated"
+        "Updated team records for season %s: %s W-L, %s ATS, %s teams",
+        season_year,
+        games_processed,
+        ats_games_processed,
+        len(updated_teams),
     )
     return result
 

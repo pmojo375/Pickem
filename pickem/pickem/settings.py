@@ -81,6 +81,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'cfb.middleware.RequestContextMiddleware',
     'allauth.account.middleware.AccountMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -112,17 +113,23 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
 
+    "filters": {
+        "request_context": {
+            "()": "pickem.log.RequestContextFilter",
+        },
+    },
+
     "formatters": {
         "verbose": {
-            "format": "[{asctime}] {levelname} {name}:{lineno} [{process:d}/{threadName}] - {message}",
+            "format": "[{asctime}] {levelname} {name}:{lineno} [user={user} req={request_id}] - {message}",
             "style": "{",
         },
         "simple": {
-            "format": "[{asctime}] {levelname} {name} - {message}",
+            "format": "[{asctime}] {levelname} {name} [user={user} req={request_id}] - {message}",
             "style": "{",
         },
         "error": {
-            "format": "[{asctime}] {levelname} {name}:{lineno} - {message}",
+            "format": "[{asctime}] {levelname} {name}:{lineno} [user={user} req={request_id}] - {message}",
             "style": "{",
         },
     },
@@ -133,6 +140,7 @@ LOGGING = {
             "class": "logging.StreamHandler",
             "formatter": "simple",
             "level": "INFO",
+            "filters": ["request_context"],
         },
 
         # --- Your app logs ---
@@ -143,6 +151,7 @@ LOGGING = {
             "backupCount": 5,
             "encoding": "utf-8",
             "formatter": "verbose",
+            "filters": ["request_context"],
         },
 
         # --- Django internal logs ---
@@ -153,6 +162,7 @@ LOGGING = {
             "backupCount": 5,
             "encoding": "utf-8",
             "formatter": "simple",
+            "filters": ["request_context"],
         },
 
         # --- Errors (ERROR level only) ---
@@ -164,6 +174,7 @@ LOGGING = {
             "encoding": "utf-8",
             "formatter": "error",
             "level": "ERROR",
+            "filters": ["request_context"],
         },
 
         # --- Celery infrastructure logs (worker/beat) ---
@@ -174,6 +185,7 @@ LOGGING = {
             "backupCount": 5,
             "encoding": "utf-8",
             "formatter": "verbose",
+            "filters": ["request_context"],
         },
     },
 
@@ -185,10 +197,10 @@ LOGGING = {
             "propagate": False,
         },
 
-        # Your apps (example: pickem, chatterboxgolf, etc.)
+        # App code — INFO keeps disk use sane; use DEBUG temporarily when digging
         "cfb": {
             "handlers": ["console", "app_file", "error_file"],
-            "level": "DEBUG",
+            "level": "INFO",
             "propagate": False,
         },
 
@@ -230,18 +242,18 @@ LOGGING = {
             "level": "INFO",
             "propagate": False,
         },
-        
+
         # Celery task infrastructure (task execution framework)
         "celery.task": {
             "handlers": ["celery_file", "error_file"],
             "level": "INFO",
             "propagate": False,
         },
-        
-        # Your actual task application code - goes to app.log with your other app logs
+
+        # Task application code — same handlers as cfb; INFO default
         "cfb.tasks": {
             "handlers": ["console", "app_file", "error_file"],
-            "level": "DEBUG",
+            "level": "INFO",
             "propagate": False,
         },
     },

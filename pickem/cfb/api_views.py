@@ -421,8 +421,13 @@ def game_spread_history(request, game_id):
         spreads = GameSpread.objects.filter(game=game).order_by('timestamp')
         
         # Debug logging
-        logger.info(f"Game {game_id}: Found {spreads.count()} GameSpread records")
-        logger.info(f"Game {game_id}: current_home_spread = {game.current_home_spread}, opening_home_spread = {game.opening_home_spread}")
+        logger.debug(
+            "Game %s: %s GameSpread records; current=%s opening=%s",
+            game_id,
+            spreads.count(),
+            game.current_home_spread,
+            game.opening_home_spread,
+        )
         
         # Serialize spread data
         spread_data = []

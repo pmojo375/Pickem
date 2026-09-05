@@ -1,8 +1,11 @@
 from ..models import Game, Season
+import logging
 import requests
 from django.utils import timezone
 from datetime import timedelta
 from typing import Optional, Dict, Any
+
+logger = logging.getLogger(__name__)
 
 
 # Prefer site.web — site.api is intermittently blocked / rate-limited
@@ -146,7 +149,7 @@ def fetch_single_game_score(game: Game) -> bool:
         return False
         
     except requests.RequestException as e:
-        print(f"Error fetching ESPN scores for game {game.id}: {e}")
+        logger.warning("Error fetching ESPN scores for game %s: %s", game.id, e)
         return False
 
 
@@ -208,7 +211,7 @@ def fetch_and_store_live_scores() -> int:
                     events_by_espn_id[event_id] = event
         except requests.RequestException as e:
             # Don't abort the whole poll if one day fails — other dates can still update.
-            print(f"Error fetching ESPN scores for {check_date}: {e}")
+            logger.warning("Error fetching ESPN scores for %s: %s", check_date, e)
             continue
 
     if not events_by_espn_id:

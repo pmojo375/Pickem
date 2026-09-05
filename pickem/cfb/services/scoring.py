@@ -428,7 +428,11 @@ def update_member_week_for_game(game: Game) -> int:
         
         update_member_season_for_league(league, game.season)
     
-    logger.info(f"Updated {updated_count} MemberWeek records for game {game.id}")
+    logger.debug(
+        "Updated %s MemberWeek records for game %s",
+        updated_count,
+        game.id,
+    )
     return updated_count
 
 
@@ -582,7 +586,12 @@ def update_member_season_for_league(league: League, season) -> int:
                 member_season.rank_with_drops = ranks['rank_with_drops']
                 member_season.save(update_fields=['rank', 'rank_with_drops'])
     
-    logger.info(f"Updated {updated_count} MemberSeason records for league {league.id} season {season.id}")
+    logger.debug(
+        "Updated %s MemberSeason records for league %s season %s",
+        updated_count,
+        league.id,
+        season.id,
+    )
     return updated_count
 
 

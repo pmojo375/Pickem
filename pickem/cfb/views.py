@@ -12,6 +12,7 @@ from allauth.account.forms import ChangePasswordForm, SetPasswordForm
 from allauth.account.models import EmailAddress
 from allauth.socialaccount.forms import DisconnectForm
 from allauth.socialaccount.models import SocialAccount
+import logging
 from .models import (
     JOIN_PASSWORD_MIN_LENGTH,
     Game,
@@ -48,6 +49,8 @@ from .services.invites import (
     user_has_verified_email,
 )
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -392,13 +395,24 @@ def picks_view(request):
         
         # Show results
         if saved_count > 0:
+            logger.info(
+                "picks_saved league=%s saved=%s errors=%s",
+                league.id,
+                saved_count,
+                len(errors),
+            )
             messages.success(request, f"Successfully saved {saved_count} pick{'s' if saved_count != 1 else ''}! 🏈")
         if errors:
             for error in errors:
                 messages.error(request, error)
         if saved_count == 0 and not errors:
             messages.warning(request, "No picks were selected. Click on teams to make your picks!")
-        
+        elif saved_count == 0 and errors:
+            logger.info(
+                "picks_rejected league=%s errors=%s",
+                league.id,
+                len(errors),
+            )        
         return redirect(f"/picks/?league_id={league.id}")
 
     # Get league rules for key pick limits
@@ -2152,6 +2166,7 @@ def _complete_league_join(request, league):
         user=request.user,
         role="member",
     )
+    logger.info("league_joined league=%s", league.id)
     messages.success(request, f"You have joined '{league.name}'!")
     return redirect("league_detail", league_id=league.id)
 
@@ -2166,6 +2181,13 @@ def _personal_invite_redirect_after_accept(request, invite, result):
         messages.info(request, f"You are already a member of '{league.name}'.")
     elif result == "already_accepted":
         messages.info(request, f"This invitation to '{league.name}' was already accepted.")
+    if result in ("joined", "reactivated"):
+        logger.info(
+            "personal_invite_%s league=%s invite=%s",
+            result,
+            league.id,
+            invite.id,
+        )
     return redirect("league_detail", league_id=league.id)
 
 
@@ -2461,6 +2483,7 @@ def league_create_view(request):
                 role="owner",
             )
 
+            logger.info("league_created league=%s name=%s", league.id, league.name)
             messages.success(request, f"League '{league.name}' created successfully!")
             return redirect("league_detail", league_id=league.id)
 
@@ -2638,6 +2661,7 @@ def league_close_view(request, league_id):
 
     league.is_active = False
     league.save(update_fields=["is_active"])
+    logger.info("league_closed league=%s", league.id)
     messages.success(request, f"'{league.name}' is closed. You can reopen or delete it.")
     return redirect("league_detail", league_id=league.id)
 
@@ -2664,6 +2688,7 @@ def league_reopen_view(request, league_id):
 
     league.is_active = True
     league.save(update_fields=["is_active"])
+    logger.info("league_reopened league=%s", league.id)
     messages.success(request, f"'{league.name}' is open again.")
     return redirect("league_detail", league_id=league.id)
 
@@ -2690,6 +2715,11 @@ def league_open_for_season_view(request, league_id):
     league.season_opt_in_required = False
     league.save(update_fields=["is_active", "season_opt_in_required"])
 
+    logger.info(
+        "league_opened_for_season league=%s deactivated_members=%s",
+        league.id,
+        deactivated,
+    )
     messages.success(
         request,
         f"'{league.name}' is open for {year_label}. "
@@ -2766,6 +2796,8 @@ def league_email_invite_view(request, league_id):
         messages.success(request, f"Sent join site and league invite to {email}.")
     else:
         messages.error(request, f"Failed to send email to {email}. Check the server logs.")
+    if result in ("opt_in_sent", "existing_sent", "new_sent"):
+        logger.info("league_email_invite league=%s result=%s email=%s", league.id, result, email)
     return redirect("league_detail", league_id=league.id)
 
 
@@ -2791,6 +2823,7 @@ def league_self_activate_view(request, league_id):
     membership.save(update_fields=["is_active"])
     active_season = Season.objects.filter(is_active=True).first()
     _ensure_season_payment_row(league, active_season, membership.user)
+    logger.info("league_self_activated league=%s", league.id)
     messages.success(request, f"You are active in '{league.name}' for this season.")
     return redirect("league_detail", league_id=league.id)
 
@@ -2826,6 +2859,7 @@ def league_opt_in_view(request, token):
         membership.is_active = True
         membership.save(update_fields=["is_active"])
         _ensure_season_payment_row(league, active_season, membership.user)
+        logger.info("league_opt_in league=%s", league.id)
         messages.success(request, f"You are active in '{league.name}' for this season.")
         return redirect("league_detail", league_id=league.id)
 
@@ -2856,7 +2890,9 @@ def league_delete_view(request, league_id):
         return redirect("league_detail", league_id=league.id)
 
     name = league.name
+    league_pk = league.id
     league.delete()
+    logger.info("league_deleted league=%s name=%s", league_pk, name)
     messages.success(request, f"League '{name}' has been deleted.")
     return redirect("leagues_list")
 
@@ -2875,6 +2911,7 @@ def league_leave_view(request, league_id):
             return redirect("league_detail", league_id=league.id)
         
         membership.delete()
+        logger.info("league_left league=%s", league.id)
         messages.success(request, f"You have left '{league.name}'.")
         return redirect("leagues_list")
         
@@ -2919,6 +2956,12 @@ def league_member_status_view(request, league_id, membership_id):
     membership.save(update_fields=["is_active"])
 
     label = "active" if membership.is_active else "inactive"
+    logger.info(
+        "league_member_status league=%s target_user=%s status=%s",
+        league.id,
+        membership.user_id,
+        label,
+    )
     messages.success(request, f"{membership.user.username} is now {label} in '{league.name}'.")
     return redirect("league_detail", league_id=league.id)
 
@@ -2962,6 +3005,13 @@ def league_member_paid_view(request, league_id, membership_id):
     )
 
     label = "paid" if payment.paid else "unpaid"
+    logger.info(
+        "league_member_paid league=%s season=%s target_user=%s status=%s",
+        league.id,
+        active_season.year,
+        membership.user_id,
+        label,
+    )
     messages.success(
         request,
         f"{membership.user.username} is marked as {label} for {active_season.year} in '{league.name}'.",

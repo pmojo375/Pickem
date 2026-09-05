@@ -34,15 +34,23 @@ def update_single_game(game_id: int) -> bool:
     """
     try:
         game = Game.objects.select_related('home_team', 'away_team').get(id=game_id)
-        logger.info(f"Updating game {game_id}: {game.away_team.name} @ {game.home_team.name}")
-        
+        logger.debug(
+            "Updating game %s: %s @ %s",
+            game_id,
+            game.away_team.name,
+            game.home_team.name,
+        )
+
         updated = fetch_single_game_score(game)
-        
+
         if updated:
-            logger.info(f"Successfully updated game {game_id}")
+            logger.debug("Updated game %s from ESPN", game_id)
         else:
-            logger.warning(f"Game {game_id} was not found or could not be updated from ESPN")
-        
+            logger.warning(
+                "Game %s was not found or could not be updated from ESPN",
+                game_id,
+            )
+
         return updated
         
     except Game.DoesNotExist:
@@ -68,8 +76,6 @@ def poll_espn_scores(self):
                 logger.debug(f"Skipping poll, last poll was {time_since_poll:.1f}s ago")
                 return
 
-        logger.info("Starting ESPN live score polling")
-        
         # Check if there are active games
         now = timezone.now()
         active_season = Season.objects.filter(is_active=True).first()
@@ -79,26 +85,35 @@ def poll_espn_scores(self):
 
         start_date = now - timedelta(days=settings.GAME_CHECK_WINDOW_PAST)
 
-        active_games = Game.objects.filter(
+        active_count = Game.objects.filter(
             season=active_season,
             kickoff__gte=start_date,
             is_final=False,
-            kickoff__lte=now
-        )
+            kickoff__lte=now,
+        ).count()
 
-        if not active_games.exists():
+        if active_count == 0:
             logger.debug("No active games need polling")
             return
-
-        logger.info(f"Found {active_games.count()} active games")
 
         # Fetch and store live scores
         updated_count = fetch_and_store_live_scores()
 
         # Only stamp success so a failed ESPN pull can retry on the next beat
         cache.set(settings.REDIS_KEY_LAST_POLL, timezone.now().timestamp(), timeout=300)
-        
-        logger.info(f"ESPN polling complete: {updated_count} games updated")
+
+        # Routine polls are noisy at INFO (every ~minute on gameday).
+        if updated_count:
+            logger.info(
+                "ESPN poll: %s active games, %s updated",
+                active_count,
+                updated_count,
+            )
+        else:
+            logger.debug(
+                "ESPN poll: %s active games, none updated",
+                active_count,
+            )
 
     except Exception as exc:
         logger.error(f"Error in ESPN polling task: {exc}", exc_info=True)
@@ -173,13 +188,13 @@ def pull_calendar(season_year: int, force: bool = False):
         if not calendar_data:
             logger.error(f"No calendar data returned from CFBD for {season_year}")
             return
-        logger.info(f"Processing {len(calendar_data)} calendar data")
-        
+        logger.info("Processing %s calendar weeks for %s", len(calendar_data), season_year)
+
         season = Season.objects.get(year=season_year)
-        
+
         for calendar_item in calendar_data:
-            logger.info(f"Processing calendar item: {calendar_item}")
-            
+            logger.debug("Processing calendar item: %s", calendar_item)
+
             start_date = calendar_item['startDate']
             end_date = calendar_item['endDate']
         
@@ -463,7 +478,7 @@ def update_rankings(self, season_year: int = None, season_type: str = 'regular',
                 poll_name = poll_data.get('poll')
                 ranks = poll_data.get('ranks', [])
 
-                logger.info(f"Week {week_number} - {poll_name}: {len(ranks)} teams")
+                logger.debug(f"Week {week_number} - {poll_name}: {len(ranks)} teams")
 
                 for rank_data in ranks:
                     school_name = rank_data.get('school')
@@ -851,7 +866,7 @@ def pull_season_games(season_year: int = None, season_type: str = 'regular', for
                     )
                     teams_by_name[home_team_name] = home_team
                     if created:
-                        logger.info(f"Created FCS team: {home_team_name}")
+                        logger.debug(f"Created FCS team: {home_team_name}")
                 
                 if not away_team:
                     away_classification = game_data.get('awayClassification', 'fcs')
@@ -869,7 +884,7 @@ def pull_season_games(season_year: int = None, season_type: str = 'regular', for
                     )
                     teams_by_name[away_team_name] = away_team
                     if created:
-                        logger.info(f"Created FCS team: {away_team_name}")
+                        logger.debug(f"Created FCS team: {away_team_name}")
                 
                 # Only store games where at least one team is FBS
                 if home_team.classification != 'fbs' and away_team.classification != 'fbs':
@@ -988,7 +1003,7 @@ def lock_league_spreads_for_week(season_year: int = None, season_type: str = 're
             league = rule.league
             spread_lock_weekday = rule.spread_lock_weekday
             
-            logger.info(f"Processing league '{league.name}' (lock day: {spread_lock_weekday})")
+            logger.debug(f"Processing league '{league.name}' (lock day: {spread_lock_weekday})")
             
             # Get all league games for this week that don't have locked spreads yet
             league_games = LeagueGame.objects.filter(
@@ -1109,7 +1124,7 @@ def queue_team_records_update(season_year: int, countdown: int = 10):
     cache.set(_team_records_pending_key(season_year), True, timeout=300)
     if cache.add(_team_records_queued_key(season_year), True, timeout=countdown + 5):
         update_team_records_async.apply_async(args=[season_year], countdown=countdown)
-        logger.info(
+        logger.debug(
             "Queued debounced team records update for season %s (countdown=%ss)",
             season_year,
             countdown,
@@ -1142,7 +1157,7 @@ def update_team_records_async(season_year: int):
     if not cache.add(lock_key, True, timeout=180):
         # Another worker holds the lock; ensure a follow-up happens.
         cache.set(pending_key, True, timeout=300)
-        logger.info(
+        logger.debug(
             "Team records update for season %s already in progress; marked pending",
             season_year,
         )
@@ -1158,15 +1173,16 @@ def update_team_records_async(season_year: int):
         while True:
             cache.delete(pending_key)
             passes += 1
-            logger.info(
+            logger.debug(
                 "Starting team records update for season %s (pass %s)",
                 season_year,
                 passes,
             )
             last_result = update_team_records(season_year)
-            logger.info(
-                "Team records update complete for season %s: "
-                "%s W-L games, %s ATS games, %s teams updated",
+            logger.debug(
+                "Team records update pass %s complete for season %s: "
+                "%s W-L, %s ATS, %s teams",
+                passes,
                 season_year,
                 last_result['games_processed'],
                 last_result.get('ats_games_processed', 0),
@@ -1174,7 +1190,7 @@ def update_team_records_async(season_year: int):
             )
             if not cache.get(pending_key):
                 break
-            logger.info(
+            logger.debug(
                 "Pending team records refresh for season %s; running another pass",
                 season_year,
             )

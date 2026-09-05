@@ -63,7 +63,7 @@ class CFBDAPIClient:
             with open(filepath, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, default=str)
             
-            logger.info(f"Saved CFBD response to {filepath}")
+            logger.debug(f"Saved CFBD response to {filepath}")
             return str(filepath)
         except Exception as e:
             logger.error(f"Error saving JSON response: {e}")
@@ -88,7 +88,7 @@ class CFBDAPIClient:
         params = params or {}
         
         try:
-            logger.info(f"Making CFBD API request to {endpoint} with params {params}")
+            logger.debug(f"Making CFBD API request to {endpoint} with params {params}")
             response = self.session.get(url, params=params, timeout=self.timeout)
             response.raise_for_status()
             
@@ -131,7 +131,7 @@ class CFBDAPIClient:
         # Check cache first
         cached_data = cache.get(cache_key)
         if cached_data:
-            logger.info(f"Using cached CFBD teams data for {year}")
+            logger.debug(f"Using cached CFBD teams data for {year}")
             return cached_data
         
         # Fetch from API
@@ -140,7 +140,7 @@ class CFBDAPIClient:
         if data:
             # Cache for 24 hours
             cache.set(cache_key, data, timeout=86400)
-            logger.info(f"Fetched {len(data)} teams from CFBD for {year}")
+            logger.debug(f"Fetched {len(data)} teams from CFBD for {year}")
         
         return data
     
@@ -177,7 +177,7 @@ class CFBDAPIClient:
         # Check cache first
         cached_data = cache.get(cache_key)
         if cached_data:
-            logger.info(f"Using cached CFBD games data")
+            logger.debug(f"Using cached CFBD games data")
             return cached_data
         
         # Fetch from API
@@ -186,7 +186,7 @@ class CFBDAPIClient:
         if data:
             # Cache for 1 hour
             cache.set(cache_key, data, timeout=3600)
-            logger.info(f"Fetched {len(data)} games from CFBD")
+            logger.debug(f"Fetched {len(data)} games from CFBD")
         
         return data
     
@@ -201,13 +201,13 @@ class CFBDAPIClient:
         Returns:
             List of all game dictionaries or None on failure
         """
-        logger.info(f"Fetching all {season_type} season games for {year}")
+        logger.debug(f"Fetching all {season_type} season games for {year}")
         
         # Fetch without week parameter to get all games
         all_games = self.fetch_games(year, season_type=season_type, week=None)
         
         if all_games:
-            logger.info(f"Fetched total of {len(all_games)} games for {year} {season_type} season")
+            logger.debug(f"Fetched total of {len(all_games)} games for {year} {season_type} season")
         
         return all_games
     
@@ -247,7 +247,7 @@ class CFBDAPIClient:
         # Check cache first
         cached_data = cache.get(cache_key)
         if cached_data:
-            logger.info(f"Using cached CFBD lines data")
+            logger.debug(f"Using cached CFBD lines data")
             return cached_data
         
         # Fetch from API
@@ -256,7 +256,7 @@ class CFBDAPIClient:
         if data:
             # Cache for 1 hour
             cache.set(cache_key, data, timeout=3600)
-            logger.info(f"Fetched {len(data)} game lines from CFBD")
+            logger.debug(f"Fetched {len(data)} game lines from CFBD")
         
         return data
     
@@ -290,7 +290,7 @@ class CFBDAPIClient:
         # Check cache first
         cached_data = cache.get(cache_key)
         if cached_data:
-            logger.info(f"Using cached CFBD rankings data")
+            logger.debug(f"Using cached CFBD rankings data")
             return cached_data
         
         # Fetch from API
@@ -299,7 +299,7 @@ class CFBDAPIClient:
         if data:
             # Cache for 1 hour
             cache.set(cache_key, data, timeout=3600)
-            logger.info(f"Fetched {len(data)} weeks of rankings from CFBD")
+            logger.debug(f"Fetched {len(data)} weeks of rankings from CFBD")
         
         return data
     
@@ -314,14 +314,14 @@ class CFBDAPIClient:
         # Check cache first
         cached_data = cache.get(cache_key)
         if cached_data:
-            logger.info(f"Using cached CFBD calendar data")
+            logger.debug(f"Using cached CFBD calendar data")
             return cached_data
         
         data = self._make_request('/calendar', params)
         
         if data:
             cache.set(cache_key, data, timeout=604800)
-            logger.info(f"Fetched {len(data)} calendar data from CFBD")
+            logger.debug(f"Fetched {len(data)} calendar data from CFBD")
         
         return data
     
@@ -356,7 +356,7 @@ class CFBDAPIClient:
         try:
             cached_data = cache.get(cache_key)
             if cached_data:
-                logger.info(f"Using cached CFBD season stats data for weeks 0-{last_completed_week}")
+                logger.debug(f"Using cached CFBD season stats data for weeks 0-{last_completed_week}")
                 # Still process cached data to ensure database is up to date
                 self._process_and_save_stats(cached_data, year)
                 return cached_data
@@ -372,7 +372,7 @@ class CFBDAPIClient:
                 cache.set(cache_key, data, timeout=3600)
             except Exception as e:
                 logger.warning(f"Cache unavailable, skipping cache write: {e}")
-            logger.info(f"Fetched {len(data)} team stats from CFBD for weeks 0-{last_completed_week}")
+            logger.debug(f"Fetched {len(data)} team stats from CFBD for weeks 0-{last_completed_week}")
             
             # Process and save stats to database
             self._process_and_save_stats(data, year)
@@ -408,7 +408,7 @@ class CFBDAPIClient:
             # Also store normalized versions for fuzzy matching
             teams_by_name_normalized[team.name.lower().strip()] = team
         
-        logger.info(f"Pre-loaded {len(teams_by_name)} teams for season {year}")
+        logger.debug(f"Pre-loaded {len(teams_by_name)} teams for season {year}")
         
         # Process all stat entries and build lists for bulk operations
         stats_to_create = []
@@ -479,7 +479,7 @@ class CFBDAPIClient:
                 if key in existing_stat_keys:
                     existing_stats[key] = existing_stat
         
-        logger.info(f"Found {len(existing_stats)} existing stats, processing {len(valid_entries)} stat entries")
+        logger.debug(f"Found {len(existing_stats)} existing stats, processing {len(valid_entries)} stat entries")
         
         # Separate into create and update lists
         for entry in valid_entries:
@@ -505,11 +505,11 @@ class CFBDAPIClient:
         with transaction.atomic():
             if stats_to_create:
                 TeamStat.objects.bulk_create(stats_to_create, ignore_conflicts=True)
-                logger.info(f"Bulk created {len(stats_to_create)} new stats")
+                logger.debug(f"Bulk created {len(stats_to_create)} new stats")
             
             if stats_to_update:
                 TeamStat.objects.bulk_update(stats_to_update, ['value'], batch_size=1000)
-                logger.info(f"Bulk updated {len(stats_to_update)} existing stats")
+                logger.debug(f"Bulk updated {len(stats_to_update)} existing stats")
         
         logger.info(
             f"Processed team stats for {year}: "
