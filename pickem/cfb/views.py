@@ -785,11 +785,115 @@ def _empty_standing_row(user, week_picks_made=0, week_picks_total=0):
         "win_pct": 0,
         "points": 0,
         "correct_key": 0,
+        "key_picks_made": 0,
         "key_pick_pct": 0,
         "display_rank": 999,
         "week_picks_made": week_picks_made,
         "week_picks_total": week_picks_total,
     }
+
+
+def _finished_key_picks_made_by_user(league, *, week=None, season=None, exclude_week_ids=None):
+    """Map user_id -> count of key picks on finished games (display only)."""
+    qs = Pick.objects.filter(
+        league=league,
+        is_key_pick=True,
+        game__is_final=True,
+    )
+    if week is not None:
+        qs = qs.filter(game__week=week)
+    if season is not None:
+        qs = qs.filter(
+            game__season=season,
+            game__league_selections__league=league,
+            game__league_selections__is_active=True,
+        )
+    if exclude_week_ids:
+        qs = qs.exclude(game__week_id__in=exclude_week_ids)
+    return dict(
+        qs.values("user_id")
+        .annotate(c=Count("id", distinct=True))
+        .values_list("user_id", "c")
+    )
+
+
+def _finished_key_picks_by_user_week(league, season):
+    """Map user_id -> {week_id: count} for finished key picks (display only)."""
+    rows = (
+        Pick.objects.filter(
+            league=league,
+            is_key_pick=True,
+            game__is_final=True,
+            game__season=season,
+            game__league_selections__league=league,
+            game__league_selections__is_active=True,
+        )
+        .values("user_id", "game__week_id")
+        .annotate(c=Count("id", distinct=True))
+    )
+    by_user = {}
+    for row in rows:
+        by_user.setdefault(row["user_id"], {})[row["game__week_id"]] = row["c"]
+    return by_user
+
+
+def _dropped_week_ids_for_season_display(league, season, league_rules, user_ids):
+    """
+    Per-user week ids dropped from adjusted season standings (same rules as scoring).
+    Returns {user_id: set(week_id, ...)}.
+    """
+    if not league_rules or league_rules.drop_weeks <= 0 or not user_ids:
+        return {}
+
+    from .models import LeagueGame
+
+    weeks_with_finalized = set(
+        LeagueGame.objects.filter(
+            league=league,
+            game__season=season,
+            game__is_final=True,
+            is_active=True,
+        ).values_list("game__week_id", flat=True).distinct()
+    )
+    if not weeks_with_finalized:
+        return {}
+
+    member_weeks = MemberWeek.objects.filter(
+        league=league,
+        week__season=season,
+        user_id__in=user_ids,
+        week_id__in=weeks_with_finalized,
+    )
+    by_user = {}
+    for mw in member_weeks:
+        by_user.setdefault(mw.user_id, []).append(mw)
+
+    dropped = {}
+    for user_id, weeks in by_user.items():
+        if len(weeks) <= league_rules.drop_weeks:
+            continue
+
+        def sort_key(week):
+            if league_rules.tiebreaker == 1:
+                return (week.points, week.correct_key)
+            return (week.points, week.correct)
+
+        weeks_sorted = sorted(weeks, key=sort_key)
+        dropped[user_id] = {w.week_id for w in weeks_sorted[: league_rules.drop_weeks]}
+    return dropped
+
+
+def _key_picks_made_for_user(by_user_week, user_id, exclude_week_ids=None):
+    week_counts = by_user_week.get(user_id) or {}
+    if not exclude_week_ids:
+        return sum(week_counts.values())
+    return sum(c for wid, c in week_counts.items() if wid not in exclude_week_ids)
+
+
+def _key_pick_pct(correct_key, key_picks_made):
+    if key_picks_made > 0:
+        return round((correct_key / key_picks_made) * 100, 1)
+    return 0
 
 
 def _apply_display_week_pick_status(standings, pick_status):
@@ -1109,18 +1213,17 @@ def standings_view(request):
                         ).select_related('user', 'week')
                         
                         standings = []
-                        # Calculate maximum possible key picks for this week
-                        max_key_picks_per_week = league_rules.number_of_key_picks if league_rules and league_rules.key_picks_enabled else 0
+                        key_made_by_user = _finished_key_picks_made_by_user(
+                            league, week=selected_week
+                        )
                         
                         for member_week in member_weeks:
                             total = member_week.correct + member_week.incorrect + member_week.ties
                             win_pct = round((member_week.correct / total * 100) if total > 0 else 0, 1)
                             
-                            # Calculate key pick percentage based on max allowed key picks for this week
-                            key_pick_pct = 0
-                            if max_key_picks_per_week > 0:
-                                # Use the league rule maximum for this week, not actual picks made
-                                key_pick_pct = round((member_week.correct_key / max_key_picks_per_week * 100), 1)
+                            # Finished key picks only (not max allowed / unstarted games)
+                            key_picks_made = key_made_by_user.get(member_week.user_id, 0)
+                            key_pick_pct = _key_pick_pct(member_week.correct_key, key_picks_made)
                             
                             standings.append({
                                 'user': member_week.user,
@@ -1132,6 +1235,7 @@ def standings_view(request):
                                 'win_pct': win_pct,
                                 'points': member_week.points,
                                 'correct_key': member_week.correct_key,
+                                'key_picks_made': key_picks_made,
                                 'key_pick_pct': key_pick_pct,
                                 'display_rank': member_week.rank or 999,
                             })
@@ -1176,18 +1280,14 @@ def standings_view(request):
                 ).select_related('user')
                 
                 standings = []
-                # Calculate total possible key picks for the season
-                max_key_picks_per_week = league_rules.number_of_key_picks if league_rules and league_rules.key_picks_enabled else 0
-                
-                # Get weeks that have actually had games for this league to calculate max possible key picks
-                weeks_with_games = set(
-                    Game.objects.filter(
-                        season=active_season,
-                        league_selections__league=league,
-                        league_selections__is_active=True
-                    ).values_list('week_id', flat=True).distinct()
-                )
-                max_total_key_picks = max_key_picks_per_week * len(weeks_with_games) if max_key_picks_per_week > 0 else 0
+                member_seasons = list(member_seasons)
+                user_ids = [ms.user_id for ms in member_seasons]
+                key_by_user_week = _finished_key_picks_by_user_week(league, active_season)
+                dropped_weeks_by_user = {}
+                if not show_full_standings and league_rules and league_rules.drop_weeks > 0:
+                    dropped_weeks_by_user = _dropped_week_ids_for_season_display(
+                        league, active_season, league_rules, user_ids
+                    )
                 
                 for member_season in member_seasons:
                     if show_full_standings:
@@ -1200,6 +1300,9 @@ def standings_view(request):
                         picks_made = member_season.picks_made
                         total = correct + incorrect + ties
                         display_rank = member_season.rank or 999
+                        key_picks_made = _key_picks_made_for_user(
+                            key_by_user_week, member_season.user_id
+                        )
                     else:
                         # Show adjusted stats (default - with dropped weeks)
                         points = member_season.points - member_season.points_dropped
@@ -1214,14 +1317,14 @@ def standings_view(request):
                             display_rank = member_season.rank_with_drops
                         else:
                             display_rank = member_season.rank or 999
+                        key_picks_made = _key_picks_made_for_user(
+                            key_by_user_week,
+                            member_season.user_id,
+                            exclude_week_ids=dropped_weeks_by_user.get(member_season.user_id),
+                        )
                     
                     win_pct = round((correct / total * 100) if total > 0 else 0, 1)
-                    
-                    # Calculate key pick percentage based on max possible key picks for the season
-                    key_pick_pct = 0
-                    if max_total_key_picks > 0:
-                        # Use the maximum possible key picks according to league rules
-                        key_pick_pct = round((correct_key / max_total_key_picks * 100), 1)
+                    key_pick_pct = _key_pick_pct(correct_key, key_picks_made)
                     
                     standings.append({
                         'user': member_season.user,
@@ -1233,6 +1336,7 @@ def standings_view(request):
                         'win_pct': win_pct,
                         'points': points,
                         'correct_key': correct_key,
+                        'key_picks_made': key_picks_made,
                         'key_pick_pct': key_pick_pct,
                         'display_rank': display_rank,
                     })
@@ -1296,20 +1400,6 @@ def standings_view(request):
                 league_memberships__is_active=True,
             ).distinct()
             
-            # Calculate max possible key picks for fallback case
-            max_total_key_picks_fallback = 0
-            if fallback_league_rules and fallback_league_rules.key_picks_enabled and active_season:
-                # Get weeks that have actually had games for this league
-                weeks_with_games_fallback = set(
-                    Game.objects.filter(
-                        season=active_season,
-                        league_selections__league=league,
-                        league_selections__is_active=True
-                    ).values_list('week_id', flat=True).distinct()
-                )
-                max_key_picks_per_week_fallback = fallback_league_rules.number_of_key_picks
-                max_total_key_picks_fallback = max_key_picks_per_week_fallback * len(weeks_with_games_fallback)
-            
             standings = []
             for member in members:
                 all_picks = Pick.objects.filter(user=member, league=league)
@@ -1320,21 +1410,19 @@ def standings_view(request):
                 ties = picks.filter(is_correct=None).count() if picks.filter(is_correct=None).exists() else 0
                 picks_made = all_picks.count()
                 
-                # Calculate key picks
-                correct_key = Pick.objects.filter(
-                    user=member, 
-                    league=league, 
-                    is_correct=True,
-                    is_key_pick=True
-                ).count()
+                # Key picks on finished games only
+                finished_key_picks = Pick.objects.filter(
+                    user=member,
+                    league=league,
+                    is_key_pick=True,
+                    game__is_final=True,
+                )
+                key_picks_made = finished_key_picks.count()
+                correct_key = finished_key_picks.filter(is_correct=True).count()
                 
                 win_pct = round((wins / total * 100) if total > 0 else 0, 1)
                 
-                # Calculate key pick percentage based on max possible key picks
-                key_pick_pct = 0
-                if max_total_key_picks_fallback > 0:
-                    # Use the maximum possible key picks according to league rules
-                    key_pick_pct = round((correct_key / max_total_key_picks_fallback * 100), 1)
+                key_pick_pct = _key_pick_pct(correct_key, key_picks_made)
                 
                 # Calculate points (1 for correct, 2 for key pick correct)
                 points = Pick.objects.filter(
@@ -1361,6 +1449,7 @@ def standings_view(request):
                     'win_pct': win_pct,
                     'points': points,
                     'correct_key': correct_key,
+                    'key_picks_made': key_picks_made,
                     'key_pick_pct': key_pick_pct,
                 })
             

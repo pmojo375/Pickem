@@ -296,15 +296,15 @@
                         {% if key_picks_enabled %}
                         <div class="flex flex-col">
                             <span class="text-xs text-base-content/70 mb-1">Key Picks</span>
-                            {% if standing.correct_key > 0 %}
+                            {% if standing.key_picks_made > 0 %}
                             <div class="flex flex-col">
-                                <span class="font-medium">{{ standing.correct_key }}</span>
-                                {% if standing.key_pick_pct > 0 %}
+                                <span class="font-medium">{{ standing.correct_key }}/{{ standing.key_picks_made }}</span>
+                                {% if standing.key_pick_pct > 0 or standing.correct_key == 0 %}
                                 <span class="text-xs text-base-content/70">{{ standing.key_pick_pct }}%</span>
                                 {% endif %}
                             </div>
                             {% else %}
-                            <span class="text-base-content/50">0</span>
+                            <span class="text-base-content/50">—</span>
                             {% endif %}
                         </div>
                         {% else %}
@@ -533,15 +533,15 @@
                         </td>
                         {% if key_picks_enabled %}
                         <td>
-                            {% if standing.correct_key > 0 %}
+                            {% if standing.key_picks_made > 0 %}
                             <div class="flex flex-col">
-                                <span class="font-medium">{{ standing.correct_key }}</span>
-                                {% if standing.key_pick_pct > 0 %}
+                                <span class="font-medium">{{ standing.correct_key }}/{{ standing.key_picks_made }}</span>
+                                {% if standing.key_pick_pct > 0 or standing.correct_key == 0 %}
                                 <span class="text-xs text-base-content/70">{{ standing.key_pick_pct }}%</span>
                                 {% endif %}
                             </div>
                             {% else %}
-                            <span class="text-base-content/50">0</span>
+                            <span class="text-base-content/50">—</span>
                             {% endif %}
                         </td>
                         {% endif %}
