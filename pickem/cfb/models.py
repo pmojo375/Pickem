@@ -242,6 +242,12 @@ class LeagueRules(models.Model):
         default=1,
         help_text="Number of key picks allowed per week"
     )
+
+    # Notifications
+    pick_reminder_emails_enabled = models.BooleanField(
+        default=False,
+        help_text="Email members who have not finished their picks before the week's first kickoff",
+    )
     
     # Payout Structure
     entry_fee = models.DecimalField(

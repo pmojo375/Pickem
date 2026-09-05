@@ -125,6 +125,10 @@
                 </div>
             </div>
             <div class="rounded-lg bg-base-200 p-4">
+                <div class="text-xs uppercase tracking-wide text-base-content/60">Pick reminders</div>
+                <div class="font-semibold">{% if league_rules.pick_reminder_emails_enabled %}On{% else %}Off{% endif %}</div>
+            </div>
+            <div class="rounded-lg bg-base-200 p-4">
                 <div class="text-xs uppercase tracking-wide text-base-content/60">Drop weeks</div>
                 <div class="font-semibold">
                     {% if league_rules.drop_weeks %}{{ league_rules.drop_weeks }} worst week{{ league_rules.drop_weeks|pluralize }}{% else %}None{% endif %}

@@ -80,6 +80,12 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour=9, minute=0),  # Daily at 9 AM
         'options': {'expires': 3600},
     },
+    # Incomplete-pick reminders relative to each league's first kickoff
+    'send-pick-reminders': {
+        'task': 'cfb.tasks.send_pick_reminders',
+        'schedule': 600.0,  # Every 10 minutes
+        'options': {'expires': 540},
+    },
 }
 
 app.conf.task_routes = {

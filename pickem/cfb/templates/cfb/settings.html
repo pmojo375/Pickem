@@ -264,6 +264,25 @@
                         <span class="label-text-alt text-base-content/60">Number of key picks allowed weekly</span>
                     </label>
                 </div>
+
+                <!-- Pick Reminder Emails -->
+                <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                        <input type="checkbox"
+                               name="pick_reminder_emails_enabled"
+                               {% if league_rules.pick_reminder_emails_enabled %}checked{% endif %}
+                               class="checkbox checkbox-primary" />
+                        <div>
+                            <span class="label-text font-semibold">
+                                <i class="fas fa-envelope text-info mr-1"></i>
+                                Pick Reminder Emails
+                            </span>
+                            <p class="text-sm text-base-content/60">
+                                Email members who haven't finished their picks or key picks before the week's first kickoff
+                            </p>
+                        </div>
+                    </label>
+                </div>
                 
                 <!-- Tiebreaker -->
                 <div class="form-control">

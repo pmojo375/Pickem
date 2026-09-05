@@ -359,6 +359,15 @@ EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'false').lower() in ('1', 'true', 'yes')
 
+# Absolute site URL for links in emails sent outside a request (e.g. Celery).
+SITE_URL = os.getenv('SITE_URL', 'https://bigpicks.app').rstrip('/')
+
+# Hours before a league's first kickoff to email members with incomplete picks.
+# Will become a per-league user-adjustable setting later.
+PICK_REMINDER_HOURS_BEFORE_KICKOFF = int(
+    os.getenv('PICK_REMINDER_HOURS_BEFORE_KICKOFF', '3')
+)
+
 # Session behavior
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 30  # 30 days
 SESSION_SAVE_EVERY_REQUEST = True
@@ -466,6 +475,8 @@ REDIS_KEY_GAME_PREFIX = "scores:game:"
 REDIS_KEY_LIVE_STATE = "scores:live_state"
 REDIS_KEY_CIRCUIT_BREAKER = "scores:circuit_breaker"
 REDIS_KEY_LAST_POLL = "scores:last_poll"
+REDIS_KEY_PICK_REMINDER_PREFIX = "pick_reminder:sent:"
 REDIS_KEY_GAME_CACHE_TTL = 120  # 2 minutes for individual game cache
 REDIS_KEY_LIVE_STATE_TTL = 180  # 3 minutes for live state
+REDIS_KEY_PICK_REMINDER_TTL = 60 * 60 * 24 * 10  # 10 days; one reminder per league/week
 

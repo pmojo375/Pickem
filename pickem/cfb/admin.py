@@ -130,10 +130,19 @@ class LeagueRulesAdmin(admin.ModelAdmin):
         "spread_lock_weekday",
         "pickable_games_per_week",
         "key_picks_enabled",
+        "pick_reminder_emails_enabled",
         "entry_fee",
         "updated_at",
     )
-    list_filter = ("league", "season", "key_picks_enabled", "against_the_spread_enabled", "force_hooks", "tiebreaker")
+    list_filter = (
+        "league",
+        "season",
+        "key_picks_enabled",
+        "pick_reminder_emails_enabled",
+        "against_the_spread_enabled",
+        "force_hooks",
+        "tiebreaker",
+    )
     search_fields = ("league__name", "season__year")
     autocomplete_fields = ("league", "season")
     readonly_fields = ("created_at", "updated_at")
@@ -153,6 +162,9 @@ class LeagueRulesAdmin(admin.ModelAdmin):
         }),
         ("Key Pick Rules", {
             "fields": ("key_picks_enabled", "number_of_key_picks")
+        }),
+        ("Notifications", {
+            "fields": ("pick_reminder_emails_enabled",)
         }),
         ("Payout Structure", {
             "fields": (

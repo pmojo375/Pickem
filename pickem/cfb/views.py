@@ -1327,6 +1327,7 @@ def settings_view(request):
                             'picks_per_week': int(request.POST.get("picks_per_week", 0)),
                             'key_picks_enabled': request.POST.get("key_picks_enabled") == "on",
                             'number_of_key_picks': int(request.POST.get("number_of_key_picks", 1)),
+                            'pick_reminder_emails_enabled': request.POST.get("pick_reminder_emails_enabled") == "on",
                             'tiebreaker': int(request.POST.get("tiebreaker", 0)),
                             'entry_fee': entry_fee_value,
                             'weekly_payout_percent': weekly_payout_percent_value,
@@ -1349,6 +1350,7 @@ def settings_view(request):
                         league_rules.picks_per_week = int(request.POST.get("picks_per_week", 0))
                         league_rules.key_picks_enabled = request.POST.get("key_picks_enabled") == "on"
                         league_rules.number_of_key_picks = int(request.POST.get("number_of_key_picks", 1))
+                        league_rules.pick_reminder_emails_enabled = request.POST.get("pick_reminder_emails_enabled") == "on"
                         league_rules.tiebreaker = int(request.POST.get("tiebreaker", 0))
                         league_rules.entry_fee = entry_fee_value
                         league_rules.weekly_payout_percent = weekly_payout_percent_value

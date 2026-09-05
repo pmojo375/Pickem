@@ -1181,3 +1181,66 @@ def update_team_stats(self, season_year: int = None, week: int = None):
     except Exception as exc:
         logger.error(f"Error in update_team_stats task: {exc}", exc_info=True)
         raise self.retry(exc=exc)
+
+
+@shared_task(name='cfb.tasks.send_pick_reminders')
+def send_pick_reminders():
+    """
+    Email incomplete pickers for leagues with reminders enabled, once the
+    window opens before each league's first kickoff of the week.
+    """
+    try:
+        from .services.reminders import process_league_reminders
+        from .services.schedule import get_current_week, get_display_week
+
+        week = get_current_week() or get_display_week()
+        if not week:
+            logger.debug("No current/display week for pick reminders")
+            return {"status": "no_week"}
+
+        rules_qs = LeagueRules.objects.filter(
+            season=week.season,
+            pick_reminder_emails_enabled=True,
+        ).select_related("league")
+
+        if not rules_qs.exists():
+            logger.debug("No leagues have pick reminder emails enabled")
+            return {"status": "no_leagues", "week_id": week.id}
+
+        totals = {"sent": 0, "skipped": 0, "failed": 0, "processed": 0}
+        for rules in rules_qs:
+            result = process_league_reminders(rules, week)
+            if result["status"] == "processed":
+                totals["processed"] += 1
+                totals["sent"] += result["sent"]
+                totals["skipped"] += result["skipped"]
+                totals["failed"] += result["failed"]
+                logger.info(
+                    "Pick reminders for league %s week %s: sent=%s skipped=%s failed=%s",
+                    rules.league_id,
+                    week.id,
+                    result["sent"],
+                    result["skipped"],
+                    result["failed"],
+                )
+            else:
+                logger.debug(
+                    "Pick reminders skipped for league %s week %s: %s",
+                    rules.league_id,
+                    week.id,
+                    result["status"],
+                )
+
+        logger.info(
+            "Pick reminder run for week %s: processed=%s sent=%s skipped=%s failed=%s",
+            week.id,
+            totals["processed"],
+            totals["sent"],
+            totals["skipped"],
+            totals["failed"],
+        )
+        return {"status": "ok", "week_id": week.id, **totals}
+
+    except Exception as e:
+        logger.error(f"Error in send_pick_reminders task: {e}", exc_info=True)
+        raise

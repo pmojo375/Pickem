@@ -1,0 +1,11 @@
+Hi {{ user.username }},
+
+This is a reminder that Week {{ week.number }} picks for {{ league.name }} are due soon. The first game kicks off {{ first_kickoff|date:"D M j" }} at {{ first_kickoff|date:"g:i A T" }}.
+
+{% if missing_picks %}You've made {{ picks_made }} of {{ picks_required }} required pick{{ picks_required|pluralize }}.
+{% endif %}{% if key_picks_enabled and missing_key_picks %}You've made {{ key_picks_made }} of {{ key_picks_required }} key pick{{ key_picks_required|pluralize }}.
+{% endif %}
+Finish your picks here:
+{{ picks_url }}
+
+— BigPicks
