@@ -522,12 +522,8 @@ class LiveScoreUpdater {
     }
 
     /**
-     * Format score for display — matches server-side display_score filter:
-     * - Actual score when available (including 0)
-     * - "0" if game has started but no score recorded yet
-     * - "—" if game hasn't started
-     *
-     * Important: never use truthiness checks on score — 0 is a valid score.
+     * Resolve a displayable numeric score, or null to leave the DOM alone.
+     * JS never writes dashes — those only come from server-side render.
      */
     formatScore(score, game) {
         if (typeof score === 'number' && Number.isFinite(score)) {
@@ -539,11 +535,11 @@ class LiveScoreUpdater {
                 return String(asNum);
             }
         }
-        if (score !== null && score !== undefined && score !== '') {
-            return String(score);
+        // Missing score after kickoff → show 0; pregame → don't touch SSR
+        if ((score === null || score === undefined || score === '') && this.isGameStarted(game)) {
+            return '0';
         }
-
-        return this.isGameStarted(game) ? '0' : '—';
+        return null;
     }
 
     /**
@@ -558,10 +554,14 @@ class LiveScoreUpdater {
         }
         
         const display = this.formatScore(newScore, game);
-        const current = (scoreElement.textContent || '').trim();
+        // null means "leave whatever the server rendered"
+        if (display === null) {
+            return;
+        }
 
-        // Never clobber a real numeric score (including 0) with a pregame dash
-        if (display === '—' && /^\d+$/.test(current)) {
+        const current = (scoreElement.textContent || '').trim();
+        // Never replace a digit with a dash/placeholder from any code path
+        if (/^[\u2014\u2013\-]$/.test(display) && /^\d+$/.test(current)) {
             return;
         }
 
@@ -569,16 +569,12 @@ class LiveScoreUpdater {
             return;
         }
 
-        // Update score value
         scoreElement.textContent = display;
         
-        // Add pulse animation
         scoreElement.classList.remove('score-pulse');
-        // Force reflow to restart animation
         void scoreElement.offsetWidth;
         scoreElement.classList.add('score-pulse');
         
-        // Remove animation class after duration
         setTimeout(() => {
             scoreElement.classList.remove('score-pulse');
         }, this.config.highlightDuration);

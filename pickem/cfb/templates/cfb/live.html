@@ -255,16 +255,61 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/live-score-updater.js' %}?v=12"></script>
+<script src="{% static 'js/live-score-updater.js' %}?v=13"></script>
 <script>
 /**
  * Initialize Live Score Updates
- * 
- * This script automatically polls the /api/games endpoint and updates
- * scores in real-time without requiring page refreshes.
+ *
+ * Inline score helpers (not cacheable separately) so a stale live-score-updater.js
+ * cannot turn a real 0 into "-" / "—".
  */
 (function() {
     'use strict';
+
+    if (typeof LiveScoreUpdater !== 'undefined') {
+        LiveScoreUpdater.prototype.formatScore = function(score, game) {
+            if (typeof score === 'number' && Number.isFinite(score)) {
+                return String(score);
+            }
+            if (typeof score === 'string' && score.trim() !== '') {
+                var asNum = Number(score);
+                if (Number.isFinite(asNum)) {
+                    return String(asNum);
+                }
+            }
+            if ((score === null || score === undefined || score === '') &&
+                typeof this.isGameStarted === 'function' && this.isGameStarted(game)) {
+                return '0';
+            }
+            return null; // leave server-rendered value alone
+        };
+
+        LiveScoreUpdater.prototype.updateScore = function(gameElement, team, newScore, game) {
+            var scoreElement = gameElement && gameElement.querySelector('[data-score="' + team + '"]');
+            if (!scoreElement) {
+                return;
+            }
+            var display = this.formatScore(newScore, game || null);
+            if (display === null) {
+                return;
+            }
+            var current = (scoreElement.textContent || '').trim();
+            if (/^[\u2014\u2013\-]$/.test(display) && /^\d+$/.test(current)) {
+                return;
+            }
+            if (current === display) {
+                return;
+            }
+            scoreElement.textContent = display;
+            scoreElement.classList.remove('score-pulse');
+            void scoreElement.offsetWidth;
+            scoreElement.classList.add('score-pulse');
+            var self = this;
+            setTimeout(function() {
+                scoreElement.classList.remove('score-pulse');
+            }, (self.config && self.config.highlightDuration) || 2000);
+        };
+    }
     
     // Only initialize if we have games to track
     const gamesContainer = document.getElementById('games-container');
@@ -326,17 +371,6 @@
         updater.destroy();
     });
     
-    // Pause updates when user is interacting with the page
-    // (Optional: uncomment if you want to pause during interactions)
-    /*
-    let interactionTimer;
-    document.addEventListener('scroll', function() {
-        updater.pause();
-        clearTimeout(interactionTimer);
-        interactionTimer = setTimeout(() => updater.resume(), 2000);
-    });
-    */
-    
     /**
      * Show a subtle notification when a score updates
      */
@@ -370,7 +404,7 @@
     // Expose updater globally for debugging
     window.liveScoreUpdater = updater;
     
-    console.log('[LiveScores] Auto-update active');
+    console.log('[LiveScores] Auto-update active (score guard v13)');
     
     } catch (error) {
         console.error('[LiveScores] Initialization error:', error);
