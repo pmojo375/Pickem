@@ -269,18 +269,44 @@ class LiveScoreUpdater {
             const existingGame = this.state.gamesData.get(game.id);
             
             if (!existingGame) {
-                // New game - store it and do initial UI update
+                // First sight of this game: store state, but do NOT rewrite scores.
+                // The server already rendered the correct 0/— via display_score; an
+                // immediate client rewrite was turning real 0s into "—" (falsy/null
+                // handling and kickoff edge cases). Only sync live status fields here.
                 this.state.gamesData.set(game.id, game);
-                
-                // Do initial update to sync with current state
-                const initialChanges = [
-                    { type: 'home_score', old: null, new: game.home_score },
-                    { type: 'away_score', old: null, new: game.away_score },
-                    { type: 'quarter', old: null, new: game.quarter },
-                    { type: 'clock', old: null, new: game.clock },
-                    { type: 'possession', old: null, new: game.possession }
-                ];
-                this.updateGameUI(game, initialChanges);
+
+                const initialChanges = [];
+                if (game.quarter != null && game.quarter !== '') {
+                    initialChanges.push({ type: 'quarter', old: null, new: game.quarter });
+                }
+                if (game.clock) {
+                    initialChanges.push({ type: 'clock', old: null, new: game.clock });
+                }
+                if (game.possession) {
+                    initialChanges.push({ type: 'possession', old: null, new: game.possession });
+                }
+                if (game.is_final) {
+                    initialChanges.push({ type: 'is_final', old: false, new: true });
+                }
+                if (initialChanges.length > 0) {
+                    this.updateGameUI(game, initialChanges);
+                }
+
+                // If kickoff has passed and scores are still null, upgrade "—" → "0"
+                if (
+                    (game.home_score === null || game.away_score === null) &&
+                    this.isGameStarted(game)
+                ) {
+                    const gameElement = document.querySelector(`[data-game-id="${game.id}"]`);
+                    if (gameElement) {
+                        if (game.home_score === null) {
+                            this.updateScore(gameElement, 'home', game.home_score, game);
+                        }
+                        if (game.away_score === null) {
+                            this.updateScore(gameElement, 'away', game.away_score, game);
+                        }
+                    }
+                }
             } else {
                 // Check what changed
                 const changes = this.detectChanges(existingGame, game);
@@ -345,14 +371,21 @@ class LiveScoreUpdater {
     }
 
     /**
-     * Check if a game has started (kickoff passed or quarter set)
+     * Check if a game has started (kickoff passed or quarter set).
+     * Matches server-side has_started: any non-null quarter counts.
      */
     isGameStarted(game) {
-        if (game.quarter != null && game.quarter > 0) {
+        if (!game) {
+            return false;
+        }
+        if (game.quarter != null) {
             return true;
         }
         if (game.kickoff) {
-            return new Date(game.kickoff) <= new Date();
+            const kickoff = new Date(game.kickoff);
+            if (!Number.isNaN(kickoff.getTime())) {
+                return kickoff <= new Date();
+            }
         }
         return false;
     }
@@ -493,15 +526,24 @@ class LiveScoreUpdater {
      * - Actual score when available (including 0)
      * - "0" if game has started but no score recorded yet
      * - "—" if game hasn't started
+     *
+     * Important: never use truthiness checks on score — 0 is a valid score.
      */
     formatScore(score, game) {
-        if (score !== null && score !== undefined) {
+        if (typeof score === 'number' && Number.isFinite(score)) {
+            return String(score);
+        }
+        if (typeof score === 'string' && score.trim() !== '') {
+            const asNum = Number(score);
+            if (Number.isFinite(asNum)) {
+                return String(asNum);
+            }
+        }
+        if (score !== null && score !== undefined && score !== '') {
             return String(score);
         }
 
-        const hasQuarter = game && game.quarter != null && game.quarter > 0;
-        const kickoffPassed = game && game.kickoff && new Date(game.kickoff) <= new Date();
-        return (hasQuarter || kickoffPassed) ? '0' : '—';
+        return this.isGameStarted(game) ? '0' : '—';
     }
 
     /**
@@ -516,7 +558,14 @@ class LiveScoreUpdater {
         }
         
         const display = this.formatScore(newScore, game);
-        if (scoreElement.textContent === display) {
+        const current = (scoreElement.textContent || '').trim();
+
+        // Never clobber a real numeric score (including 0) with a pregame dash
+        if (display === '—' && /^\d+$/.test(current)) {
+            return;
+        }
+
+        if (current === display) {
             return;
         }
 
@@ -591,7 +640,7 @@ class LiveScoreUpdater {
     ${kickoffTimeText ? `<div class="text-xs text-base-content/60">${kickoffTimeText}</div>` : ''}
 </div>
 ${spreadBadgeHTML}`;
-        } else if (game.quarter) {
+        } else if (game.quarter != null && game.quarter !== '') {
             statusHTML = `
 <div class="text-center">
     <div class="text-xl md:text-2xl font-bold text-warning animate-pulse mb-1">

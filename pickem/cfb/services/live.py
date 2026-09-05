@@ -78,11 +78,19 @@ def _apply_event_to_game(game: Game, event: dict) -> bool:
     if not home_competitor or not away_competitor:
         return False
 
+    def _parse_score(raw) -> int:
+        # ESPN often sends "" for a true 0 before the first points.
+        if raw is None or raw == "":
+            return 0
+        return int(raw)
+
     try:
-        home_score = int(home_competitor.get("score", 0))
-        away_score = int(away_competitor.get("score", 0))
+        home_score = _parse_score(home_competitor.get("score", 0))
+        away_score = _parse_score(away_competitor.get("score", 0))
     except (ValueError, TypeError):
-        return False
+        # Still apply period/clock if score text is weird — default to 0.
+        home_score = 0
+        away_score = 0
 
     is_final = status_state == "post"
     period = status.get("period")

@@ -87,24 +87,20 @@ def has_started(game):
 def display_score(game, team_position):
     """
     Display the score for a team, showing:
-    - Actual score if available
+    - Actual score if available (including 0)
     - "0" if game has started but no score recorded
-    - "-" if game hasn't started yet
-    
-    Args:
-        game: The game object
-        team_position: Either "home" or "away"
+    - "—" if game hasn't started yet
+
+    Always returns a string so Django templates never treat 0 as empty/false.
     """
     score = game.home_score if team_position == "home" else game.away_score
-    
+
     if score is not None:
-        return score
-    
-    # Check if game has started
+        return str(score)
+
     if has_started(game):
         return "0"
-    else:
-        return "—"
+    return "—"
 
 
 @register.simple_tag
