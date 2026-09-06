@@ -421,7 +421,7 @@
             <table class="table table-zebra w-full league-picks-table">
                 <thead>
                     <tr>
-                        <th class="bg-base-200">Player</th>
+                        <th class="bg-base-200 league-picks-sticky-player">Player</th>
                         {% for game in league_picks_data.games %}
                         <th class="bg-base-200 text-center {% if not game.has_started and not game.is_final %}opacity-50{% endif %}">
                             <div class="flex items-center justify-center gap-3 mb-2 league-picks-matchup">
@@ -471,37 +471,23 @@
                 </thead>
                 <tbody>
                     {% for member_data in league_picks_data.members %}
-                    <tr class="hover {% if member_data.user == request.user %}bg-primary/10{% endif %}">
-                        <td class="{% if member_data.user == request.user %}bg-primary/10{% elif forloop.counter0|divisibleby:2 %}bg-base-100{% else %}bg-base-200{% endif %}">
-                            <div class="flex items-center gap-3">
-                                <div class="avatar placeholder">
-                                    <div class="bg-primary text-primary-content rounded-full w-10">
-                                        <span>
-                                            {% if member_data.user.first_name %}
-                                                {{ member_data.user.first_name|slice:":1"|upper }}
-                                            {% else %}
-                                                {{ member_data.user.username|slice:":1"|upper }}
-                                            {% endif %}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div class="font-bold">
-                                        {% if member_data.user.first_name and member_data.user.last_name %}
-                                            {{ member_data.user.first_name }} {{ member_data.user.last_name }}
-                                        {% elif member_data.user.first_name %}
-                                            {{ member_data.user.first_name }}
-                                        {% elif member_data.user.last_name %}
-                                            {{ member_data.user.last_name }}
-                                        {% else %}
-                                            {{ member_data.user.username }}
-                                        {% endif %}
-                                        {% if member_data.user == request.user %}
-                                        <span class="text-xs text-primary">(You)</span>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
+                    <tr class="hover{% if member_data.user == request.user %} bg-primary/10{% endif %}">
+                        <td class="league-picks-sticky-player{% if member_data.user == request.user %} is-you{% endif %}">
+                            <span class="font-semibold standings-player-name">
+                                {% if member_data.user.first_name and member_data.user.last_name %}
+                                    <span class="md:hidden">{{ member_data.user.first_name }} {{ member_data.user.last_name|slice:":1" }}.</span>
+                                    <span class="hidden md:inline">{{ member_data.user.first_name }} {{ member_data.user.last_name }}</span>
+                                {% elif member_data.user.first_name %}
+                                    {{ member_data.user.first_name }}
+                                {% elif member_data.user.last_name %}
+                                    {{ member_data.user.last_name }}
+                                {% else %}
+                                    {{ member_data.user.username }}
+                                {% endif %}
+                                {% if member_data.user == request.user %}
+                                <span class="text-xs text-primary">(You)</span>
+                                {% endif %}
+                            </span>
                         </td>
                         {% for game in league_picks_data.games %}
                         <td class="text-center {% if not game.has_started and not game.is_final %}opacity-50{% endif %}">
@@ -606,7 +592,10 @@
     }
 
     .standings-table {
+        --standings-rank-w: 2rem;
         min-width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
     }
 
     .standings-table :where(th, td) {
@@ -626,7 +615,6 @@
     .standings-sticky-rank,
     .standings-sticky-player {
         position: sticky;
-        z-index: 2;
         background-color: var(--fallback-b1, oklch(var(--b1)));
     }
 
@@ -642,22 +630,36 @@
 
     .standings-sticky-rank {
         left: 0;
-        min-width: 2rem;
-        max-width: 2.25rem;
+        z-index: 4;
+        width: var(--standings-rank-w);
+        min-width: var(--standings-rank-w);
+        max-width: var(--standings-rank-w);
+        box-sizing: border-box;
+        padding-left: 0.3rem;
+        padding-right: 0.3rem;
         text-align: center;
+        border-right: 0 !important;
     }
 
     .standings-sticky-player {
-        left: 2.25rem;
+        /* Overlap rank by 1px so scroll content can't peek through the seam */
+        left: calc(var(--standings-rank-w) - 1px);
+        z-index: 3;
         min-width: 6.5rem;
         max-width: 8.5rem;
-        box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.18);
+        padding-left: 0.4rem;
+        border-left: 0 !important;
+        box-shadow: 5px 0 8px -5px rgba(0, 0, 0, 0.28);
     }
 
     .standings-table thead .standings-sticky-rank,
     .standings-table thead .standings-sticky-player {
-        z-index: 3;
+        z-index: 5;
         background-color: var(--fallback-b2, oklch(var(--b2)));
+    }
+
+    .standings-table thead .standings-sticky-rank {
+        z-index: 6;
     }
 
     .standings-player-name {
@@ -672,6 +674,7 @@
     .standings-table thead th.standings-sticky-player:first-child,
     .standings-table tbody td.standings-sticky-player:first-child {
         left: 0;
+        border-left: 0 !important;
     }
 
     @media (min-width: 640px) {
@@ -758,22 +761,63 @@
     }
 
     /* Sticky first column styling - League Picks Table Only */
-    .league-picks-table th:first-child,
-    .league-picks-table td:first-child {
+    .league-picks-table {
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .league-picks-table .league-picks-sticky-player {
         position: sticky;
         left: 0;
         z-index: 10;
+        background-color: var(--fallback-b1, oklch(var(--b1)));
+        box-shadow: 5px 0 8px -5px rgba(0, 0, 0, 0.28);
+        min-width: 6.5rem;
+        max-width: 9rem;
+        vertical-align: middle;
     }
 
-    /* Header styling */
-    .league-picks-table thead th:first-child {
+    /* Keep body rows tall enough for pick logos/status after removing avatars */
+    .league-picks-table tbody td {
+        padding-top: 0.7rem;
+        padding-bottom: 0.7rem;
+        vertical-align: middle;
+    }
+
+    .league-picks-table.table-zebra tbody tr:nth-child(even) .league-picks-sticky-player {
+        background-color: var(--fallback-b2, oklch(var(--b2)));
+    }
+
+    .league-picks-table .league-picks-sticky-player.is-you {
+        /* Opaque highlight so picks can't show through while scrolling */
+        background-color: color-mix(in oklab, var(--fallback-p, oklch(var(--p))) 18%, var(--fallback-b1, oklch(var(--b1))));
+    }
+
+    .league-picks-table thead .league-picks-sticky-player {
         z-index: 11;
-        box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.1);
+        background-color: var(--fallback-b2, oklch(var(--b2)));
     }
 
-    /* Add subtle shadow for depth on all sticky cells */
-    .league-picks-table td:first-child {
-        box-shadow: 2px 0 4px -2px rgba(0, 0, 0, 0.1);
+    .league-picks-table .standings-player-name {
+        display: inline-block;
+        max-width: 8rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        vertical-align: middle;
+        font-size: 0.8125rem;
+    }
+
+    @media (min-width: 768px) {
+        .league-picks-table .league-picks-sticky-player {
+            min-width: 9rem;
+            max-width: none;
+        }
+
+        .league-picks-table .standings-player-name {
+            max-width: none;
+            font-size: 0.875rem;
+        }
     }
 
     /* Scroll snapping for league picks table */
