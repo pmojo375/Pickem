@@ -123,30 +123,57 @@ def calculate_pick_points(pick: Pick, is_correct: Optional[bool], league_rules: 
     return points
 
 
+def resolve_total_points_tiebreak(week_picks) -> tuple:
+    """
+    Resolve Total Points tiebreaker fields from a user's final week picks.
+
+    Looks up the week's total-points pick (not the game currently being graded),
+    so later non-TB finals do not wipe guess/actual/diff.
+
+    Returns:
+        (points_guess, points_actual, tiebreak_abs_diff)
+    """
+    total_pts_pick = (
+        week_picks.filter(is_total_points_game=True)
+        .select_related("game")
+        .order_by("id")
+        .first()
+    )
+    if not total_pts_pick or total_pts_pick.points_guess is None:
+        return None, None, None
+
+    points_guess = total_pts_pick.points_guess
+    game = total_pts_pick.game
+    if game is None or game.home_score is None or game.away_score is None:
+        return points_guess, None, None
+
+    points_actual = game.home_score + game.away_score
+    return points_guess, points_actual, abs(points_guess - points_actual)
+
+
 def calculate_tiebreaker_value(member_week: MemberWeek, league_rules: LeagueRules) -> tuple:
     """
     Calculate the tiebreaker value for a MemberWeek based on league rules.
-    
-    Returns:
-        Tuple of (primary_value, secondary_value) for sorting
-        Higher values should rank higher (for points, correct, etc.)
-        For total-points diff, LOWER is better, so we negate it
+
+    Returns a single-metric tuple used only after points are equal.
+    Higher values rank higher. For total-points diff, LOWER is better, so
+    the value is negated. If the configured tiebreaker also matches (or is
+    None), callers leave players tied — do not fall through to another stat.
     """
     tiebreaker = league_rules.tiebreaker
-    
+
     if tiebreaker == 1:  # Correct Key Picks
-        return (member_week.correct_key, member_week.points)
-    elif tiebreaker == 2:  # Total Points - closer to actual is better (lower diff is better)
-        # Negate the diff so lower values sort higher
-        diff = member_week.tiebreak_abs_diff if member_week.tiebreak_abs_diff is not None else float('inf')
-        # If no tiebreak data, use worst possible (infinitely high diff)
-        # For sorting, negate so that lower diff (closer guess) ranks higher
-        primary = -diff if diff != float('inf') else -float('inf')
-        return (primary, member_week.correct_key)
-    elif tiebreaker == 3:  # Correct Picks
-        return (member_week.correct, member_week.points)
-    else:  # None (0) - just use points as primary
-        return (member_week.points, member_week.correct)
+        return (member_week.correct_key,)
+    if tiebreaker == 2:  # Total Points — closer guess ranks higher
+        if member_week.tiebreak_abs_diff is None:
+            # Missing guess/score: stay tied with others who also lack TB data,
+            # and lose to anyone with a resolved diff.
+            return (float("-inf"),)
+        return (-member_week.tiebreak_abs_diff,)
+    if tiebreaker == 3:  # Correct Picks
+        return (member_week.correct,)
+    # None (0) — points only; equal points remain tied
+    return (0,)
 
 
 def assign_ranks_for_week(member_weeks: List[MemberWeek], league_rules: LeagueRules) -> Dict[int, int]:
@@ -225,14 +252,14 @@ def assign_ranks_for_season(member_seasons: List[MemberSeason], league_rules: Le
         adjusted_correct_key = member_season.correct_key - member_season.correct_key_dropped
         return adjusted_points, adjusted_correct, adjusted_correct_key
     
-    # Helper function to get tiebreaker value
+    # Helper function to get tiebreaker value (season-level; Total Points is weekly-only)
     def get_tiebreaker_value(points, correct, correct_key, league_rules):
         if league_rules.tiebreaker == 1:  # Correct Key Picks
             return correct_key
-        elif league_rules.tiebreaker == 3:  # Correct Picks
+        if league_rules.tiebreaker == 3:  # Correct Picks
             return correct
-        else:  # None or Total Points
-            return correct
+        # None or Total Points: season standings stay tied on equal points
+        return 0
     
     def calculate_ranks_for_stats(member_seasons_list, use_full_stats=True):
         """Calculate ranks for either full stats or adjusted stats"""
@@ -379,24 +406,16 @@ def update_member_week_for_game(game: Game) -> int:
             for week_pick in user_picks:
                 total_points += calculate_pick_points(week_pick, week_pick.is_correct, league_rules)
             
-            # Calculate tiebreaker data if applicable (Total Points tiebreaker)
+            # Total Points TB must be resolved from the week's TB pick every time
+            # a game finals — otherwise later non-TB games wipe guess/diff to None.
             points_guess = None
             points_actual = None
             tiebreak_abs_diff = None
-            
-            if league_rules.tiebreaker == 2 and league_game.is_total_points_game:
-                # Get this user's points guess for this game
-                if pick.is_total_points_game and pick.points_guess is not None:
-                    points_guess = pick.points_guess
-                
-                # Calculate actual total points if game has scores
-                if game.home_score is not None and game.away_score is not None:
-                    points_actual = game.home_score + game.away_score
-                    
-                    # Calculate absolute difference
-                    if points_guess is not None:
-                        tiebreak_abs_diff = abs(points_guess - points_actual)
-            
+            if league_rules.tiebreaker == 2:
+                points_guess, points_actual, tiebreak_abs_diff = resolve_total_points_tiebreak(
+                    user_picks
+                )
+
             # Update MemberWeek
             member_week.picks_made = user_picks.count()
             member_week.correct = correct_count
@@ -542,10 +561,16 @@ def update_member_season_for_league(league: League, season) -> int:
                 def get_week_tiebreaker_key(week):
                     if league_rules.tiebreaker == 1:  # Correct Key Picks
                         return (week.points, week.correct_key)
-                    elif league_rules.tiebreaker == 3:  # Correct Picks
+                    if league_rules.tiebreaker == 2:  # Total Points (worse = larger abs diff)
+                        diff = (
+                            week.tiebreak_abs_diff
+                            if week.tiebreak_abs_diff is not None
+                            else float("inf")
+                        )
+                        return (week.points, -diff)
+                    if league_rules.tiebreaker == 3:  # Correct Picks
                         return (week.points, week.correct)
-                    else:  # Default to correct picks
-                        return (week.points, week.correct)
+                    return (week.points, 0)
                 
                 weeks_list.sort(key=get_week_tiebreaker_key)
                 
@@ -674,27 +699,14 @@ def recalculate_all_member_stats(season) -> dict:
                         for pick in week_picks:
                             total_points += calculate_pick_points(pick, pick.is_correct, league_rules)
                         
-                        # Calculate tiebreaker data if applicable (Total Points tiebreaker)
                         points_guess = None
                         points_actual = None
                         tiebreak_abs_diff = None
-                        
                         if league_rules.tiebreaker == 2:
-                            # Find any total-points games for this week
-                            total_pts_picks = week_picks.filter(is_total_points_game=True)
-                            if total_pts_picks.exists():
-                                # Get the user's first points guess (usually only one per user per game type)
-                                first_guess = total_pts_picks.first()
-                                if first_guess.points_guess is not None:
-                                    points_guess = first_guess.points_guess
-                                
-                                # Find the game and get actual total
-                                game = first_guess.game
-                                if game.home_score is not None and game.away_score is not None:
-                                    points_actual = game.home_score + game.away_score
-                                    if points_guess is not None:
-                                        tiebreak_abs_diff = abs(points_guess - points_actual)
-                        
+                            points_guess, points_actual, tiebreak_abs_diff = (
+                                resolve_total_points_tiebreak(week_picks)
+                            )
+
                         member_week.picks_made = week_picks.count()
                         member_week.correct = correct_count
                         member_week.incorrect = incorrect_count
@@ -784,10 +796,16 @@ def recalculate_all_member_stats(season) -> dict:
                         def get_week_tiebreaker_key(week):
                             if league_rules.tiebreaker == 1:  # Correct Key Picks
                                 return (week.points, week.correct_key)
-                            elif league_rules.tiebreaker == 3:  # Correct Picks
+                            if league_rules.tiebreaker == 2:  # Total Points (worse = larger abs diff)
+                                diff = (
+                                    week.tiebreak_abs_diff
+                                    if week.tiebreak_abs_diff is not None
+                                    else float("inf")
+                                )
+                                return (week.points, -diff)
+                            if league_rules.tiebreaker == 3:  # Correct Picks
                                 return (week.points, week.correct)
-                            else:  # Default to correct picks
-                                return (week.points, week.correct)
+                            return (week.points, 0)
                         
                         weeks_list.sort(key=get_week_tiebreaker_key)
                         
