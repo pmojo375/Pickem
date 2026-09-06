@@ -153,79 +153,84 @@ def resolve_total_points_tiebreak(week_picks) -> tuple:
 
 def calculate_tiebreaker_value(member_week: MemberWeek, league_rules: LeagueRules) -> tuple:
     """
-    Calculate the tiebreaker value for a MemberWeek based on league rules.
+    Sort key used after points for week ranking (higher is better).
 
-    Returns a single-metric tuple used only after points are equal.
-    Higher values rank higher. For total-points diff, LOWER is better, so
-    the value is negated. If the configured tiebreaker also matches (or is
-    None), callers leave players tied — do not fall through to another stat.
+    Cascade:
+      1. League tiebreaker method
+      2. Correct picks
+      3. Key picks
+
+    Players only share a rank when this full tuple matches.
     """
-    tiebreaker = league_rules.tiebreaker
+    return _tiebreak_cascade(
+        league_rules,
+        correct=member_week.correct,
+        correct_key=member_week.correct_key,
+        tiebreak_abs_diff=member_week.tiebreak_abs_diff,
+    )
+
+
+def _tiebreak_cascade(
+    league_rules: LeagueRules,
+    *,
+    correct: int,
+    correct_key: int,
+    tiebreak_abs_diff=None,
+) -> tuple:
+    """
+    (tiebreaker_method, correct, correct_key) — all higher-is-better.
+
+    Total Points uses negated abs diff (closer guess ranks higher).
+    Missing Total Points data ranks below any resolved guess, then
+    falls through to correct / key among others missing data.
+    """
+    tiebreaker = league_rules.tiebreaker if league_rules else 0
 
     if tiebreaker == 1:  # Correct Key Picks
-        return (member_week.correct_key,)
-    if tiebreaker == 2:  # Total Points — closer guess ranks higher
-        if member_week.tiebreak_abs_diff is None:
-            # Missing guess/score: stay tied with others who also lack TB data,
-            # and lose to anyone with a resolved diff.
-            return (float("-inf"),)
-        return (-member_week.tiebreak_abs_diff,)
-    if tiebreaker == 3:  # Correct Picks
-        return (member_week.correct,)
-    # None (0) — points only; equal points remain tied
-    return (0,)
+        method_val = correct_key
+    elif tiebreaker == 2:  # Total Points
+        if tiebreak_abs_diff is None:
+            method_val = float("-inf")
+        else:
+            method_val = -tiebreak_abs_diff
+    elif tiebreaker == 3:  # Correct Picks
+        method_val = correct
+    else:  # None — skip method, fall through to correct then key
+        method_val = 0
+
+    return (method_val, correct, correct_key)
 
 
 def assign_ranks_for_week(member_weeks: List[MemberWeek], league_rules: LeagueRules) -> Dict[int, int]:
     """
     Assign ranks to member weeks with proper tiebreaker handling.
-    
-    Ranking rules:
-    1. Primary sort: Points (higher is better)
-    2. Secondary sort: Tiebreaker value from league rules (if points tie)
-    3. If tiebreaker also matches, assign same rank
-    4. When multiple members share a rank, the next rank is skipped accordingly
-       (e.g., if two members tie for 2nd place, the next is 4th, not 3rd)
-    
-    Args:
-        member_weeks: List of MemberWeek objects for a league/week
-        league_rules: The LeagueRules to determine tiebreaker method
-    
-    Returns:
-        Dict mapping member_week.id to rank
+
+    Ranking cascade:
+      1. Points (higher is better)
+      2. League tiebreaker method
+      3. Correct picks
+      4. Key picks
+    Equal on the full cascade → same competition rank (next rank skipped).
     """
     if not member_weeks:
         return {}
-    
-    # Sort by points (descending) and then by tiebreaker value (descending)
-    sorted_weeks = sorted(
-        member_weeks,
-        key=lambda x: (x.points, calculate_tiebreaker_value(x, league_rules)),
-        reverse=True
-    )
-    
+
+    def sort_key(member_week):
+        return (member_week.points, calculate_tiebreaker_value(member_week, league_rules))
+
+    sorted_weeks = sorted(member_weeks, key=sort_key, reverse=True)
+
     rank_map = {}
     current_rank = 1
-    previous_points = None
-    previous_tiebreaker = None
-    
+    previous_key = None
+
     for index, member_week in enumerate(sorted_weeks):
-        current_points = member_week.points
-        current_tiebreaker = calculate_tiebreaker_value(member_week, league_rules)
-        
-        # Determine if this is a new ranking position
-        # A new rank happens when either points OR tiebreaker value changes
-        if previous_points is not None and (
-            current_points != previous_points or 
-            current_tiebreaker != previous_tiebreaker
-        ):
-            # Assign the next available rank (which accounts for skipped ranks from ties)
+        key = sort_key(member_week)
+        if previous_key is not None and key != previous_key:
             current_rank = index + 1
-        
         rank_map[member_week.id] = current_rank
-        previous_points = current_points
-        previous_tiebreaker = current_tiebreaker
-    
+        previous_key = key
+
     return rank_map
 
 
@@ -233,97 +238,68 @@ def assign_ranks_for_season(member_seasons: List[MemberSeason], league_rules: Le
     """
     Assign ranks to member seasons with proper tiebreaker handling.
     Calculates both full season ranks and adjusted ranks (with drops).
-    If members have the same rank, the next rank is skipped.
-    
-    Args:
-        member_seasons: List of MemberSeason objects for a league/season
-        league_rules: The LeagueRules to determine tiebreaker method
-    
-    Returns:
-        Dict mapping member_season.id to {'rank': full_rank, 'rank_with_drops': adjusted_rank}
+
+    Same cascade as weeks: points → league tiebreaker → correct → key picks.
+    Total Points is weekly-only, so on season it is a no-op and standings
+    fall through to correct then key picks.
     """
     if not member_seasons:
         return {}
-    
-    # Helper function to get adjusted stats (full season minus dropped weeks)
+
     def get_adjusted_stats(member_season):
         adjusted_points = member_season.points - member_season.points_dropped
         adjusted_correct = member_season.correct - member_season.correct_dropped
         adjusted_correct_key = member_season.correct_key - member_season.correct_key_dropped
         return adjusted_points, adjusted_correct, adjusted_correct_key
-    
-    # Helper function to get tiebreaker value (season-level; Total Points is weekly-only)
-    def get_tiebreaker_value(points, correct, correct_key, league_rules):
-        if league_rules.tiebreaker == 1:  # Correct Key Picks
-            return correct_key
-        if league_rules.tiebreaker == 3:  # Correct Picks
-            return correct
-        # None or Total Points: season standings stay tied on equal points
-        return 0
-    
+
     def calculate_ranks_for_stats(member_seasons_list, use_full_stats=True):
-        """Calculate ranks for either full stats or adjusted stats"""
-        if use_full_stats:
-            # Sort by full season stats
-            def sort_key(member_season):
-                correct = member_season.correct
-                correct_key = member_season.correct_key
-                tiebreaker = get_tiebreaker_value(member_season.points, correct, correct_key, league_rules)
-                return (member_season.points, tiebreaker)
-        else:
-            # Sort by adjusted stats
-            def sort_key(member_season):
-                adjusted_points, adjusted_correct, adjusted_correct_key = get_adjusted_stats(member_season)
-                tiebreaker = get_tiebreaker_value(adjusted_points, adjusted_correct, adjusted_correct_key, league_rules)
-                return (adjusted_points, tiebreaker)
-        
-        sorted_seasons = sorted(member_seasons_list, key=sort_key, reverse=True)
-        
-        rank_map = {}
-        current_rank = 1
-        previous_points = None
-        previous_tiebreaker = None
-        
-        for index, member_season in enumerate(sorted_seasons):
+        def sort_key(member_season):
             if use_full_stats:
                 points = member_season.points
                 correct = member_season.correct
                 correct_key = member_season.correct_key
             else:
                 points, correct, correct_key = get_adjusted_stats(member_season)
-            
-            tiebreaker = get_tiebreaker_value(points, correct, correct_key, league_rules)
-            
-            # Determine if this is a new ranking position
-            # A new rank happens when either points OR tiebreaker value changes
-            if previous_points is not None and (points != previous_points or tiebreaker != previous_tiebreaker):
-                # Assign the next available rank (which accounts for skipped ranks from ties)
+            # Season has no cumulative total-points diff; cascade still applies.
+            return (
+                points,
+                _tiebreak_cascade(
+                    league_rules,
+                    correct=correct,
+                    correct_key=correct_key,
+                    tiebreak_abs_diff=None,
+                ),
+            )
+
+        sorted_seasons = sorted(member_seasons_list, key=sort_key, reverse=True)
+
+        rank_map = {}
+        current_rank = 1
+        previous_key = None
+
+        for index, member_season in enumerate(sorted_seasons):
+            key = sort_key(member_season)
+            if previous_key is not None and key != previous_key:
                 current_rank = index + 1
-            
             rank_map[member_season.id] = current_rank
-            previous_points = points
-            previous_tiebreaker = tiebreaker
-        
+            previous_key = key
+
         return rank_map
-    
-    # Calculate both types of ranks
+
     full_rank_map = calculate_ranks_for_stats(member_seasons, use_full_stats=True)
-    
-    # For adjusted ranks, check if drops are enabled
+
     if league_rules and league_rules.drop_weeks > 0:
         adjusted_rank_map = calculate_ranks_for_stats(member_seasons, use_full_stats=False)
     else:
-        # No drops, so adjusted ranks should be 0 or same as full ranks
         adjusted_rank_map = {ms.id: 0 for ms in member_seasons}
-    
-    # Combine the results
+
     result = {}
     for member_season in member_seasons:
         result[member_season.id] = {
             'rank': full_rank_map.get(member_season.id, 0),
             'rank_with_drops': adjusted_rank_map.get(member_season.id, 0)
         }
-    
+
     return result
 
 
@@ -558,20 +534,18 @@ def update_member_season_for_league(league: League, season) -> int:
                 
                 # Sort weeks by points (ascending) to identify worst weeks
                 # Then by tiebreaker (ascending) as secondary sort based on league rules
+                # Ascending = worst first; mirror ranking cascade (points → TB → correct → key)
                 def get_week_tiebreaker_key(week):
-                    if league_rules.tiebreaker == 1:  # Correct Key Picks
-                        return (week.points, week.correct_key)
-                    if league_rules.tiebreaker == 2:  # Total Points (worse = larger abs diff)
-                        diff = (
-                            week.tiebreak_abs_diff
-                            if week.tiebreak_abs_diff is not None
-                            else float("inf")
-                        )
-                        return (week.points, -diff)
-                    if league_rules.tiebreaker == 3:  # Correct Picks
-                        return (week.points, week.correct)
-                    return (week.points, 0)
-                
+                    return (
+                        week.points,
+                        _tiebreak_cascade(
+                            league_rules,
+                            correct=week.correct,
+                            correct_key=week.correct_key,
+                            tiebreak_abs_diff=week.tiebreak_abs_diff,
+                        ),
+                    )
+
                 weeks_list.sort(key=get_week_tiebreaker_key)
                 
                 # Get the weeks to drop (worst performing)
@@ -793,20 +767,18 @@ def recalculate_all_member_stats(season) -> dict:
                         
                         # Sort weeks by points (ascending) to identify worst weeks
                         # Then by tiebreaker (ascending) as secondary sort based on league rules
+                        # Ascending = worst first; mirror ranking cascade
                         def get_week_tiebreaker_key(week):
-                            if league_rules.tiebreaker == 1:  # Correct Key Picks
-                                return (week.points, week.correct_key)
-                            if league_rules.tiebreaker == 2:  # Total Points (worse = larger abs diff)
-                                diff = (
-                                    week.tiebreak_abs_diff
-                                    if week.tiebreak_abs_diff is not None
-                                    else float("inf")
-                                )
-                                return (week.points, -diff)
-                            if league_rules.tiebreaker == 3:  # Correct Picks
-                                return (week.points, week.correct)
-                            return (week.points, 0)
-                        
+                            return (
+                                week.points,
+                                _tiebreak_cascade(
+                                    league_rules,
+                                    correct=week.correct,
+                                    correct_key=week.correct_key,
+                                    tiebreak_abs_diff=week.tiebreak_abs_diff,
+                                ),
+                            )
+
                         weeks_list.sort(key=get_week_tiebreaker_key)
                         
                         # Get the weeks to drop (worst performing)
