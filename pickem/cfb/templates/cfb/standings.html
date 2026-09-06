@@ -176,248 +176,64 @@
                 {% endif %}
             {% endif %}
         </div>
-        <!-- Mobile Card Layout -->
-        <div class="md:hidden space-y-4">
-            {% for standing in standings %}
-            <div class="card bg-base-200 shadow-md {% if standing.user == request.user %}ring-2 ring-primary{% endif %}">
-                <div class="card-body">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="card-title text-lg flex items-center gap-3">
-                            <div class="avatar placeholder">
-                                <div class="bg-primary text-primary-content rounded-full w-10">
-                                    <span>
-                                        {% if standing.user.first_name %}
-                                            {{ standing.user.first_name|slice:":1"|upper }}
-                                        {% else %}
-                                            {{ standing.user.username|slice:":1"|upper }}
-                                        {% endif %}
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="flex flex-col">
-                                <span>
-                                    {% if standing.user.first_name and standing.user.last_name %}
-                                        {{ standing.user.first_name }} {{ standing.user.last_name }}
-                                    {% elif standing.user.first_name %}
-                                        {{ standing.user.first_name }}
-                                    {% elif standing.user.last_name %}
-                                        {{ standing.user.last_name }}
-                                    {% else %}
-                                        {{ standing.user.username }}
-                                    {% endif %}
-                                    {% if standing.user == request.user %}
-                                    <span class="text-xs text-primary">(You)</span>
-                                    {% endif %}
-                                </span>
-                            </div>
-                        </h3>
-                        {% if not show_pick_status_only %}
-                        <div class="flex items-center gap-2">
-                            {% if standing.display_rank == 1 %}
-                                <i class="fas fa-crown text-yellow-400 text-xl"></i>
-                            {% elif standing.display_rank == 2 %}
-                                <i class="fas fa-medal text-gray-400 text-xl"></i>
-                            {% elif standing.display_rank == 3 %}
-                                <i class="fas fa-medal text-amber-600 text-xl"></i>
-                            {% endif %}
-                            <span class="font-bold text-lg">#{{ standing.display_rank }}</span>
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% if show_prizes %}
-                    <div class="mb-3 grid grid-cols-2 gap-2">
-                        {% if show_weeks_won_col %}
-                        <div class="flex flex-col">
-                            <span class="text-xs text-base-content/70 mb-1">Weeks won</span>
-                            {% if standing.weeks_won_amount != None %}
-                            <span class="font-semibold text-success">${{ standing.weeks_won_amount|floatformat:2 }}</span>
-                            {% else %}
-                            <span class="text-base-content/40">—</span>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                        {% if show_projected_week_col %}
-                        <div class="flex flex-col">
-                            <span class="text-xs text-base-content/70 mb-1">Week{% if prize_week %} {{ prize_week.number }}{% endif %} proj.</span>
-                            {% if standing.projected_week_amount != None %}
-                            <span class="font-semibold text-warning">${{ standing.projected_week_amount|floatformat:2 }}</span>
-                            {% else %}
-                            <span class="text-base-content/40">—</span>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                        {% if show_season_prize_col %}
-                        <div class="flex flex-col">
-                            <span class="text-xs text-base-content/70 mb-1">Season{% if prizes_are_projected and not league_is_final %} proj.{% endif %}</span>
-                            {% if standing.season_prize_amount != None %}
-                            <span class="font-semibold {% if prizes_are_projected and not league_is_final %}text-warning{% else %}text-success{% endif %}">${{ standing.season_prize_amount|floatformat:2 }}</span>
-                            {% else %}
-                            <span class="text-base-content/40">—</span>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                        {% if show_total_prize_col %}
-                        <div class="flex flex-col">
-                            <span class="text-xs text-base-content/70 mb-1">Total</span>
-                            {% if standing.prize_total_amount != None %}
-                            <span class="font-bold {% if prizes_are_projected %}text-warning{% else %}text-success{% endif %}">${{ standing.prize_total_amount|floatformat:2 }}</span>
-                            {% else %}
-                            <span class="text-base-content/40">—</span>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                    {% if show_pick_status_only %}
-                    <div class="flex flex-col">
-                        <span class="text-xs text-base-content/70 mb-1">Week {{ pick_status_week.number }} Picks</span>
-                        <span class="font-bold text-xl">
-                            {{ standing.week_picks_made|default:0 }}/{{ standing.week_picks_total|default:0 }}
-                        </span>
-                    </div>
-                    {% else %}
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="flex flex-col">
-                            <span class="text-xs text-base-content/70 mb-1">Points</span>
-                            <span class="font-bold text-xl">{{ standing.points }}</span>
-                        </div>
-                        {% if show_total_points_tiebreak %}
-                        <div class="flex flex-col">
-                            <span class="text-xs text-base-content/70 mb-1">TB Prediction</span>
-                            {% if standing.points_guess != None %}
-                            <span class="font-medium">{{ standing.points_guess }}</span>
-                            {% else %}
-                            <span class="text-base-content/50">—</span>
-                            {% endif %}
-                        </div>
-                        <div class="flex flex-col">
-                            <span class="text-xs text-base-content/70 mb-1">TB Off By</span>
-                            {% if standing.tiebreak_abs_diff != None %}
-                            <span class="font-medium">{{ standing.tiebreak_abs_diff }}</span>
-                            {% else %}
-                            <span class="text-base-content/50">—</span>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                        <div class="flex flex-col">
-                            <span class="text-xs text-base-content/70 mb-1">Win %</span>
-                            {% if standing.total > 0 %}
-                            <span class="badge {% if standing.win_pct >= 60 %}badge-success{% elif standing.win_pct >= 40 %}badge-warning{% else %}badge-error{% endif %} w-fit">
-                                {{ standing.win_pct }}%
-                            </span>
-                            {% else %}
-                            <span class="badge badge-ghost w-fit">-</span>
-                            {% endif %}
-                        </div>
-                        <div class="flex flex-col">
-                            <span class="text-xs text-base-content/70 mb-1">Wins</span>
-                            <span class="font-medium">{{ standing.wins }}</span>
-                        </div>
-                        <div class="flex flex-col">
-                            <span class="text-xs text-base-content/70 mb-1">Losses</span>
-                            <span class="font-medium">{{ standing.losses }}</span>
-                        </div>
-                        <div class="flex flex-col">
-                            <span class="text-xs text-base-content/70 mb-1">Ties</span>
-                            <span class="font-medium">{{ standing.ties|default:0 }}</span>
-                        </div>
-                        {% if key_picks_enabled %}
-                        <div class="flex flex-col">
-                            <span class="text-xs text-base-content/70 mb-1">Key Picks</span>
-                            {% if standing.key_picks_made > 0 %}
-                            <div class="flex flex-col">
-                                <span class="font-medium">{{ standing.correct_key }}/{{ standing.key_picks_made }}</span>
-                                {% if standing.key_pick_pct > 0 or standing.correct_key == 0 %}
-                                <span class="text-xs text-base-content/70">{{ standing.key_pick_pct }}%</span>
-                                {% endif %}
-                            </div>
-                            {% else %}
-                            <span class="text-base-content/50">—</span>
-                            {% endif %}
-                        </div>
-                        {% else %}
-                        <div class="flex flex-col">
-                            <span class="text-xs text-base-content/70 mb-1">Total Picks</span>
-                            <div class="flex flex-col">
-                                <span class="font-medium">{{ standing.picks_made|default:0 }}</span>
-                                {% if standing.total != standing.picks_made and standing.picks_made > 0 %}
-                                <span class="text-xs text-base-content/70">{{ standing.total }} scored</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if key_picks_enabled %}
-                        <div class="flex flex-col col-span-2">
-                            <span class="text-xs text-base-content/70 mb-1">Total Picks</span>
-                            <div class="flex flex-col">
-                                <span class="font-medium">{{ standing.picks_made|default:0 }}</span>
-                                {% if standing.total != standing.picks_made and standing.picks_made > 0 %}
-                                <span class="text-xs text-base-content/70">{{ standing.total }} scored</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% if show_week_pick_status and not show_pick_status_only %}
-                    <div class="flex flex-col col-span-2 mt-2 pt-2 border-t border-base-content/10">
-                        <span class="text-xs text-base-content/70 mb-1">Week {{ pick_status_week.number }} Picks</span>
-                        <span class="font-medium">
-                            {% if standing.week_picks_made >= standing.week_picks_total %}
-                            <span class="badge badge-success">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
-                            {% elif standing.week_picks_made > 0 %}
-                            <span class="badge badge-warning">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
-                            {% else %}
-                            <span class="badge badge-ghost">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
-                            {% endif %}
-                        </span>
-                    </div>
-                    {% endif %}
-                    {% endif %}
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-        
-        <!-- Desktop Table Layout -->
-        <div class="hidden md:block overflow-x-auto">
-            <table class="table table-zebra w-full">
+        <!-- Standings table (compact on mobile, full on desktop) -->
+        <div class="standings-table-wrap -mx-2 sm:mx-0">
+            <table class="table table-zebra standings-table w-full">
                 <thead>
                     <tr>
                         {% if show_pick_status_only %}
-                        <th class="bg-base-200">Player</th>
-                        <th class="bg-base-200">Week {{ pick_status_week.number }} Picks</th>
+                        <th class="standings-sticky-player bg-base-200">Player</th>
+                        <th class="bg-base-200">W{{ pick_status_week.number }} Picks</th>
                         {% else %}
-                        <th class="bg-base-200">Rank</th>
-                        <th class="bg-base-200">Player</th>
+                        <th class="standings-sticky-rank bg-base-200">#</th>
+                        <th class="standings-sticky-player bg-base-200">Player</th>
                         {% if show_prizes %}
                             {% if show_weeks_won_col %}
                             <th class="bg-base-200">Weeks $</th>
                             {% endif %}
                             {% if show_projected_week_col %}
-                            <th class="bg-base-200">Week{% if prize_week %} {{ prize_week.number }}{% endif %} proj. $</th>
+                            <th class="bg-base-200">
+                                <span class="md:hidden">W{% if prize_week %}{{ prize_week.number }}{% endif %} $</span>
+                                <span class="hidden md:inline">Week{% if prize_week %} {{ prize_week.number }}{% endif %} proj. $</span>
+                            </th>
                             {% endif %}
                             {% if show_season_prize_col %}
-                            <th class="bg-base-200">Season{% if prizes_are_projected and not league_is_final %} proj.{% endif %} $</th>
+                            <th class="bg-base-200">
+                                <span class="md:hidden">Sea $</span>
+                                <span class="hidden md:inline">Season{% if prizes_are_projected and not league_is_final %} proj.{% endif %} $</span>
+                            </th>
                             {% endif %}
                             {% if show_total_prize_col %}
                             <th class="bg-base-200">Total $</th>
                             {% endif %}
                         {% endif %}
-                        <th class="bg-base-200">Points</th>
+                        <th class="bg-base-200">Pts</th>
                         {% if show_total_points_tiebreak %}
-                        <th class="bg-base-200">TB Prediction</th>
-                        <th class="bg-base-200">TB Off By</th>
+                        <th class="bg-base-200">
+                            <span class="md:hidden">Pred</span>
+                            <span class="hidden md:inline">TB Prediction</span>
+                        </th>
+                        <th class="bg-base-200">
+                            <span class="md:hidden">Off</span>
+                            <span class="hidden md:inline">TB Off By</span>
+                        </th>
                         {% endif %}
-                        <th class="bg-base-200">Wins</th>
-                        <th class="bg-base-200">Losses</th>
-                        <th class="bg-base-200">Ties</th>
-                        <th class="bg-base-200">Win %</th>
+                        <th class="bg-base-200">W</th>
+                        <th class="bg-base-200">L</th>
+                        <th class="bg-base-200">T</th>
+                        <th class="bg-base-200">Win%</th>
                         {% if key_picks_enabled %}
-                        <th class="bg-base-200">Key Picks</th>
+                        <th class="bg-base-200">
+                            <span class="md:hidden">Keys</span>
+                            <span class="hidden md:inline">Key Picks</span>
+                        </th>
                         {% endif %}
-                        <th class="bg-base-200">Total Picks</th>
+                        <th class="bg-base-200">
+                            <span class="md:hidden">Picks</span>
+                            <span class="hidden md:inline">Total Picks</span>
+                        </th>
                         {% if show_week_pick_status %}
-                        <th class="bg-base-200">Week {{ pick_status_week.number }} Picks</th>
+                        <th class="bg-base-200">W{{ pick_status_week.number }}</th>
                         {% endif %}
                         {% endif %}
                     </tr>
@@ -426,89 +242,56 @@
                     {% for standing in standings %}
                     <tr class="hover {% if standing.user == request.user %}bg-primary/10{% endif %}">
                         {% if show_pick_status_only %}
-                        <td>
-                            <div class="flex items-center gap-3">
-                                <div class="avatar placeholder">
-                                    <div class="bg-primary text-primary-content rounded-full w-10">
-                                        <span>
-                                            {% if standing.user.first_name %}
-                                                {{ standing.user.first_name|slice:":1"|upper }}
-                                            {% else %}
-                                                {{ standing.user.username|slice:":1"|upper }}
-                                            {% endif %}
-                                        </span>
-                                    </div>
-                                </div>
-                                <span class="font-bold">
-                                    {% if standing.user.first_name and standing.user.last_name %}
-                                        {{ standing.user.first_name }} {{ standing.user.last_name }}
-                                    {% elif standing.user.first_name %}
-                                        {{ standing.user.first_name }}
-                                    {% elif standing.user.last_name %}
-                                        {{ standing.user.last_name }}
-                                    {% else %}
-                                        {{ standing.user.username }}
-                                    {% endif %}
-                                    {% if standing.user == request.user %}
-                                    <span class="text-xs text-primary">(You)</span>
-                                    {% endif %}
-                                </span>
-                            </div>
+                        <td class="standings-sticky-player{% if standing.user == request.user %} is-you{% endif %}">
+                            <span class="font-semibold standings-player-name">
+                                {% if standing.user.first_name and standing.user.last_name %}
+                                    <span class="md:hidden">{{ standing.user.first_name }} {{ standing.user.last_name|slice:":1" }}.</span>
+                                    <span class="hidden md:inline">{{ standing.user.first_name }} {{ standing.user.last_name }}</span>
+                                {% elif standing.user.first_name %}
+                                    {{ standing.user.first_name }}
+                                {% elif standing.user.last_name %}
+                                    {{ standing.user.last_name }}
+                                {% else %}
+                                    {{ standing.user.username }}
+                                {% endif %}
+                                {% if standing.user == request.user %}
+                                <span class="text-xs text-primary">(You)</span>
+                                {% endif %}
+                            </span>
                         </td>
                         <td>
                             {% if standing.week_picks_made >= standing.week_picks_total %}
-                            <span class="badge badge-success font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
+                            <span class="badge badge-success badge-sm font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
                             {% elif standing.week_picks_made > 0 %}
-                            <span class="badge badge-warning font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
+                            <span class="badge badge-warning badge-sm font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
                             {% else %}
-                            <span class="badge badge-ghost font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
+                            <span class="badge badge-ghost badge-sm font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
                             {% endif %}
                         </td>
                         {% else %}
-                        <td>
-                            <div class="flex items-center gap-2">
-                                {% if standing.display_rank == 1 %}
-                                    <i class="fas fa-crown text-yellow-400"></i>
-                                {% elif standing.display_rank == 2 %}
-                                    <i class="fas fa-medal text-gray-400"></i>
-                                {% elif standing.display_rank == 3 %}
-                                    <i class="fas fa-medal text-amber-600"></i>
-                                {% endif %}
-                                <span class="font-bold">{{ standing.display_rank }}</span>
-                            </div>
+                        <td class="standings-sticky-rank{% if standing.user == request.user %} is-you{% endif %}">
+                            <span class="font-bold tabular-nums">{{ standing.display_rank }}</span>
                         </td>
-                        <td>
-                            <div class="flex items-center gap-3">
-                                <div class="avatar placeholder">
-                                    <div class="bg-primary text-primary-content rounded-full w-10">
-                                        <span>
-                                            {% if standing.user.first_name %}
-                                                {{ standing.user.first_name|slice:":1"|upper }}
-                                            {% else %}
-                                                {{ standing.user.username|slice:":1"|upper }}
-                                            {% endif %}
-                                        </span>
-                                    </div>
-                                </div>
-                                <span class="font-bold">
-                                    {% if standing.user.first_name and standing.user.last_name %}
-                                        {{ standing.user.first_name }} {{ standing.user.last_name }}
-                                    {% elif standing.user.first_name %}
-                                        {{ standing.user.first_name }}
-                                    {% elif standing.user.last_name %}
-                                        {{ standing.user.last_name }}
-                                    {% else %}
-                                        {{ standing.user.username }}
-                                    {% endif %}
-                                    {% if standing.user == request.user %}
-                                    <span class="text-xs text-primary">(You)</span>
-                                    {% endif %}
-                                </span>
-                            </div>
+                        <td class="standings-sticky-player{% if standing.user == request.user %} is-you{% endif %}">
+                            <span class="font-semibold standings-player-name">
+                                {% if standing.user.first_name and standing.user.last_name %}
+                                    <span class="md:hidden">{{ standing.user.first_name }} {{ standing.user.last_name|slice:":1" }}.</span>
+                                    <span class="hidden md:inline">{{ standing.user.first_name }} {{ standing.user.last_name }}</span>
+                                {% elif standing.user.first_name %}
+                                    {{ standing.user.first_name }}
+                                {% elif standing.user.last_name %}
+                                    {{ standing.user.last_name }}
+                                {% else %}
+                                    {{ standing.user.username }}
+                                {% endif %}
+                                {% if standing.user == request.user %}
+                                <span class="text-xs text-primary">(You)</span>
+                                {% endif %}
+                            </span>
                         </td>
                         {% if show_prizes %}
                             {% if show_weeks_won_col %}
-                            <td>
+                            <td class="tabular-nums whitespace-nowrap">
                                 {% if standing.weeks_won_amount != None %}
                                 <span class="font-semibold text-success">${{ standing.weeks_won_amount|floatformat:2 }}</span>
                                 {% else %}
@@ -517,31 +300,25 @@
                             </td>
                             {% endif %}
                             {% if show_projected_week_col %}
-                            <td>
+                            <td class="tabular-nums whitespace-nowrap">
                                 {% if standing.projected_week_amount != None %}
                                 <span class="font-semibold text-warning">${{ standing.projected_week_amount|floatformat:2 }}</span>
-                                {% if standing.projected_week_label %}
-                                <div class="text-xs text-base-content/60">{{ standing.projected_week_label }}</div>
-                                {% endif %}
                                 {% else %}
                                 <span class="text-base-content/40">—</span>
                                 {% endif %}
                             </td>
                             {% endif %}
                             {% if show_season_prize_col %}
-                            <td>
+                            <td class="tabular-nums whitespace-nowrap">
                                 {% if standing.season_prize_amount != None %}
                                 <span class="font-semibold {% if prizes_are_projected and not league_is_final %}text-warning{% else %}text-success{% endif %}">${{ standing.season_prize_amount|floatformat:2 }}</span>
-                                {% if standing.season_prize_label %}
-                                <div class="text-xs text-base-content/60">{{ standing.season_prize_label }}</div>
-                                {% endif %}
                                 {% else %}
                                 <span class="text-base-content/40">—</span>
                                 {% endif %}
                             </td>
                             {% endif %}
                             {% if show_total_prize_col %}
-                            <td>
+                            <td class="tabular-nums whitespace-nowrap">
                                 {% if standing.prize_total_amount != None %}
                                 <span class="font-bold {% if prizes_are_projected %}text-warning{% else %}text-success{% endif %}">${{ standing.prize_total_amount|floatformat:2 }}</span>
                                 {% else %}
@@ -550,65 +327,51 @@
                             </td>
                             {% endif %}
                         {% endif %}
-                        <td><span class="font-bold text-lg">{{ standing.points }}</span></td>
+                        <td><span class="font-bold tabular-nums">{{ standing.points }}</span></td>
                         {% if show_total_points_tiebreak %}
-                        <td>
+                        <td class="tabular-nums">
                             {% if standing.points_guess != None %}
-                            <span class="font-medium">{{ standing.points_guess }}</span>
+                            {{ standing.points_guess }}
                             {% else %}
                             <span class="text-base-content/50">—</span>
                             {% endif %}
                         </td>
-                        <td>
+                        <td class="tabular-nums">
                             {% if standing.tiebreak_abs_diff != None %}
-                            <span class="font-medium">{{ standing.tiebreak_abs_diff }}</span>
+                            {{ standing.tiebreak_abs_diff }}
                             {% else %}
                             <span class="text-base-content/50">—</span>
                             {% endif %}
                         </td>
                         {% endif %}
-                        <td>{{ standing.wins }}</td>
-                        <td>{{ standing.losses }}</td>
-                        <td>{{ standing.ties|default:0 }}</td>
-                        <td>
+                        <td class="tabular-nums">{{ standing.wins }}</td>
+                        <td class="tabular-nums">{{ standing.losses }}</td>
+                        <td class="tabular-nums">{{ standing.ties|default:0 }}</td>
+                        <td class="tabular-nums whitespace-nowrap">
                             {% if standing.total > 0 %}
-                            <span class="badge {% if standing.win_pct >= 60 %}badge-success{% elif standing.win_pct >= 40 %}badge-warning{% else %}badge-error{% endif %}">
-                                {{ standing.win_pct }}%
-                            </span>
+                            {{ standing.win_pct }}%
                             {% else %}
-                            <span class="badge badge-ghost">-</span>
+                            —
                             {% endif %}
                         </td>
                         {% if key_picks_enabled %}
-                        <td>
+                        <td class="tabular-nums whitespace-nowrap">
                             {% if standing.key_picks_made > 0 %}
-                            <div class="flex flex-col">
-                                <span class="font-medium">{{ standing.correct_key }}/{{ standing.key_picks_made }}</span>
-                                {% if standing.key_pick_pct > 0 or standing.correct_key == 0 %}
-                                <span class="text-xs text-base-content/70">{{ standing.key_pick_pct }}%</span>
-                                {% endif %}
-                            </div>
+                            {{ standing.correct_key }}/{{ standing.key_picks_made }}
                             {% else %}
                             <span class="text-base-content/50">—</span>
                             {% endif %}
                         </td>
                         {% endif %}
-                        <td>
-                            <span class="font-medium">{{ standing.picks_made|default:0 }}</span>
-                            {% if standing.total != standing.picks_made and standing.picks_made > 0 %}
-                            <div class="text-xs text-base-content/70">
-                                {{ standing.total }} scored
-                            </div>
-                            {% endif %}
-                        </td>
+                        <td class="tabular-nums">{{ standing.picks_made|default:0 }}</td>
                         {% if show_week_pick_status %}
-                        <td>
+                        <td class="whitespace-nowrap">
                             {% if standing.week_picks_made >= standing.week_picks_total %}
-                            <span class="badge badge-success font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
+                            <span class="badge badge-success badge-sm font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
                             {% elif standing.week_picks_made > 0 %}
-                            <span class="badge badge-warning font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
+                            <span class="badge badge-warning badge-sm font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
                             {% else %}
-                            <span class="badge badge-ghost font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
+                            <span class="badge badge-ghost badge-sm font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
                             {% endif %}
                         </td>
                         {% endif %}
@@ -837,6 +600,80 @@
         white-space: nowrap;
     }
 
+    .standings-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .standings-table {
+        min-width: 100%;
+    }
+
+    .standings-table :where(th, td) {
+        padding: 0.4rem 0.45rem;
+        font-size: 0.8125rem;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    .standings-table thead th {
+        font-size: 0.7rem;
+        letter-spacing: 0.01em;
+        text-transform: none;
+        font-weight: 700;
+    }
+
+    .standings-sticky-rank,
+    .standings-sticky-player {
+        position: sticky;
+        z-index: 2;
+        background-color: var(--fallback-b1, oklch(var(--b1)));
+    }
+
+    .standings-table.table-zebra tbody tr:nth-child(even) .standings-sticky-rank,
+    .standings-table.table-zebra tbody tr:nth-child(even) .standings-sticky-player {
+        background-color: var(--fallback-b2, oklch(var(--b2)));
+    }
+
+    .standings-sticky-rank.is-you,
+    .standings-sticky-player.is-you {
+        background-color: color-mix(in oklab, var(--fallback-p, oklch(var(--p))) 10%, var(--fallback-b1, oklch(var(--b1))));
+    }
+
+    .standings-sticky-rank {
+        left: 0;
+        min-width: 2rem;
+        max-width: 2.25rem;
+        text-align: center;
+    }
+
+    .standings-sticky-player {
+        left: 2.25rem;
+        min-width: 6.5rem;
+        max-width: 8.5rem;
+        box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.18);
+    }
+
+    .standings-table thead .standings-sticky-rank,
+    .standings-table thead .standings-sticky-player {
+        z-index: 3;
+        background-color: var(--fallback-b2, oklch(var(--b2)));
+    }
+
+    .standings-player-name {
+        display: inline-block;
+        max-width: 7.5rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        vertical-align: bottom;
+    }
+
+    /* Pick-status-only: player is the first sticky column */
+    .standings-table thead th.standings-sticky-player:first-child,
+    .standings-table tbody td.standings-sticky-player:first-child {
+        left: 0;
+    }
+
     @media (min-width: 640px) {
         .standings-tabs {
             flex-direction: row;
@@ -847,6 +684,30 @@
         .standings-tab {
             width: auto;
             flex: 0 0 auto;
+        }
+    }
+
+    @media (min-width: 768px) {
+        .standings-table :where(th, td) {
+            padding: 0.65rem 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .standings-table thead th {
+            font-size: 0.8rem;
+        }
+
+        .standings-sticky-rank,
+        .standings-sticky-player {
+            position: static;
+            box-shadow: none;
+            max-width: none;
+            min-width: 0;
+        }
+
+        .standings-player-name {
+            max-width: none;
+            overflow: visible;
         }
     }
 
