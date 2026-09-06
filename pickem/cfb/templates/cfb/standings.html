@@ -113,6 +113,16 @@
                 <p class="text-sm text-base-content/70 mt-2">
                     Picks are hidden until games start — this only shows how many each player has submitted.
                 </p>
+                {% elif show_total_points_tiebreak and show_week_standings %}
+                <p class="text-sm text-base-content/70 mt-2">
+                    Total Points tiebreaker:
+                    {% if tiebreak_points_actual != None %}
+                    actual total was <span class="font-semibold text-base-content">{{ tiebreak_points_actual }}</span>
+                    (closer prediction ranks higher).
+                    {% else %}
+                    predictions shown below; actual total appears when the tiebreaker game is final.
+                    {% endif %}
+                </p>
                 {% endif %}
             </div>
 
@@ -271,6 +281,24 @@
                             <span class="text-xs text-base-content/70 mb-1">Points</span>
                             <span class="font-bold text-xl">{{ standing.points }}</span>
                         </div>
+                        {% if show_total_points_tiebreak %}
+                        <div class="flex flex-col">
+                            <span class="text-xs text-base-content/70 mb-1">TB Prediction</span>
+                            {% if standing.points_guess != None %}
+                            <span class="font-medium">{{ standing.points_guess }}</span>
+                            {% else %}
+                            <span class="text-base-content/50">—</span>
+                            {% endif %}
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-xs text-base-content/70 mb-1">TB Off By</span>
+                            {% if standing.tiebreak_abs_diff != None %}
+                            <span class="font-medium">{{ standing.tiebreak_abs_diff }}</span>
+                            {% else %}
+                            <span class="text-base-content/50">—</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
                         <div class="flex flex-col">
                             <span class="text-xs text-base-content/70 mb-1">Win %</span>
                             {% if standing.total > 0 %}
@@ -376,6 +404,10 @@
                             {% endif %}
                         {% endif %}
                         <th class="bg-base-200">Points</th>
+                        {% if show_total_points_tiebreak %}
+                        <th class="bg-base-200">TB Prediction</th>
+                        <th class="bg-base-200">TB Off By</th>
+                        {% endif %}
                         <th class="bg-base-200">Wins</th>
                         <th class="bg-base-200">Losses</th>
                         <th class="bg-base-200">Ties</th>
@@ -519,6 +551,22 @@
                             {% endif %}
                         {% endif %}
                         <td><span class="font-bold text-lg">{{ standing.points }}</span></td>
+                        {% if show_total_points_tiebreak %}
+                        <td>
+                            {% if standing.points_guess != None %}
+                            <span class="font-medium">{{ standing.points_guess }}</span>
+                            {% else %}
+                            <span class="text-base-content/50">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if standing.tiebreak_abs_diff != None %}
+                            <span class="font-medium">{{ standing.tiebreak_abs_diff }}</span>
+                            {% else %}
+                            <span class="text-base-content/50">—</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
                         <td>{{ standing.wins }}</td>
                         <td>{{ standing.losses }}</td>
                         <td>{{ standing.ties|default:0 }}</td>

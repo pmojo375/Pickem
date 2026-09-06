@@ -790,6 +790,9 @@ def _empty_standing_row(user, week_picks_made=0, week_picks_total=0):
         "display_rank": 999,
         "week_picks_made": week_picks_made,
         "week_picks_total": week_picks_total,
+        "points_guess": None,
+        "points_actual": None,
+        "tiebreak_abs_diff": None,
     }
 
 
@@ -1098,6 +1101,8 @@ def standings_view(request):
         'league_picks_data': None,  # Will be set if showing league picks
         'is_league_manager': False,  # Will be set based on user role
         'key_picks_enabled': False,  # Will be set based on league rules
+        'show_total_points_tiebreak': False,
+        'tiebreak_points_actual': None,
         'show_week_pick_status': False,
         'show_pick_status_only': False,
         'pick_status_week': None,
@@ -1238,6 +1243,9 @@ def standings_view(request):
                                 'key_picks_made': key_picks_made,
                                 'key_pick_pct': key_pick_pct,
                                 'display_rank': member_week.rank or 999,
+                                'points_guess': member_week.points_guess,
+                                'points_actual': member_week.points_actual,
+                                'tiebreak_abs_diff': member_week.tiebreak_abs_diff,
                             })
                         
                         # Sort by rank (ascending)
@@ -1265,6 +1273,17 @@ def standings_view(request):
 
                         context['standings'] = standings
                         context['key_picks_enabled'] = league_rules and league_rules.key_picks_enabled
+                        show_tb = bool(league_rules and league_rules.tiebreaker == 2)
+                        context['show_total_points_tiebreak'] = show_tb
+                        if show_tb:
+                            context['tiebreak_points_actual'] = next(
+                                (
+                                    row['points_actual']
+                                    for row in standings
+                                    if row.get('points_actual') is not None
+                                ),
+                                None,
+                            )
                     
                 except Week.DoesNotExist:
                     context['show_week_standings'] = False
