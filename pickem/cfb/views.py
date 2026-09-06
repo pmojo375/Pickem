@@ -172,6 +172,13 @@ def home_view(request):
             week_picks_count = 0
             week_games_count = 0
             open_picks_count = 0
+            week_games_final = False
+            week_correct = 0
+            week_incorrect = 0
+            week_ties = 0
+            week_points = None
+            week_rank = None
+            week_correct_key = 0
             if current_week:
                 start, end = services.schedule.get_week_datetime_range(current_week)
                 week_games = LeagueGame.objects.filter(
@@ -195,6 +202,32 @@ def home_view(request):
                 open_picks_count = week_games.filter(game__kickoff__gt=now).exclude(
                     game_id__in=picked_ids
                 ).count()
+                week_games_final = (
+                    week_games_count > 0
+                    and not week_games.exclude(game__is_final=True).exists()
+                )
+
+                if week_games_final:
+                    member_week = MemberWeek.objects.filter(
+                        league=league,
+                        week=current_week,
+                        user=request.user,
+                    ).first()
+                    if member_week and member_week.picks_made:
+                        week_correct = member_week.correct
+                        week_incorrect = member_week.incorrect
+                        week_ties = member_week.ties
+                        week_points = member_week.points
+                        week_rank = member_week.rank
+                        week_correct_key = member_week.correct_key
+                    else:
+                        graded = week_picks.filter(game__is_final=True)
+                        week_correct = graded.filter(is_correct=True).count()
+                        week_incorrect = graded.filter(is_correct=False).count()
+                        week_ties = graded.filter(is_correct__isnull=True).count()
+                        week_correct_key = graded.filter(
+                            is_key_pick=True, is_correct=True
+                        ).count()
 
             total_picks = Pick.objects.filter(user=request.user, league=league, is_correct__isnull=False)
             rankings_qs = Pick.objects.filter(league=league, is_correct__isnull=False)
@@ -227,6 +260,13 @@ def home_view(request):
                 "week_picks_count": week_picks_count,
                 "week_games_count": week_games_count,
                 "open_picks_count": open_picks_count,
+                "week_games_final": week_games_final,
+                "week_correct": week_correct,
+                "week_incorrect": week_incorrect,
+                "week_ties": week_ties,
+                "week_points": week_points,
+                "week_rank": week_rank,
+                "week_correct_key": week_correct_key,
                 "win_rate": win_rate,
                 "user_rank": user_rank,
                 "total_players": league.memberships.filter(is_active=True).count(),

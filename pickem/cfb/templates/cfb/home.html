@@ -107,6 +107,27 @@
                             <p class="text-base-content/70">
                                 Games for this week have not been posted in {{ current_league.name }}. Check back soon, or jump into live scores.
                             </p>
+                        {% elif week_games_final %}
+                            <h2 class="card-title text-2xl">Week {{ current_week.number }} is final</h2>
+                            {% if week_picks_count == 0 %}
+                            <p class="text-base-content/70">
+                                The slate is done. You did not have picks in for this week.
+                            </p>
+                            {% else %}
+                            <p class="text-base-content/70">
+                                You went
+                                <span class="font-semibold text-base-content">{{ week_correct }}-{{ week_incorrect }}{% if week_ties %}-{{ week_ties }}{% endif %}</span>
+                                {% if week_points != None %}
+                                    for <span class="font-semibold text-base-content">{{ week_points }}</span> point{{ week_points|pluralize }}
+                                {% endif %}
+                                {% if week_correct_key %}
+                                    · {{ week_correct_key }} key pick{{ week_correct_key|pluralize }} hit
+                                {% endif %}
+                                {% if week_rank %}
+                                    · finished <span class="font-semibold text-base-content">#{{ week_rank }}</span> for the week
+                                {% endif %}.
+                            </p>
+                            {% endif %}
                         {% elif open_picks_count > 0 %}
                             <h2 class="card-title text-2xl">You have {{ open_picks_count }} pick{{ open_picks_count|pluralize }} left</h2>
                             <p class="text-base-content/70">
@@ -125,6 +146,16 @@
                         {% endif %}
                     </div>
                     <div class="flex flex-wrap gap-3">
+                        {% if week_games_final %}
+                        <a href="/standings/" class="btn btn-primary">
+                            <i class="fas fa-trophy mr-2"></i>
+                            Standings
+                        </a>
+                        <a href="/picks/" class="btn btn-outline">
+                            <i class="fas fa-hand-pointer mr-2"></i>
+                            View Picks
+                        </a>
+                        {% else %}
                         <a href="/picks/" class="btn btn-primary">
                             <i class="fas fa-hand-pointer mr-2"></i>
                             {% if open_picks_count > 0 %}Finish Picks{% else %}View Picks{% endif %}
@@ -133,10 +164,18 @@
                             <i class="fas fa-play-circle mr-2"></i>
                             Live
                         </a>
+                        {% endif %}
                     </div>
                 </div>
-                {% if week_games_count > 0 %}
+                {% if week_games_count > 0 and not week_games_final %}
                 <progress class="progress progress-primary w-full mt-2" value="{{ week_picks_count }}" max="{{ week_games_count }}"></progress>
+                {% elif week_games_final and week_picks_count > 0 %}
+                <div class="flex flex-wrap gap-4 mt-2 text-sm">
+                    <span class="text-success font-medium">{{ week_correct }} correct</span>
+                    <span class="text-error font-medium">{{ week_incorrect }} wrong</span>
+                    {% if week_ties %}<span class="text-base-content/60 font-medium">{{ week_ties }} push{{ week_ties|pluralize:"es" }}</span>{% endif %}
+                    {% if week_points != None %}<span class="text-base-content/60">{{ week_points }} pts</span>{% endif %}
+                </div>
                 {% endif %}
             </div>
         </div>
