@@ -5,7 +5,7 @@
 {% block title %}Make Your Picks - BigPicks{% endblock %}
 
 {% block content %}
-<div class="mb-6">
+<div class="mb-6 picks-page-header">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h1 class="text-4xl font-bold mb-2">
@@ -25,7 +25,7 @@
         
         <!-- League Selector -->
         {% if user_leagues.count > 1 %}
-        <div class="form-control w-full md:w-auto">
+        <div class="flex w-full md:w-auto items-center gap-2">
             <select class="select select-bordered select-primary" onchange="window.location.href='?league_id=' + this.value">
                 {% for league in user_leagues %}
                 <option value="{{ league.id }}" {% if league.id == current_league.id %}selected{% endif %}>
@@ -33,9 +33,19 @@
                 </option>
                 {% endfor %}
             </select>
+            <button type="button" class="btn btn-outline btn-sm" onclick="window.print()">
+                <i class="fas fa-print"></i>
+                Print Picks
+            </button>
         </div>
         {% else %}
-        <div class="badge badge-primary badge-lg">{{ current_league.name }}</div>
+        <div class="flex items-center gap-2">
+            <div class="badge badge-primary badge-lg">{{ current_league.name }}</div>
+            <button type="button" class="btn btn-outline btn-sm" onclick="window.print()">
+                <i class="fas fa-print"></i>
+                Print Picks
+            </button>
+        </div>
         {% endif %}
     </div>
 </div>
@@ -56,6 +66,65 @@
     <form method="post" action="" id="picks-form">
         {% csrf_token %}
         <input type="hidden" name="league_id" value="{{ current_league.id }}" />
+
+        <section class="print-picks" aria-hidden="true">
+            <header class="print-picks__header">
+                <h1>BigPicks — Week {{ current_week }}</h1>
+                <div class="print-picks__meta">
+                    <strong>{{ current_league.name }}</strong><br>
+                    {{ request.user.get_full_name|default:request.user.username }}
+                </div>
+            </header>
+            <table>
+                <thead>
+                    <tr>
+                        <th class="print-picks__game">Game</th>
+                        <th class="print-picks__spread">Spread</th>
+                        <th class="print-picks__pick">Pick</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lg, p in games_with_picks %}
+                    <tr>
+                        <td>
+                            <span class="print-picks__team">
+                                {% if lg.game.away_team|team_logo_url %}<img class="print-picks__logo" src="{% static lg.game.away_team|team_logo_url %}" alt="">{% endif %}
+                                {{ lg.game.away_team.name }}
+                            </span>
+                            <strong>@</strong>
+                            <span class="print-picks__team">
+                                {% if lg.game.home_team|team_logo_url %}<img class="print-picks__logo" src="{% static lg.game.home_team|team_logo_url %}" alt="">{% endif %}
+                                {{ lg.game.home_team.name }}
+                            </span>
+                            <span class="print-picks__kickoff"> · {{ lg.game.kickoff|eastern_time }}</span>
+                        </td>
+                        <td>
+                            {% if lg.locked_home_spread is not None %}
+                                {% with display_spread=lg.locked_home_spread|apply_hooks:league_rules.force_hooks %}
+                                    {% if display_spread < 0 %}{{ lg.game.home_team.abbreviation|default:lg.game.home_team.name }} {{ display_spread|floatformat:1 }}{% elif display_spread > 0 %}{{ lg.game.away_team.abbreviation|default:lg.game.away_team.name }} -{{ display_spread|floatformat:1 }}{% else %}Pick 'Em{% endif %}
+                                {% endwith %}
+                            {% elif lg.game.current_home_spread is not None %}
+                                {% with display_spread=lg.game.current_home_spread|apply_hooks:league_rules.force_hooks %}
+                                    {% if display_spread < 0 %}{{ lg.game.home_team.abbreviation|default:lg.game.home_team.name }} {{ display_spread|floatformat:1 }}{% elif display_spread > 0 %}{{ lg.game.away_team.abbreviation|default:lg.game.away_team.name }} -{{ display_spread|floatformat:1 }}{% else %}Pick 'Em{% endif %}
+                                {% endwith %}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td class="print-picks__pick" data-print-pick="{{ lg.game.id }}"
+                            data-away-id="{{ lg.game.away_team.id }}" data-away-name="{{ lg.game.away_team.name }}"
+                            data-home-id="{{ lg.game.home_team.id }}" data-home-name="{{ lg.game.home_team.name }}">
+                            {% if p %}{{ p.picked_team.name }}{% if p.is_key_pick %} ★{% endif %}{% else %}No pick{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if league_rules and league_rules.tiebreaker == 2 and total_points_game %}
+            <div class="print-picks__tiebreaker">
+                <strong>Tiebreaker: {{ total_points_game.away_team.name }} @ {{ total_points_game.home_team.name }}</strong>
+                <span>Predicted total: <strong id="print-tiebreaker-value">{% if total_points_pick and total_points_pick.points_guess is not None %}{{ total_points_pick.points_guess }}{% else %}Not entered{% endif %}</strong></span>
+            </div>
+            {% endif %}
+        </section>
         
         <!-- Save All Button - Top -->
         <div class="sticky top-16 md:top-20 z-40 mb-3">
@@ -450,6 +519,136 @@
 
 {% block extra_css %}
 <style>
+    .print-picks {
+        display: none;
+    }
+
+    @media print {
+        @page {
+            size: portrait;
+            margin: 0.35in;
+        }
+
+        html,
+        body {
+            height: auto;
+            min-height: 0;
+            background: #fff !important;
+            color: #111 !important;
+        }
+
+        .navbar,
+        .bottom-nav,
+        footer,
+        .main-content > div,
+        .picks-page-header,
+        #picks-form > :not(.print-picks) {
+            display: none !important;
+        }
+
+        .main-content,
+        main {
+            display: block;
+            width: 100%;
+            max-width: none;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .print-picks {
+            display: block !important;
+            font-family: Arial, sans-serif;
+            font-size: 9pt;
+        }
+
+        .print-picks__header {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            border-bottom: 2px solid #111;
+            margin-bottom: 8px;
+            padding-bottom: 5px;
+        }
+
+        .print-picks h1 {
+            margin: 0;
+            font-size: 17pt;
+            line-height: 1;
+        }
+
+        .print-picks__meta {
+            text-align: right;
+            font-size: 8.5pt;
+        }
+
+        .print-picks table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .print-picks th,
+        .print-picks td {
+            border: 1px solid #888;
+            padding: 4px 6px;
+            vertical-align: middle;
+        }
+
+        .print-picks th {
+            background: #e8e8e8 !important;
+            color: #111 !important;
+            font-size: 8pt;
+            text-align: left;
+            text-transform: uppercase;
+        }
+
+        .print-picks tr {
+            break-inside: avoid;
+        }
+
+        .print-picks__game {
+            width: 50%;
+        }
+
+        .print-picks__spread {
+            width: 20%;
+        }
+
+        .print-picks__pick {
+            width: 30%;
+            font-weight: 700;
+        }
+
+        .print-picks__team {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .print-picks__logo {
+            width: 20px;
+            height: 20px;
+            object-fit: contain;
+            filter: none !important;
+        }
+
+        .print-picks__kickoff {
+            color: #444;
+            font-size: 7.5pt;
+            white-space: nowrap;
+        }
+
+        .print-picks__tiebreaker {
+            display: flex;
+            justify-content: space-between;
+            border: 1.5px solid #111;
+            margin-top: 8px;
+            padding: 6px 8px;
+            font-size: 10pt;
+        }
+    }
+</style>
+<style>
     /* Selected team card styling */
     .team-card input[type="radio"]:checked + .team-card-content {
         border-color: hsl(var(--p));
@@ -524,6 +723,33 @@
 <!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 <script>
+    function syncPrintPicks() {
+        document.querySelectorAll('[data-print-pick]').forEach(cell => {
+            const gameId = cell.dataset.printPick;
+            const selected = document.querySelector(`input[name="game_${gameId}_picked_team"]:checked`);
+            const keyPick = document.querySelector(`input[name="game_${gameId}_is_key_pick"]`);
+            let pickName = 'No pick';
+
+            if (selected) {
+                pickName = selected.value === cell.dataset.awayId
+                    ? cell.dataset.awayName
+                    : cell.dataset.homeName;
+                if (keyPick && keyPick.checked) {
+                    pickName += ' ★';
+                }
+            }
+            cell.textContent = pickName;
+        });
+
+        const prediction = document.getElementById('total-points-input');
+        const printedPrediction = document.getElementById('print-tiebreaker-value');
+        if (prediction && printedPrediction) {
+            printedPrediction.textContent = prediction.value || 'Not entered';
+        }
+    }
+
+    window.addEventListener('beforeprint', syncPrintPicks);
+
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('picks-form');
         if (!form) return;
