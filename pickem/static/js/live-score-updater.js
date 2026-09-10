@@ -194,7 +194,9 @@ class LiveScoreUpdater {
         try {
             // Get the game IDs that are actually on the page
             const gameElements = document.querySelectorAll('[data-game-id]');
-            const gameIds = Array.from(gameElements).map(el => el.getAttribute('data-game-id'));
+            const gameIds = [...new Set(
+                Array.from(gameElements).map(el => el.getAttribute('data-game-id'))
+            )];
             
             if (gameIds.length === 0) {
                 console.warn('[LiveScores] No games on page, skipping poll');
@@ -202,8 +204,13 @@ class LiveScoreUpdater {
                 return;
             }
             
-            // Fetch data for ALL games (we'll filter client-side)
-            const url = `${this.config.apiEndpoint}?limit=500`;
+            // Ask for the games rendered on this page. Fetching the first 500
+            // games in kickoff order can omit games later in the season.
+            const query = new URLSearchParams({
+                ids: gameIds.join(','),
+                limit: String(gameIds.length)
+            });
+            const url = `${this.config.apiEndpoint}?${query.toString()}`;
             
             // Create abort controller for manual timeout (better browser compatibility)
             const controller = new AbortController();
@@ -818,4 +825,3 @@ ${spreadBadgeHTML}`;
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = LiveScoreUpdater;
 }
-

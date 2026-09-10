@@ -86,6 +86,7 @@ def games_list(request):
         - live: Filter for live games only (true/false)
         - season: Filter by season year (defaults to active season)
         - team: Filter by team ID
+        - ids: Comma-separated game IDs to return
         - limit: Maximum number of results (default: 100, max: 500)
     
     Example:
@@ -98,6 +99,7 @@ def games_list(request):
         live_only = request.GET.get('live', '').lower() == 'true'
         season_year = request.GET.get('season')
         team_id = request.GET.get('team')
+        game_ids = request.GET.get('ids')
         limit = min(int(request.GET.get('limit', 100)), 500)
 
         # Start with base queryset
@@ -121,6 +123,22 @@ def games_list(request):
             active_season = Season.objects.filter(is_active=True).first()
             if active_season:
                 games = games.filter(season=active_season)
+
+        # Let polling clients request exactly the games rendered on the page.
+        # This must happen before slicing so late-season games are not hidden by
+        # the endpoint's kickoff ordering and result limit.
+        if game_ids:
+            try:
+                requested_ids = {
+                    int(game_id) for game_id in game_ids.split(',') if game_id
+                }
+                if not requested_ids or len(requested_ids) > 500:
+                    raise ValueError
+                games = games.filter(id__in=requested_ids)
+            except ValueError:
+                return JsonResponse({
+                    'error': 'Invalid game IDs. Provide up to 500 comma-separated integers'
+                }, status=400)
 
         # Filter by date
         if date_str:
@@ -541,4 +559,3 @@ def game_spread_history(request, game_id):
         return JsonResponse({
             'error': 'Internal server error'
         }, status=500)
-
