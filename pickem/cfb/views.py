@@ -329,8 +329,11 @@ def picks_view(request):
                 # Create default rules if none exist
                 league_rules = LeagueRules.objects.create(league=league, season=active_season)
         
-        # Count current key picks for this week (excluding games being updated)
+        # Count current key picks for this week. Only picks for games that have
+        # not started can be replaced by this submission; started picks remain
+        # locked and must always consume a key-pick slot.
         current_key_picks = Pick.objects.none()
+        editable_game_ids = set()
         if current_week:
             start, end = services.schedule.get_week_datetime_range(current_week)
             current_key_picks = Pick.objects.filter(
@@ -338,12 +341,23 @@ def picks_view(request):
                 league=league,
                 is_key_pick=True,
                 game__kickoff__range=(start, end)
-            ).exclude(game_id__in=game_ids)
-        current_key_picks_count = current_key_picks.count()
+            )
+            editable_game_ids = set(
+                LeagueGame.objects.filter(
+                    league=league,
+                    is_active=True,
+                    game_id__in=game_ids,
+                    game__kickoff__range=(start, end),
+                    game__kickoff__gt=timezone.now(),
+                ).values_list("game_id", flat=True)
+            )
+        current_key_picks_count = current_key_picks.exclude(
+            game_id__in=editable_game_ids
+        ).count()
         
         # Count new key picks being submitted
         new_key_picks_count = 0
-        for game_id in game_ids:
+        for game_id in editable_game_ids:
             is_key_pick = request.POST.get(f"game_{game_id}_is_key_pick") == "on"
             if is_key_pick:
                 new_key_picks_count += 1
