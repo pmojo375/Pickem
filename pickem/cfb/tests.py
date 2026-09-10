@@ -13,7 +13,18 @@ from django.utils import timezone
 from datetime import timedelta
 
 from cfb.adapters import SocialAccountAdapter
-from cfb.models import League, LeagueInvite, LeagueMembership, LeagueRules, Season
+from cfb.models import (
+    Game,
+    League,
+    LeagueGame,
+    LeagueInvite,
+    LeagueMembership,
+    LeagueRules,
+    Pick,
+    Season,
+    Team,
+    Week,
+)
 from cfb.services import invites
 from cfb.services.payouts import build_payout_summary
 
@@ -26,6 +37,68 @@ def _verify_email(user):
         email=user.email,
         defaults={"verified": True, "primary": True},
     )
+
+
+class PickKeyPickLimitTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("picker", "picker@example.com", "pass")
+        self.league = League.objects.create(name="Key Pick League", created_by=self.user)
+        LeagueMembership.objects.create(
+            league=self.league, user=self.user, role="owner"
+        )
+        self.season = Season.objects.create(year=2026, is_active=True)
+        self.week = Week.objects.create(
+            season=self.season,
+            number=1,
+            start_date=timezone.localdate(),
+            end_date=timezone.localdate() + timedelta(days=6),
+        )
+        LeagueRules.objects.create(
+            league=self.league,
+            season=self.season,
+            key_picks_enabled=True,
+            number_of_key_picks=1,
+        )
+        self.teams = [
+            Team.objects.create(season=self.season, name=f"Team {index}")
+            for index in range(4)
+        ]
+        self.games = []
+        for index in range(2):
+            game = Game.objects.create(
+                season=self.season,
+                week=self.week,
+                home_team=self.teams[index * 2],
+                away_team=self.teams[index * 2 + 1],
+                kickoff=timezone.now() + timedelta(days=2),
+            )
+            LeagueGame.objects.create(league=self.league, game=game)
+            self.games.append(game)
+        self.client.force_login(self.user)
+
+    def test_rejects_entire_submission_over_key_pick_limit(self):
+        post_data = {"league_id": self.league.id}
+        for game in self.games:
+            post_data.update(
+                {
+                    f"game_{game.id}_id": game.id,
+                    f"game_{game.id}_picked_team": game.home_team_id,
+                    f"game_{game.id}_is_key_pick": "on",
+                }
+            )
+
+        response = self.client.post(reverse("picks"), post_data)
+
+        self.assertRedirects(
+            response,
+            f"/picks/?league_id={self.league.id}",
+            fetch_redirect_response=False,
+        )
+        self.assertFalse(Pick.objects.filter(league=self.league, user=self.user).exists())
+        response_messages = list(get_messages(response.wsgi_request))
+        self.assertEqual(len(response_messages), 1)
+        self.assertEqual(response_messages[0].level_tag, "error")
+        self.assertIn("only select 1 key pick per week", str(response_messages[0]))
 
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
@@ -662,4 +735,3 @@ class AccountProfileTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password("NewComplexPass123!"))
-
