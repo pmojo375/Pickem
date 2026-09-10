@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
 from django.core import mail
 from django.core.exceptions import ValidationError
-from django.test import RequestFactory, TestCase, override_settings
+from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
@@ -16,8 +16,47 @@ from cfb.adapters import SocialAccountAdapter
 from cfb.models import League, LeagueInvite, LeagueMembership, LeagueRules, Season
 from cfb.services import invites
 from cfb.services.payouts import build_payout_summary
+from cfb.services.scoring import is_pick_correct
+from cfb.templatetags.cfb_tags import apply_hooks, format_spread_display
 
 User = get_user_model()
+
+
+class ForcedHookTests(SimpleTestCase):
+    def test_display_moves_whole_spreads_away_from_zero(self):
+        self.assertEqual(format_spread_display(Decimal("3"), True), "3.5")
+        self.assertEqual(format_spread_display(Decimal("-3"), True), "-3.5")
+        self.assertEqual(apply_hooks(Decimal("0"), True), Decimal("0"))
+
+    def test_display_leaves_existing_hooks_unchanged(self):
+        self.assertEqual(format_spread_display(Decimal("3.5"), True), "3.5")
+        self.assertEqual(format_spread_display(Decimal("-3.5"), True), "-3.5")
+
+    def test_scoring_uses_same_negative_hook_shown_to_users(self):
+        pick = Mock(league_id=1, picked_team_id=10)
+        game = Mock(
+            is_final=True,
+            home_score=24,
+            away_score=21,
+            home_team_id=10,
+        )
+        rules = Mock(against_the_spread_enabled=True, force_hooks=True)
+        league_game = Mock(locked_home_spread=Decimal("-3"))
+
+        self.assertFalse(is_pick_correct(pick, game, rules, league_game))
+
+    def test_scoring_uses_same_positive_hook_shown_to_users(self):
+        pick = Mock(league_id=1, picked_team_id=10)
+        game = Mock(
+            is_final=True,
+            home_score=21,
+            away_score=24,
+            home_team_id=10,
+        )
+        rules = Mock(against_the_spread_enabled=True, force_hooks=True)
+        league_game = Mock(locked_home_spread=Decimal("3"))
+
+        self.assertTrue(is_pick_correct(pick, game, rules, league_game))
 
 
 def _verify_email(user):
@@ -662,4 +701,3 @@ class AccountProfileTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password("NewComplexPass123!"))
-

@@ -3,6 +3,8 @@ from django.utils import timezone
 from django.utils.safestring import mark_safe
 import pytz
 
+from cfb.services.hooks import apply_forced_hook
+
 register = template.Library()
 
 
@@ -231,25 +233,10 @@ def apply_hooks(spread, force_hooks=False):
     if not force_hooks:
         return spread
     
-    # Convert to float for processing
     try:
-        spread_val = float(spread)
-    except (ValueError, TypeError):
+        return apply_forced_hook(spread)
+    except (ValueError, TypeError, ArithmeticError):
         return spread
-    
-    # Check if it's a whole number
-    if spread_val == int(spread_val):
-        # Round up to next half point (e.g., 3.0 -> 3.5, -3.0 -> -3.5)
-        if spread_val > 0:
-            return spread_val + 0.5
-        elif spread_val < 0:
-            return spread_val - 0.5
-        else:
-            # For 0, we keep it as Pick 'Em
-            return spread_val
-    
-    # Already has a hook, return as is
-    return spread_val
 
 
 @register.filter
