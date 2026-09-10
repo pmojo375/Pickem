@@ -353,6 +353,18 @@ def picks_view(request):
             total_key_picks = current_key_picks_count + new_key_picks_count
             if total_key_picks > league_rules.number_of_key_picks:
                 errors.append(f"You can only select {league_rules.number_of_key_picks} key pick{'s' if league_rules.number_of_key_picks != 1 else ''} per week. You currently have {current_key_picks_count} and are trying to add {new_key_picks_count} more.")
+
+        # Key-pick limits are a submission-level constraint. Do not partially
+        # save the form after determining that the submitted state is invalid.
+        if errors:
+            for error in errors:
+                messages.error(request, error)
+            logger.info(
+                "picks_rejected league=%s errors=%s",
+                league.id,
+                len(errors),
+            )
+            return redirect(f"/picks/?league_id={league.id}")
         
         # Process each game's pick
         for game_id in game_ids:
@@ -3165,4 +3177,3 @@ def league_member_paid_view(request, league_id, membership_id):
         f"{membership.user.username} is marked as {label} for {active_season.year} in '{league.name}'.",
     )
     return redirect("league_detail", league_id=league.id)
-
