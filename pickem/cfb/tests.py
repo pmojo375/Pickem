@@ -178,6 +178,52 @@ class PickKeyPickLimitTests(TestCase):
         self.assertEqual(response_messages[0].level_tag, "error")
         self.assertIn("only select 1 key pick per week", str(response_messages[0]))
 
+    def test_locked_key_pick_counts_toward_limit_when_checkbox_is_omitted(self):
+        locked_game, new_game = self.games
+        locked_game.kickoff = timezone.now() - timedelta(minutes=1)
+        locked_game.save(update_fields=["kickoff"])
+        Pick.objects.create(
+            user=self.user,
+            league=self.league,
+            game=locked_game,
+            picked_team=locked_game.home_team,
+            is_key_pick=True,
+        )
+
+        response = self.client.post(
+            reverse("picks"),
+            {
+                "league_id": self.league.id,
+                f"game_{locked_game.id}_id": locked_game.id,
+                f"game_{locked_game.id}_picked_team": locked_game.home_team_id,
+                # Disabled inputs are omitted by browsers, and a crafted request
+                # can omit this locked game's key-pick checkbox as well.
+                f"game_{new_game.id}_id": new_game.id,
+                f"game_{new_game.id}_picked_team": new_game.home_team_id,
+                f"game_{new_game.id}_is_key_pick": "on",
+            },
+        )
+
+        self.assertRedirects(
+            response,
+            f"/picks/?league_id={self.league.id}",
+            fetch_redirect_response=False,
+        )
+        self.assertFalse(
+            Pick.objects.filter(
+                league=self.league, user=self.user, game=new_game
+            ).exists()
+        )
+        self.assertTrue(
+            Pick.objects.get(
+                league=self.league, user=self.user, game=locked_game
+            ).is_key_pick
+        )
+        response_messages = list(get_messages(response.wsgi_request))
+        self.assertEqual(len(response_messages), 1)
+        self.assertEqual(response_messages[0].level_tag, "error")
+        self.assertIn("only select 1 key pick per week", str(response_messages[0]))
+
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
 class LeagueEmailInviteTests(TestCase):
