@@ -70,6 +70,45 @@ class ForcedHookTests(SimpleTestCase):
         self.assertTrue(is_pick_correct(pick, game, rules, league_game))
 
 
+class GamesListApiTests(TestCase):
+    def setUp(self):
+        self.season = Season.objects.create(year=2026, is_active=True)
+        teams = [
+            Team.objects.create(season=self.season, name=f"API Team {index}")
+            for index in range(4)
+        ]
+        self.early_game = Game.objects.create(
+            season=self.season,
+            home_team=teams[0],
+            away_team=teams[1],
+            kickoff=timezone.now(),
+        )
+        self.late_game = Game.objects.create(
+            season=self.season,
+            home_team=teams[2],
+            away_team=teams[3],
+            kickoff=timezone.now() + timedelta(days=100),
+        )
+
+    def test_ids_filter_is_applied_before_ordered_result_limit(self):
+        response = self.client.get(
+            reverse("api_games_list"),
+            {"ids": str(self.late_game.id), "limit": 1},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [game["id"] for game in response.json()["games"]],
+            [self.late_game.id],
+        )
+
+    def test_ids_filter_rejects_non_integer_values(self):
+        response = self.client.get(reverse("api_games_list"), {"ids": "not-an-id"})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Invalid game IDs", response.json()["error"])
+
+
 def _verify_email(user):
     EmailAddress.objects.update_or_create(
         user=user,
