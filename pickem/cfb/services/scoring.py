@@ -5,21 +5,21 @@ Handles complex scoring logic including ATS with/without hooks, straight-up pick
 import logging
 from decimal import Decimal, InvalidOperation
 from typing import Tuple, Optional, List, Dict
-from math import ceil
 
 from django.db import transaction
 from django.db.models import Sum, Count, Q, F, Max
 from ..models import Game, Pick, League, LeagueRules, MemberWeek, MemberSeason, Week, LeagueGame, LeagueMembership
+from .hooks import apply_forced_hook
 
 logger = logging.getLogger(__name__)
 
 
 def round_to_half(value: Decimal) -> Decimal:
-    """Round a decimal value up to the nearest 0.5."""
-    if isinstance(value, (int, float)):
-        value = Decimal(str(value))
-    # Multiply by 2, round up, divide by 2
-    return (value * 2).quantize(Decimal('1')) / 2
+    """Apply the forced-hook adjustment to a spread.
+
+    Kept as a compatibility wrapper for callers that imported the old helper.
+    """
+    return apply_forced_hook(value)
 
 
 def is_pick_correct(
@@ -77,7 +77,7 @@ def is_pick_correct(
         
         # Apply force hooks if enabled
         if league_rules.force_hooks:
-            spread = round_to_half(spread)
+            spread = apply_forced_hook(spread)
         
         # Check for tie (no hook enforcement and exact spread match)
         if not league_rules.force_hooks and actual_margin == -spread:
