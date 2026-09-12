@@ -1317,6 +1317,14 @@ def standings_view(request):
                         # Sort by rank (ascending)
                         standings.sort(key=lambda x: x['display_rank'])
 
+                        # Points behind the week leader (same pts as leader => —)
+                        leader_points = (
+                            standings[0]['points'] if standings else 0
+                        )
+                        for row in standings:
+                            behind = leader_points - row['points']
+                            row['points_behind'] = behind if behind > 0 else None
+
                         week_is_final = services.payouts.is_week_slate_final(
                             league, selected_week
                         )
