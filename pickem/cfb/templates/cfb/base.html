@@ -305,15 +305,18 @@
         {% if messages or league_announcements %}
         <div class="container mx-auto px-4 mt-4 max-w-7xl">
             {% for announcement in league_announcements %}
-            <div role="alert" class="alert {% if announcement.level == 'error' %}alert-error{% elif announcement.level == 'success' %}alert-success{% elif announcement.level == 'warning' %}alert-warning{% else %}alert-info{% endif %} mb-2">
-                <i class="fas {% if announcement.level == 'error' %}fa-exclamation-circle{% elif announcement.level == 'success' %}fa-check-circle{% elif announcement.level == 'warning' %}fa-exclamation-triangle{% else %}fa-bullhorn{% endif %}"></i>
-                <div class="flex-1">
+            <div role="alert" class="alert {% if announcement.level == 'error' %}alert-error{% elif announcement.level == 'success' %}alert-success{% elif announcement.level == 'warning' %}alert-warning{% else %}alert-info{% endif %} mb-2 items-start">
+                <i class="fas {% if announcement.level == 'error' %}fa-exclamation-circle{% elif announcement.level == 'success' %}fa-check-circle{% elif announcement.level == 'warning' %}fa-exclamation-triangle{% else %}fa-bullhorn{% endif %} mt-1"></i>
+                <div class="flex-1 min-w-0">
                     <div class="font-bold">{{ announcement.title }}</div>
-                    <div class="text-sm whitespace-pre-line">{{ announcement.body }}</div>
+                    <div class="announcement-body text-sm whitespace-pre-line line-clamp-3 overflow-hidden" data-announcement-body>{{ announcement.body }}</div>
+                    <button type="button" class="announcement-toggle btn btn-ghost btn-xs px-0 h-auto min-h-0 mt-1 hidden" data-announcement-toggle aria-expanded="false">
+                        Show more
+                    </button>
                     <div class="text-xs opacity-70 mt-1">{{ announcement.league.name }}</div>
                 </div>
                 {% if announcement.kind == 'one_time' %}
-                <form method="post" action="{% url 'announcement_dismiss' announcement.id %}">
+                <form method="post" action="{% url 'announcement_dismiss' announcement.id %}" class="shrink-0">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-sm btn-ghost" title="Dismiss" aria-label="Dismiss announcement">
                         <i class="fas fa-times"></i>
@@ -346,6 +349,46 @@
 
     {% block extra_js %}{% endblock %}
     
+    <script>
+    /**
+     * Collapse long league announcement bodies with Show more / Show less.
+     */
+    (function() {
+        'use strict';
+
+        function setupAnnouncementToggles() {
+            document.querySelectorAll('[data-announcement-body]').forEach(function(body) {
+                var toggle = body.parentElement.querySelector('[data-announcement-toggle]');
+                if (!toggle) return;
+
+                // Only offer expand when clamped content overflows
+                if (body.scrollHeight > body.clientHeight + 1) {
+                    toggle.classList.remove('hidden');
+                }
+
+                toggle.addEventListener('click', function() {
+                    var expanded = toggle.getAttribute('aria-expanded') === 'true';
+                    if (expanded) {
+                        body.classList.add('line-clamp-3', 'overflow-hidden');
+                        toggle.setAttribute('aria-expanded', 'false');
+                        toggle.textContent = 'Show more';
+                    } else {
+                        body.classList.remove('line-clamp-3', 'overflow-hidden');
+                        toggle.setAttribute('aria-expanded', 'true');
+                        toggle.textContent = 'Show less';
+                    }
+                });
+            });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', setupAnnouncementToggles);
+        } else {
+            setupAnnouncementToggles();
+        }
+    })();
+    </script>
+
     <script>
     /**
      * League Selection Persistence
