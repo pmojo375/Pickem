@@ -163,6 +163,10 @@ LOGGING = {
             "level": "INFO",
             "filters": ["request_context"],
         },
+        # Discard only (avoids logging.lastResort if a logger has no handlers)
+        "null": {
+            "class": "logging.NullHandler",
+        },
 
         # --- Your app logs ---
         "app_file": {
@@ -251,6 +255,13 @@ LOGGING = {
         "celery": {
             "handlers": ["console", "celery_file", "error_file"],
             "level": "INFO",
+            "propagate": False,
+        },
+        # If redirect_stdouts is ever re-enabled, drop the echo instead of
+        # propagating it through the celery handlers (and avoid lastResort).
+        "celery.redirected": {
+            "handlers": ["null"],
+            "level": "ERROR",
             "propagate": False,
         },
         "celery.worker": {
@@ -437,6 +448,11 @@ CELERY_ENABLE_UTC = True
 
 # Celery logging configuration - use Django's logging setup
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
+# Django's console StreamHandler writes to sys.stderr. Celery's default
+# redirect_stdouts replaces stderr with a LoggingProxy that re-emits every
+# line via celery.redirected at WARNING — so each real INFO becomes a
+# WARNING echo in celery.log. Keep redirect off; dictConfig already captures logs.
+CELERY_WORKER_REDIRECT_STDOUTS = False
 CELERY_WORKER_LOG_FORMAT = '[%(asctime)s: %(levelname)s/%(processName)s] %(message)s'
 CELERY_WORKER_TASK_LOG_FORMAT = '[%(asctime)s: %(levelname)s/%(processName)s][%(task_name)s(%(task_id)s)] %(message)s'
 
