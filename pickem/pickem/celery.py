@@ -63,9 +63,10 @@ app.conf.beat_schedule = {
         'options': {'expires': 3600},
         'kwargs': {'force': True},  # Force update to refresh all games
     },
+    # Monday 6 AM; task retries next day (up to 3x) if polls are not out yet
     'sync-rankings': {
         'task': 'cfb.tasks.update_rankings',
-        'schedule': crontab(day_of_week=1, hour=6, minute=0), # Monday at 12 AM
+        'schedule': crontab(day_of_week=1, hour=6, minute=0),  # Monday at 6 AM
         'options': {'expires': 3600},
     },
     # Update team stats every Monday at 6 AM

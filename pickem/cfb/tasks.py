@@ -412,60 +412,130 @@ def update_spreads(self, season_year: int = None, season_type: str = 'regular', 
         raise self.retry(exc=exc)
 
 
-@shared_task(bind=True, name='cfb.tasks.update_rankings', max_retries=3, default_retry_delay=300,)
+# Rankings often publish late on Monday (or Tuesday after long weeks).
+RANKINGS_RETRY_COUNTDOWN = 24 * 60 * 60  # 1 day
+
+
+@shared_task(
+    bind=True,
+    name='cfb.tasks.update_rankings',
+    max_retries=3,
+    default_retry_delay=RANKINGS_RETRY_COUNTDOWN,
+)
 def update_rankings(self, season_year: int = None, season_type: str = 'regular', week: int = None):
     """
     Update rankings for a given season and week.
-    
+
+    When rankings are not available yet (common after long weeks), retries once
+    per day up to 3 times. Week is re-resolved on each attempt when not passed
+    explicitly so a calendar rollover is picked up.
+
     Args:
         season_year: Year of the season (if None, uses active season)
         season_type: 'regular' or 'postseason' (if None, uses current week's type)
         week: Specific week number (if None, uses current week; fetches all weeks if explicitly 0)
     """
+    from celery.exceptions import MaxRetriesExceededError, Retry
+    from .services.schedule import get_current_week
+
+    def retry_next_day(exc: Optional[Exception] = None):
+        """Schedule another attempt tomorrow; give up after max_retries."""
+        try:
+            if exc is not None:
+                raise self.retry(exc=exc, countdown=RANKINGS_RETRY_COUNTDOWN)
+            raise self.retry(countdown=RANKINGS_RETRY_COUNTDOWN)
+        except MaxRetriesExceededError:
+            logger.error(
+                "update_rankings gave up after %s retries for %s %s%s",
+                self.max_retries,
+                season_year,
+                season_type,
+                f" week {week}" if week else "",
+            )
+
     try:
-        from .services.schedule import get_current_week
-        
+        week_auto = week is None
         # Auto-determine parameters if not provided
         if season_year is None or week is None:
             current_week = get_current_week()
             if not current_week:
                 logger.error("No current week found and parameters not provided")
                 return
-            
+
             if season_year is None:
                 season_year = current_week.season.year
             if week is None:
                 week = current_week.number
             if season_type == 'regular':  # Only override if still default
                 season_type = current_week.season_type
-        
+
         # Verify season exists
         try:
             season = Season.objects.get(year=season_year)
         except Season.DoesNotExist:
             logger.error(f"Season {season_year} not found")
             return
-        
-        logger.info(f"Updating rankings for {season_year} {season_type}" + (f" week {week}" if week else ""))
-        
-        # Fetch rankings from CFBD
+
+        # week=0 means fetch all weeks (management-command style)
+        fetch_week = None if week == 0 else week
+
+        logger.info(
+            f"Updating rankings for {season_year} {season_type}"
+            + (f" week {fetch_week}" if fetch_week else " (all weeks)")
+        )
+
         cfbd_client = get_cfbd_client()
         rankings_data = cfbd_client.fetch_rankings(
             year=season_year,
-            week=week,
+            week=fetch_week,
             season_type=season_type
         )
-        
+
+        # New poll after week N games is often published as week N+1. If the
+        # active week returns nothing, try the next week before retrying later.
+        if (
+            not rankings_data
+            and week_auto
+            and fetch_week is not None
+            and Week.objects.filter(
+                season=season,
+                number=fetch_week + 1,
+                season_type=season_type,
+            ).exists()
+        ):
+            alt_week = fetch_week + 1
+            logger.info(
+                "No rankings for week %s; trying week %s",
+                fetch_week,
+                alt_week,
+            )
+            rankings_data = cfbd_client.fetch_rankings(
+                year=season_year,
+                week=alt_week,
+                season_type=season_type,
+            )
+            if rankings_data:
+                fetch_week = alt_week
+
         if not rankings_data:
-            logger.error(f"No rankings data returned from CFBD for {season_year} {season_type}" + (f" week {week}" if week else ""))
+            logger.warning(
+                "No rankings data returned from CFBD for %s %s%s "
+                "(attempt %s/%s); retrying tomorrow",
+                season_year,
+                season_type,
+                f" week {fetch_week}" if fetch_week else "",
+                self.request.retries + 1,
+                self.max_retries + 1,
+            )
+            retry_next_day()
             return
-        
+
         logger.info(f"Fetched {len(rankings_data)} weeks of rankings from CFBD")
-        
+
         total_created = 0
         total_updated = 0
         total_skipped = 0
-        
+
         for week_data in rankings_data:
             week_number = week_data.get('week')
             polls = week_data.get('polls', [])
@@ -486,7 +556,7 @@ def update_rankings(self, season_year: int = None, season_type: str = 'regular',
                     rank = rank_data.get('rank')
                     first_place_votes = rank_data.get('firstPlaceVotes', 0)
                     points = rank_data.get('points', 0)
-                    
+
                     # Find team by CFBD ID or name
                     team = None
                     if team_id:
@@ -494,13 +564,13 @@ def update_rankings(self, season_year: int = None, season_type: str = 'regular',
                             season=season,
                             cfbd_id=team_id
                         ).first()
-                    
+
                     if not team:
                         team = Team.objects.filter(
                             season=season,
                             name__iexact=school_name
                         ).first()
-                    
+
                     if not team:
                         logger.warning(f"Team not found in DB: {school_name} (ID: {team_id})")
                         continue
@@ -515,7 +585,7 @@ def update_rankings(self, season_year: int = None, season_type: str = 'regular',
                     except Week.DoesNotExist:
                         logger.error(f"Week {week_number} not found for {season_year} {season_type}")
                         continue
-                    
+
                     # Check if ranking already exists
                     try:
                         existing_ranking = Ranking.objects.get(
@@ -525,21 +595,21 @@ def update_rankings(self, season_year: int = None, season_type: str = 'regular',
                             team=team,
                             poll=poll_name
                         )
-                        
+
                         # Check if anything changed
                         if (existing_ranking.rank == rank and
                             existing_ranking.first_place_votes == first_place_votes and
                             existing_ranking.points == points):
                             total_skipped += 1
                             continue
-                        
+
                         # Update the ranking
                         existing_ranking.rank = rank
                         existing_ranking.first_place_votes = first_place_votes
                         existing_ranking.points = points
                         existing_ranking.save()
                         total_updated += 1
-                        
+
                     except Ranking.DoesNotExist:
                         # Create new ranking
                         Ranking.objects.create(
@@ -553,15 +623,30 @@ def update_rankings(self, season_year: int = None, season_type: str = 'regular',
                             points=points
                         )
                         total_created += 1
-        
+
+        if total_created == 0 and total_updated == 0 and total_skipped == 0:
+            logger.warning(
+                "Rankings response for %s %s%s had no usable poll entries "
+                "(attempt %s/%s); retrying tomorrow",
+                season_year,
+                season_type,
+                f" week {fetch_week}" if fetch_week else "",
+                self.request.retries + 1,
+                self.max_retries + 1,
+            )
+            retry_next_day()
+            return
+
         logger.info(
             f"Rankings update complete for {season_year}: "
             f"{total_created} created, {total_updated} updated, {total_skipped} skipped"
         )
-        
+
+    except Retry:
+        raise
     except Exception as exc:
         logger.error(f"Error in update_rankings task: {exc}", exc_info=True)
-        raise self.retry(exc=exc)
+        retry_next_day(exc=exc)
 
 
 # ============================================================================
