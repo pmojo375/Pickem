@@ -277,7 +277,11 @@
                     <div class="divider my-1">Team Stats</div>
                     
                     <div class="collapse collapse-arrow bg-base-200 rounded-lg">
-                        <input type="checkbox" />
+                        <input type="checkbox"
+                               class="team-stats-toggle"
+                               data-game-id="{{ lg.game.id }}"
+                               data-away-team="{{ lg.game.away_team.name|escape }}"
+                               data-home-team="{{ lg.game.home_team.name|escape }}" />
                         <div class="collapse-title text-sm font-medium flex items-center justify-center gap-2 min-h-0">
                             <i class="fas fa-chart-bar text-primary"></i>
                             View Team Stats
@@ -414,7 +418,11 @@
                     <div class="divider my-1">Game Info</div>
                     
                     <div class="collapse collapse-arrow bg-base-200 rounded-lg">
-                        <input type="checkbox" class="spread-chart-toggle" data-game-id="{{ lg.game.id }}" />
+                        <input type="checkbox"
+                               class="spread-chart-toggle"
+                               data-game-id="{{ lg.game.id }}"
+                               data-away-team="{{ lg.game.away_team.name|escape }}"
+                               data-home-team="{{ lg.game.home_team.name|escape }}" />
                         <div class="collapse-title text-sm font-medium flex items-center justify-center gap-2 min-h-0">
                             <i class="fas fa-chart-line text-primary"></i>
                             View Line Movement
@@ -935,6 +943,27 @@
         // Spread Chart Management
         const chartCache = new Map();
         const currentLeagueId = {{ current_league.id|default:"null" }};
+
+        function trackPicksInsight(eventName, el) {
+            if (!window.posthog) return;
+            posthog.capture(eventName, {
+                game_id: el.dataset.gameId || null,
+                away_team: el.dataset.awayTeam || '',
+                home_team: el.dataset.homeTeam || '',
+                matchup: ((el.dataset.awayTeam || '') + ' @ ' + (el.dataset.homeTeam || '')).trim(),
+                league_id: currentLeagueId,
+                path: window.location.pathname
+            });
+        }
+
+        // Team stats collapse opens
+        document.querySelectorAll('.team-stats-toggle').forEach(toggle => {
+            toggle.addEventListener('change', function() {
+                if (this.checked) {
+                    trackPicksInsight('team_stats_viewed', this);
+                }
+            });
+        });
         
         // Handle spread chart toggles
         document.querySelectorAll('.spread-chart-toggle').forEach(toggle => {
@@ -942,6 +971,10 @@
                 const gameId = this.dataset.gameId;
                 const chartCanvas = document.getElementById(`spread-chart-${gameId}`);
                 const loadingDiv = document.getElementById(`spread-chart-loading-${gameId}`);
+
+                if (this.checked) {
+                    trackPicksInsight('spread_chart_viewed', this);
+                }
                 
                 if (this.checked && !chartCache.has(gameId)) {
                     // Show loading spinner
