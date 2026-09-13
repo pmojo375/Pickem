@@ -14,6 +14,7 @@ from django.dispatch import receiver
 
 from pickem.log import get_request_id, set_request_context, user_label_for
 
+from . import analytics
 from .models import Game, LeagueGame
 from .services.scoring import update_member_week_for_game
 
@@ -29,11 +30,22 @@ def _client_ip(request) -> str:
     return request.META.get("REMOTE_ADDR") or "-"
 
 
+def _capture_auth_event(event: str, user, request=None, extra=None):
+    if user is None:
+        return
+    properties = {**(extra or {}), "$set": analytics.person_props(user)}
+    if request is not None:
+        properties["$ip"] = _client_ip(request)
+    analytics.capture(user.pk, event, properties)
+
+
 @receiver(user_logged_in)
 def log_user_logged_in(sender, request, user, **kwargs):
     label = user_label_for(user)
     set_request_context(request_id=get_request_id(), user_label=label)
     logger.info("login user=%s ip=%s", label, _client_ip(request))
+    analytics.identify_request_user(user)
+    _capture_auth_event("user_logged_in", user, request)
 
 
 @receiver(user_logged_out)
@@ -43,6 +55,7 @@ def log_user_logged_out(sender, request, user, **kwargs):
         user_label_for(user) if user else "-",
         _client_ip(request),
     )
+    _capture_auth_event("user_logged_out", user, request)
     set_request_context(request_id=get_request_id(), user_label="-")
 
 
@@ -54,7 +67,11 @@ def log_user_login_failed(sender, credentials, request, **kwargs):
         username,
         _client_ip(request),
     )
-
+    analytics.capture(
+        f"failed:{username}",
+        "user_login_failed",
+        {"attempted_username": username, "$ip": _client_ip(request)},
+    )
 
 @receiver(pre_save, sender=Game)
 def cache_previous_game_state(sender, instance, raw=False, **kwargs):

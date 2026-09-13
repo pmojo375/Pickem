@@ -17,6 +17,7 @@ django-allauth==0.63.6
 idna==3.10
 kombu==5.5.4
 packaging==25.0
+posthog>=6.0,<7
 prompt-toolkit==3.0.52
 pyjwt[crypto]==2.10.1
 pydantic==1.10.24

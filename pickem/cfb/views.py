@@ -13,6 +13,7 @@ from allauth.account.models import EmailAddress
 from allauth.socialaccount.forms import DisconnectForm
 from allauth.socialaccount.models import SocialAccount
 import logging
+from . import analytics
 from .models import (
     JOIN_PASSWORD_MIN_LENGTH,
     Game,
@@ -378,6 +379,19 @@ def picks_view(request):
                 league.id,
                 len(errors),
             )
+            analytics.capture(
+                request.user.pk,
+                "picks_rejected",
+                {
+                    "username": request.user.username,
+                    "league_id": league.id,
+                    "league_name": league.name,
+                    "error_count": len(errors),
+                    "reason": "key_pick_limit",
+                    "week_number": getattr(current_week, "number", None),
+                    "season_year": getattr(active_season, "year", None),
+                },
+            )
             return redirect(f"/picks/?league_id={league.id}")
         
         # Process each game's pick
@@ -467,6 +481,26 @@ def picks_view(request):
                 saved_count,
                 len(errors),
             )
+            analytics.capture(
+                request.user.pk,
+                "picks_submitted",
+                {
+                    "username": request.user.username,
+                    "league_id": league.id,
+                    "league_name": league.name,
+                    "picks_saved": saved_count,
+                    "key_picks_submitted": new_key_picks_count,
+                    "week_number": getattr(current_week, "number", None),
+                    "season_year": getattr(active_season, "year", None),
+                    "error_count": len(errors),
+                    "had_tiebreaker": bool(
+                        league_rules
+                        and league_rules.tiebreaker == 2
+                        and request.POST.get("total_points_guess")
+                    ),
+                    "$set": analytics.person_props(request.user),
+                },
+            )
             messages.success(request, f"Successfully saved {saved_count} pick{'s' if saved_count != 1 else ''}! 🏈")
         if errors:
             for error in errors:
@@ -478,9 +512,20 @@ def picks_view(request):
                 "picks_rejected league=%s errors=%s",
                 league.id,
                 len(errors),
-            )        
+            )
+            analytics.capture(
+                request.user.pk,
+                "picks_rejected",
+                {
+                    "username": request.user.username,
+                    "league_id": league.id,
+                    "league_name": league.name,
+                    "error_count": len(errors),
+                    "week_number": getattr(current_week, "number", None),
+                    "season_year": getattr(active_season, "year", None),
+                },
+            )
         return redirect(f"/picks/?league_id={league.id}")
-
     # Get league rules for key pick limits
     from django.utils import timezone
     from datetime import timedelta

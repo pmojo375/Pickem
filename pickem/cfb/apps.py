@@ -6,5 +6,13 @@ class CfbConfig(AppConfig):
     name = 'cfb'
     
     def ready(self):
-        """Import signal handlers when the app is ready."""
+        """Import signal handlers and configure PostHog when the app is ready."""
         from . import signals  # noqa
+
+        from django.conf import settings
+
+        if getattr(settings, "POSTHOG_ENABLED", False):
+            import posthog
+
+            posthog.api_key = settings.POSTHOG_API_KEY
+            posthog.host = settings.POSTHOG_HOST
