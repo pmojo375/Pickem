@@ -1,6 +1,8 @@
 from django.conf import settings
+from django.db.models import Exists, OuterRef, Q
+from django.utils import timezone
 
-from .models import LeagueMembership
+from .models import LeagueAnnouncement, LeagueMembership, UserAnnouncementDismissal
 
 
 def league_permissions(request):
@@ -16,6 +18,41 @@ def league_permissions(request):
             role__in=("owner", "admin"),
         ).exists()
     }
+
+
+def league_announcements(request):
+    """Active league announcements for the current user's memberships."""
+    user = getattr(request, "user", None)
+    if not user or not user.is_authenticated:
+        return {"league_announcements": []}
+
+    now = timezone.now()
+    membership_league_ids = LeagueMembership.objects.filter(
+        user=user,
+        is_active=True,
+    ).values_list("league_id", flat=True)
+
+    dismissed = UserAnnouncementDismissal.objects.filter(
+        announcement_id=OuterRef("pk"),
+        user=user,
+    )
+
+    announcements = (
+        LeagueAnnouncement.objects.filter(
+            league_id__in=membership_league_ids,
+            is_active=True,
+        )
+        .filter(Q(starts_at__isnull=True) | Q(starts_at__lte=now))
+        .filter(Q(ends_at__isnull=True) | Q(ends_at__gt=now))
+        .annotate(is_dismissed=Exists(dismissed))
+        .filter(
+            Q(kind=LeagueAnnouncement.KIND_PERSISTENT)
+            | Q(kind=LeagueAnnouncement.KIND_ONE_TIME, is_dismissed=False)
+        )
+        .select_related("league")
+        .order_by("-created_at")
+    )
+    return {"league_announcements": list(announcements)}
 
 
 def posthog(request):

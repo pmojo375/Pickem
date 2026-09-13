@@ -708,6 +708,103 @@ class TeamStat(models.Model):
         return f"{self.team.name} - {self.stat}: {self.value}"
 
 
+class LeagueAnnouncement(models.Model):
+    """League-manager message shown to active members (site-wide can come later)."""
+
+    KIND_ONE_TIME = "one_time"
+    KIND_PERSISTENT = "persistent"
+    KIND_CHOICES = [
+        (KIND_ONE_TIME, "One-time"),
+        (KIND_PERSISTENT, "Persistent"),
+    ]
+    LEVEL_INFO = "info"
+    LEVEL_SUCCESS = "success"
+    LEVEL_WARNING = "warning"
+    LEVEL_ERROR = "error"
+    LEVEL_CHOICES = [
+        (LEVEL_INFO, "Info"),
+        (LEVEL_SUCCESS, "Success"),
+        (LEVEL_WARNING, "Warning"),
+        (LEVEL_ERROR, "Error"),
+    ]
+
+    league = models.ForeignKey(
+        League,
+        on_delete=models.CASCADE,
+        related_name="announcements",
+    )
+    title = models.CharField(max_length=200)
+    body = models.TextField()
+    level = models.CharField(max_length=16, choices=LEVEL_CHOICES, default=LEVEL_INFO)
+    kind = models.CharField(max_length=16, choices=KIND_CHOICES, default=KIND_ONE_TIME)
+    is_active = models.BooleanField(default=True)
+    starts_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Optional. If set, hidden until this time.",
+    )
+    ends_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Optional. If set, hidden after this time.",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_league_announcements",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["league", "is_active"]),
+        ]
+        verbose_name = "League Announcement"
+        verbose_name_plural = "League Announcements"
+
+    def __str__(self) -> str:
+        return f"{self.league.name}: {self.title}"
+
+    def is_visible_now(self, now=None) -> bool:
+        if not self.is_active:
+            return False
+        now = now or timezone.now()
+        if self.starts_at and now < self.starts_at:
+            return False
+        if self.ends_at and now >= self.ends_at:
+            return False
+        return True
+
+
+class UserAnnouncementDismissal(models.Model):
+    """Per-user dismiss record for one-time league announcements."""
+
+    announcement = models.ForeignKey(
+        LeagueAnnouncement,
+        on_delete=models.CASCADE,
+        related_name="dismissals",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="announcement_dismissals",
+    )
+    dismissed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("announcement", "user")
+        ordering = ["-dismissed_at"]
+        verbose_name = "Announcement Dismissal"
+        verbose_name_plural = "Announcement Dismissals"
+
+    def __str__(self) -> str:
+        return f"{self.user.username} dismissed {self.announcement_id}"
+
+
 class UserProfile(models.Model):
     """Per-user settings that don't belong on Django's auth User."""
 

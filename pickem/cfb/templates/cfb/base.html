@@ -302,8 +302,26 @@
     <!-- Main Content Wrapper for Flex Layout -->
     <div class="main-content">
         <!-- Messages/Alerts -->
-        {% if messages %}
+        {% if messages or league_announcements %}
         <div class="container mx-auto px-4 mt-4 max-w-7xl">
+            {% for announcement in league_announcements %}
+            <div role="alert" class="alert {% if announcement.level == 'error' %}alert-error{% elif announcement.level == 'success' %}alert-success{% elif announcement.level == 'warning' %}alert-warning{% else %}alert-info{% endif %} mb-2">
+                <i class="fas {% if announcement.level == 'error' %}fa-exclamation-circle{% elif announcement.level == 'success' %}fa-check-circle{% elif announcement.level == 'warning' %}fa-exclamation-triangle{% else %}fa-bullhorn{% endif %}"></i>
+                <div class="flex-1">
+                    <div class="font-bold">{{ announcement.title }}</div>
+                    <div class="text-sm whitespace-pre-line">{{ announcement.body }}</div>
+                    <div class="text-xs opacity-70 mt-1">{{ announcement.league.name }}</div>
+                </div>
+                {% if announcement.kind == 'one_time' %}
+                <form method="post" action="{% url 'announcement_dismiss' announcement.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-ghost" title="Dismiss" aria-label="Dismiss announcement">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            {% endfor %}
             {% for message in messages %}
             <div role="alert" class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% elif message.tags == 'warning' %}alert-warning{% else %}alert-info{% endif %} mb-2">
                 <i class="fas {% if message.tags == 'error' %}fa-exclamation-circle{% elif message.tags == 'success' %}fa-check-circle{% elif message.tags == 'warning' %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %}"></i>

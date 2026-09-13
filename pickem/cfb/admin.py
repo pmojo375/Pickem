@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Season, Team, Game, GameSpread, Pick, League, LeagueInvite, LeagueMembership, LeagueGame, LeagueRules, Location, Week, Ranking, MemberWeek, MemberSeason, MemberSeasonPayment, TeamStat, UserProfile
+from .models import Season, Team, Game, GameSpread, Pick, League, LeagueAnnouncement, LeagueInvite, LeagueMembership, LeagueGame, LeagueRules, Location, Week, Ranking, MemberWeek, MemberSeason, MemberSeasonPayment, TeamStat, UserAnnouncementDismissal, UserProfile
 
 
 @admin.register(Season)
@@ -114,6 +114,24 @@ class LeagueInviteAdmin(admin.ModelAdmin):
     search_fields = ("email", "league__name", "token")
     readonly_fields = ("token", "created_at", "accepted_at", "revoked_at")
     autocomplete_fields = ("league", "invited_by")
+
+
+@admin.register(LeagueAnnouncement)
+class LeagueAnnouncementAdmin(admin.ModelAdmin):
+    list_display = ("title", "league", "kind", "level", "is_active", "starts_at", "ends_at", "created_at")
+    list_filter = ("kind", "level", "is_active", "league")
+    search_fields = ("title", "body", "league__name")
+    autocomplete_fields = ("league", "created_by")
+    readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(UserAnnouncementDismissal)
+class UserAnnouncementDismissalAdmin(admin.ModelAdmin):
+    list_display = ("announcement", "user", "dismissed_at")
+    list_filter = ("dismissed_at",)
+    search_fields = ("announcement__title", "user__username")
+    autocomplete_fields = ("announcement", "user")
+    readonly_fields = ("dismissed_at",)
 
 
 @admin.register(LeagueRules)

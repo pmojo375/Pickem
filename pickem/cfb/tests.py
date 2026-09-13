@@ -16,6 +16,7 @@ from cfb.adapters import SocialAccountAdapter
 from cfb.models import (
     Game,
     League,
+    LeagueAnnouncement,
     LeagueGame,
     LeagueInvite,
     LeagueMembership,
@@ -23,6 +24,7 @@ from cfb.models import (
     Pick,
     Season,
     Team,
+    UserAnnouncementDismissal,
     Week,
 )
 from cfb.services import invites
@@ -859,3 +861,148 @@ class AccountProfileTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password("NewComplexPass123!"))
+
+
+class LeagueAnnouncementTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(username="ann_owner", password="pass")
+        self.member = User.objects.create_user(username="ann_member", password="pass")
+        self.outsider = User.objects.create_user(username="ann_out", password="pass")
+        self.league = League.objects.create(name="Announce League", created_by=self.owner)
+        LeagueMembership.objects.create(league=self.league, user=self.owner, role="owner")
+        LeagueMembership.objects.create(league=self.league, user=self.member, role="member")
+
+    def test_manager_can_create_announcement(self):
+        self.client.force_login(self.owner)
+        response = self.client.post(
+            reverse("settings") + f"?league_id={self.league.id}",
+            {
+                "do": "create_announcement",
+                "league_id": self.league.id,
+                "title": "Welcome",
+                "body": "Season starts soon",
+                "kind": "one_time",
+                "level": "info",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        announcement = LeagueAnnouncement.objects.get(league=self.league)
+        self.assertEqual(announcement.title, "Welcome")
+        self.assertEqual(announcement.created_by, self.owner)
+
+    def test_create_with_email_sends_to_active_members(self):
+        self.owner.email = "owner@example.com"
+        self.owner.save(update_fields=["email"])
+        self.member.email = "member@example.com"
+        self.member.save(update_fields=["email"])
+        self.client.force_login(self.owner)
+        response = self.client.post(
+            reverse("settings") + f"?league_id={self.league.id}",
+            {
+                "do": "create_announcement",
+                "league_id": self.league.id,
+                "title": "Dues due",
+                "body": "Pay by Friday",
+                "kind": "one_time",
+                "level": "warning",
+                "send_email": "on",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(len(mail.outbox), 2)
+        subjects = {email.subject for email in mail.outbox}
+        self.assertEqual(subjects, {"Announce League: Dues due"})
+        bodies = " ".join(email.body for email in mail.outbox)
+        self.assertIn("Pay by Friday", bodies)
+
+    def test_member_sees_announcement_on_home(self):
+        LeagueAnnouncement.objects.create(
+            league=self.league,
+            title="Pay dues",
+            body="Please pay by Friday",
+            kind=LeagueAnnouncement.KIND_PERSISTENT,
+            created_by=self.owner,
+        )
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("home"))
+        self.assertContains(response, "Pay dues")
+        self.assertContains(response, "Please pay by Friday")
+
+    def test_outsider_does_not_see_announcement(self):
+        LeagueAnnouncement.objects.create(
+            league=self.league,
+            title="Members only",
+            body="Secret",
+            kind=LeagueAnnouncement.KIND_ONE_TIME,
+            created_by=self.owner,
+        )
+        self.client.force_login(self.outsider)
+        response = self.client.get(reverse("home"))
+        self.assertNotContains(response, "Members only")
+
+    def test_one_time_dismiss_hides_for_user(self):
+        announcement = LeagueAnnouncement.objects.create(
+            league=self.league,
+            title="Dismiss me",
+            body="Once",
+            kind=LeagueAnnouncement.KIND_ONE_TIME,
+            created_by=self.owner,
+        )
+        self.client.force_login(self.member)
+        response = self.client.post(reverse("announcement_dismiss", args=[announcement.id]))
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            UserAnnouncementDismissal.objects.filter(
+                announcement=announcement, user=self.member
+            ).exists()
+        )
+        home = self.client.get(reverse("home"))
+        self.assertNotContains(home, "Dismiss me")
+
+    def test_persistent_cannot_be_dismissed(self):
+        announcement = LeagueAnnouncement.objects.create(
+            league=self.league,
+            title="Always here",
+            body="Stay",
+            kind=LeagueAnnouncement.KIND_PERSISTENT,
+            created_by=self.owner,
+        )
+        self.client.force_login(self.member)
+        response = self.client.post(reverse("announcement_dismiss", args=[announcement.id]))
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(
+            UserAnnouncementDismissal.objects.filter(
+                announcement=announcement, user=self.member
+            ).exists()
+        )
+        home = self.client.get(reverse("home"))
+        self.assertContains(home, "Always here")
+
+    def test_inactive_announcement_hidden(self):
+        LeagueAnnouncement.objects.create(
+            league=self.league,
+            title="Off",
+            body="Hidden",
+            kind=LeagueAnnouncement.KIND_PERSISTENT,
+            is_active=False,
+            created_by=self.owner,
+        )
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("home"))
+        self.assertNotContains(response, "Hidden")
+
+    def test_member_cannot_create_announcement(self):
+        self.client.force_login(self.member)
+        response = self.client.post(
+            reverse("settings"),
+            {
+                "do": "create_announcement",
+                "league_id": self.league.id,
+                "title": "Nope",
+                "body": "Denied",
+                "kind": "one_time",
+                "level": "info",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(LeagueAnnouncement.objects.filter(title="Nope").exists())

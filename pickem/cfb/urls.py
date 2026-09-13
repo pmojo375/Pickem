@@ -14,6 +14,7 @@ urlpatterns = [
     path('standings/', views.standings_view, name='standings'),
     path('settings/', views.settings_view, name='settings'),
     path('settings/new-season/', views.start_new_season_view, name='start_new_season'),
+    path('announcements/<int:announcement_id>/dismiss/', views.announcement_dismiss_view, name='announcement_dismiss'),
     path('account/', views.account_view, name='account'),
     path('roster/', views.roster_view, name='roster'),
     # League URLs

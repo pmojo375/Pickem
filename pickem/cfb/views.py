@@ -20,6 +20,7 @@ from .models import (
     Pick,
     Team,
     League,
+    LeagueAnnouncement,
     LeagueInvite,
     LeagueMembership,
     LeagueGame,
@@ -30,9 +31,11 @@ from .models import (
     MemberSeason,
     MemberSeasonPayment,
     MemberWeek,
+    UserAnnouncementDismissal,
     UserProfile,
 )
 from django.utils import timezone
+from datetime import datetime
 from . import services
 from .forms import (
     AccountNameForm,
@@ -150,6 +153,52 @@ def _user_can_manage_leagues(user):
         is_active=True,
         role__in=("owner", "admin"),
     ).exists()
+
+
+def _get_managed_league_or_404(user, league_id):
+    if user.is_staff:
+        return get_object_or_404(League, pk=league_id)
+    return get_object_or_404(
+        League,
+        pk=league_id,
+        memberships__user=user,
+        memberships__is_active=True,
+        memberships__role__in=("owner", "admin"),
+    )
+
+
+def _parse_optional_datetime(raw_value):
+    """Parse HTML datetime-local values; empty -> None."""
+    value = (raw_value or "").strip()
+    if not value:
+        return None
+    for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M:%S"):
+        try:
+            dt = datetime.strptime(value, fmt)
+            if timezone.is_naive(dt):
+                return timezone.make_aware(dt, timezone.get_current_timezone())
+            return dt
+        except ValueError:
+            continue
+    raise ValueError("Invalid date/time format")
+
+
+@login_required
+@require_POST
+def announcement_dismiss_view(request, announcement_id):
+    announcement = get_object_or_404(LeagueAnnouncement, pk=announcement_id, is_active=True)
+    if not _user_is_active_member(announcement.league, request.user):
+        messages.error(request, "You are not a member of that league.")
+        return redirect("home")
+    if announcement.kind != LeagueAnnouncement.KIND_ONE_TIME:
+        messages.error(request, "Only one-time messages can be dismissed.")
+        return redirect(request.META.get("HTTP_REFERER") or reverse("home"))
+
+    UserAnnouncementDismissal.objects.get_or_create(
+        announcement=announcement,
+        user=request.user,
+    )
+    return redirect(request.META.get("HTTP_REFERER") or reverse("home"))
 
 
 def home_view(request):
@@ -1845,6 +1894,96 @@ def settings_view(request):
                 
                 return redirect(f"/settings/?league_id={target_league.id}")
         
+        if action == "create_announcement":
+            form_league_id = request.POST.get("league_id")
+            title = (request.POST.get("title") or "").strip()
+            body = (request.POST.get("body") or "").strip()
+            kind = request.POST.get("kind") or LeagueAnnouncement.KIND_ONE_TIME
+            level = request.POST.get("level") or LeagueAnnouncement.LEVEL_INFO
+            if not form_league_id:
+                messages.error(request, "League is required.")
+                return redirect("settings")
+            target_league = _get_managed_league_or_404(request.user, form_league_id)
+            if not title or not body:
+                messages.error(request, "Title and message are required.")
+                return redirect(f"/settings/?league_id={target_league.id}#announcements")
+            if kind not in dict(LeagueAnnouncement.KIND_CHOICES):
+                messages.error(request, "Invalid announcement type.")
+                return redirect(f"/settings/?league_id={target_league.id}#announcements")
+            if level not in dict(LeagueAnnouncement.LEVEL_CHOICES):
+                messages.error(request, "Invalid announcement level.")
+                return redirect(f"/settings/?league_id={target_league.id}#announcements")
+            try:
+                starts_at = _parse_optional_datetime(request.POST.get("starts_at"))
+                ends_at = _parse_optional_datetime(request.POST.get("ends_at"))
+            except ValueError:
+                messages.error(request, "Invalid start or end date.")
+                return redirect(f"/settings/?league_id={target_league.id}#announcements")
+            if starts_at and ends_at and ends_at <= starts_at:
+                messages.error(request, "End time must be after start time.")
+                return redirect(f"/settings/?league_id={target_league.id}#announcements")
+            announcement = LeagueAnnouncement.objects.create(
+                league=target_league,
+                title=title[:200],
+                body=body,
+                kind=kind,
+                level=level,
+                starts_at=starts_at,
+                ends_at=ends_at,
+                created_by=request.user,
+            )
+            messages.success(request, "Announcement posted to league members.")
+            if request.POST.get("send_email") == "on":
+                sent, skipped, failed = services.announcements.send_announcement_emails(
+                    request, announcement
+                )
+                if sent:
+                    messages.success(
+                        request,
+                        f"Emailed {sent} member{'s' if sent != 1 else ''}.",
+                    )
+                if skipped:
+                    messages.warning(
+                        request,
+                        f"Skipped {skipped} member{'s' if skipped != 1 else ''} with no email.",
+                    )
+                if failed:
+                    messages.error(
+                        request,
+                        f"Failed to email {failed} member{'s' if failed != 1 else ''}.",
+                    )
+                if not sent and not skipped and not failed:
+                    messages.warning(request, "No active members to email.")
+            return redirect(f"/settings/?league_id={target_league.id}#announcements")
+
+        if action == "toggle_announcement":
+            form_league_id = request.POST.get("league_id")
+            announcement_id = request.POST.get("announcement_id")
+            target_league = _get_managed_league_or_404(request.user, form_league_id)
+            announcement = get_object_or_404(
+                LeagueAnnouncement,
+                pk=announcement_id,
+                league=target_league,
+            )
+            announcement.is_active = not announcement.is_active
+            announcement.save(update_fields=["is_active", "updated_at"])
+            state = "activated" if announcement.is_active else "deactivated"
+            messages.success(request, f"Announcement {state}.")
+            return redirect(f"/settings/?league_id={target_league.id}#announcements")
+
+        if action == "delete_announcement":
+            form_league_id = request.POST.get("league_id")
+            announcement_id = request.POST.get("announcement_id")
+            target_league = _get_managed_league_or_404(request.user, form_league_id)
+            announcement = get_object_or_404(
+                LeagueAnnouncement,
+                pk=announcement_id,
+                league=target_league,
+            )
+            announcement.delete()
+            messages.success(request, "Announcement deleted.")
+            return redirect(f"/settings/?league_id={target_league.id}#announcements")
+
         if action == "save_selections":
             # Get league from form
             form_league_id = request.POST.get("league_id")
@@ -2084,8 +2223,14 @@ def settings_view(request):
     
     # Get league member count for payout calculations
     league_member_count = 0
+    league_announcement_list = []
     if league:
         league_member_count = LeagueMembership.objects.filter(league=league, is_active=True).count()
+        league_announcement_list = list(
+            LeagueAnnouncement.objects.filter(league=league)
+            .annotate(dismissal_count=Count("dismissals"))
+            .order_by("-created_at")[:50]
+        )
 
     season_weeks = []
     if active_season:
@@ -2113,6 +2258,7 @@ def settings_view(request):
         "weekly_payout_structure_json": weekly_payout_structure_json,
         "season_payout_structure_json": season_payout_structure_json,
         "league_member_count": league_member_count,
+        "league_announcement_list": league_announcement_list,
         "start": start,
         "end": end,
         "team_rankings": team_rankings,

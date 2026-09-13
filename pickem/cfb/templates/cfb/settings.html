@@ -605,6 +605,172 @@
 </div>
 
 
+<!-- League Announcements -->
+<div id="announcements" class="collapse collapse-arrow bg-base-100 shadow-xl mb-6 border border-base-300">
+    <input type="checkbox" class="peer" checked />
+    <div class="collapse-title text-xl font-bold">
+        <div class="flex items-center gap-2">
+            <i class="fas fa-bullhorn text-primary"></i>
+            <span>Announcements</span>
+            <span class="text-sm font-normal text-base-content/70 ml-2">Messages for league members</span>
+        </div>
+    </div>
+    <div class="collapse-content">
+        <p class="text-sm text-base-content/70 mb-4">
+            Post a message that appears at the top of pages for active members of this league.
+            One-time messages can be dismissed; persistent ones stay until you deactivate or delete them.
+        </p>
+
+        <form method="post" action="" class="space-y-4 mb-6">
+            {% csrf_token %}
+            <input type="hidden" name="do" value="create_announcement" />
+            <input type="hidden" name="league_id" value="{{ current_league.id }}" />
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="form-control md:col-span-2">
+                    <label class="label">
+                        <span class="label-text font-semibold">Title</span>
+                    </label>
+                    <input type="text" name="title" maxlength="200" required class="input input-bordered" placeholder="Week 4 reminder" />
+                </div>
+                <div class="form-control md:col-span-2">
+                    <label class="label">
+                        <span class="label-text font-semibold">Message</span>
+                    </label>
+                    <textarea name="body" rows="3" required class="textarea textarea-bordered" placeholder="What should members see?"></textarea>
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Type</span>
+                    </label>
+                    <select name="kind" class="select select-bordered">
+                        <option value="one_time" selected>One-time (members can dismiss)</option>
+                        <option value="persistent">Persistent (stays until you turn it off)</option>
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Level</span>
+                    </label>
+                    <select name="level" class="select select-bordered">
+                        <option value="info" selected>Info</option>
+                        <option value="success">Success</option>
+                        <option value="warning">Warning</option>
+                        <option value="error">Important</option>
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Starts (optional)</span>
+                    </label>
+                    <input type="datetime-local" name="starts_at" class="input input-bordered" />
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Ends (optional)</span>
+                    </label>
+                    <input type="datetime-local" name="ends_at" class="input input-bordered" />
+                </div>
+                <div class="form-control md:col-span-2">
+                    <label class="label cursor-pointer justify-start gap-4">
+                        <input type="checkbox" name="send_email" class="checkbox checkbox-primary" />
+                        <div>
+                            <span class="label-text font-semibold">
+                                <i class="fas fa-envelope text-info mr-1"></i>
+                                Also email active members
+                            </span>
+                            <p class="text-sm text-base-content/60">
+                                Sends this announcement to each active member's notification email(s)
+                            </p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="flex justify-end">
+                <button type="submit" class="btn btn-primary gap-2">
+                    <i class="fas fa-paper-plane"></i>
+                    Post Announcement
+                </button>
+            </div>
+        </form>
+
+        {% if league_announcement_list %}
+        <div class="overflow-x-auto">
+            <table class="table table-zebra">
+                <thead>
+                    <tr>
+                        <th>Message</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Dismissals</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for announcement in league_announcement_list %}
+                    <tr>
+                        <td>
+                            <div class="font-semibold">{{ announcement.title }}</div>
+                            <div class="text-sm text-base-content/70 whitespace-pre-line max-w-md">{{ announcement.body }}</div>
+                            <div class="text-xs text-base-content/50 mt-1">
+                                {{ announcement.created_at|date:"M j, Y g:i A" }}
+                                {% if announcement.ends_at %} · ends {{ announcement.ends_at|date:"M j, Y g:i A" }}{% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge {% if announcement.kind == 'persistent' %}badge-secondary{% else %}badge-ghost{% endif %}">
+                                {% if announcement.kind == 'persistent' %}Persistent{% else %}One-time{% endif %}
+                            </span>
+                            <span class="badge badge-outline ml-1">{{ announcement.level }}</span>
+                        </td>
+                        <td>
+                            {% if announcement.is_active %}
+                            <span class="badge badge-success">Active</span>
+                            {% else %}
+                            <span class="badge badge-ghost">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if announcement.kind == 'one_time' %}
+                            {{ announcement.dismissal_count }}
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                        <td class="text-right whitespace-nowrap">
+                            <form method="post" action="" class="inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="do" value="toggle_announcement" />
+                                <input type="hidden" name="league_id" value="{{ current_league.id }}" />
+                                <input type="hidden" name="announcement_id" value="{{ announcement.id }}" />
+                                <button type="submit" class="btn btn-sm btn-ghost">
+                                    {% if announcement.is_active %}Deactivate{% else %}Activate{% endif %}
+                                </button>
+                            </form>
+                            <form method="post" action="" class="inline" onsubmit="return confirm('Delete this announcement?');">
+                                {% csrf_token %}
+                                <input type="hidden" name="do" value="delete_announcement" />
+                                <input type="hidden" name="league_id" value="{{ current_league.id }}" />
+                                <input type="hidden" name="announcement_id" value="{{ announcement.id }}" />
+                                <button type="submit" class="btn btn-sm btn-error btn-outline">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            <span>No announcements yet for this league.</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+
 <!-- Games Selection -->
 <div class="card bg-base-100 shadow-xl">
     <div class="card-body">

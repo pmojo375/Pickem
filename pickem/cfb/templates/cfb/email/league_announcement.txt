@@ -1,0 +1,12 @@
+Hi {{ user.username }},
+
+{{ league.name }} has a new announcement:
+
+{{ announcement.title }}
+
+{{ announcement.body }}
+
+View it in the app:
+{{ home_url }}
+
+— BigPicks
