@@ -683,6 +683,10 @@ class MemberSeasonPayment(models.Model):
         default=False,
         help_text="Whether this member has paid the season entry fee.",
     )
+    paid_receipt_dismissed = models.BooleanField(
+        default=False,
+        help_text="Whether the user dismissed the 'entry fee received' home alert for this season.",
+    )
 
     class Meta:
         unique_together = ("league", "season", "user")

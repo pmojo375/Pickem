@@ -21,6 +21,7 @@ from cfb.models import (
     LeagueInvite,
     LeagueMembership,
     LeagueRules,
+    MemberSeasonPayment,
     Pick,
     Season,
     Team,
@@ -1006,3 +1007,66 @@ class LeagueAnnouncementTests(TestCase):
         )
         self.assertEqual(response.status_code, 302)
         self.assertFalse(LeagueAnnouncement.objects.filter(title="Nope").exists())
+
+
+class EntryFeeReceiptDismissTests(TestCase):
+    def setUp(self):
+        self.season = Season.objects.create(year=2026, is_active=True)
+        self.owner = User.objects.create_user(username="fee_owner", password="pass")
+        self.member = User.objects.create_user(username="fee_member", password="pass")
+        self.league = League.objects.create(name="Fee League", created_by=self.owner)
+        LeagueMembership.objects.create(league=self.league, user=self.owner, role="owner")
+        LeagueMembership.objects.create(league=self.league, user=self.member, role="member")
+        LeagueRules.objects.create(
+            league=self.league,
+            season=self.season,
+            entry_fee=Decimal("25.00"),
+        )
+
+    def test_unpaid_alert_stays_visible(self):
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("home"))
+        self.assertContains(response, "entry fee due")
+        self.assertContains(response, "Fee League")
+
+    def test_paid_receipt_can_be_dismissed(self):
+        MemberSeasonPayment.objects.create(
+            league=self.league,
+            season=self.season,
+            user=self.member,
+            paid=True,
+        )
+        self.client.force_login(self.member)
+        home = self.client.get(reverse("home"))
+        self.assertContains(home, "Entry fee received")
+
+        response = self.client.post(
+            reverse("entry_fee_receipt_dismiss", args=[self.league.id])
+        )
+        self.assertEqual(response.status_code, 302)
+        payment = MemberSeasonPayment.objects.get(
+            league=self.league, season=self.season, user=self.member
+        )
+        self.assertTrue(payment.paid_receipt_dismissed)
+
+        home = self.client.get(reverse("home"))
+        self.assertNotContains(home, "Entry fee received")
+
+    def test_marking_paid_again_reshows_receipt(self):
+        payment = MemberSeasonPayment.objects.create(
+            league=self.league,
+            season=self.season,
+            user=self.member,
+            paid=True,
+            paid_receipt_dismissed=True,
+        )
+        membership = LeagueMembership.objects.get(league=self.league, user=self.member)
+        self.client.force_login(self.owner)
+        response = self.client.post(
+            reverse("league_member_paid", args=[self.league.id, membership.id]),
+            {"paid": "paid"},
+        )
+        self.assertEqual(response.status_code, 302)
+        payment.refresh_from_db()
+        self.assertTrue(payment.paid)
+        self.assertFalse(payment.paid_receipt_dismissed)

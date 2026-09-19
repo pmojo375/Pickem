@@ -73,15 +73,21 @@
     <div class="space-y-3 mb-8">
         {% for status in entry_fee_statuses %}
         {% if status.paid %}
-        <div class="alert alert-success shadow-md">
+        <div role="alert" class="alert alert-success shadow-md">
             <i class="fas fa-check-circle"></i>
-            <span>
+            <span class="flex-1">
                 Entry fee received for <strong>{{ status.league.name }}</strong>
                 {% if status.season_year %}({{ status.season_year }}){% endif %}
             </span>
+            <form method="post" action="{% url 'entry_fee_receipt_dismiss' status.league.id %}" class="shrink-0">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-ghost" title="Dismiss" aria-label="Dismiss paid receipt">
+                    <i class="fas fa-times"></i>
+                </button>
+            </form>
         </div>
         {% else %}
-        <div class="alert alert-warning shadow-md">
+        <div role="alert" class="alert alert-warning shadow-md">
             <i class="fas fa-dollar-sign"></i>
             <div>
                 <span class="font-semibold">${{ status.entry_fee|floatformat:2 }} entry fee due</span>

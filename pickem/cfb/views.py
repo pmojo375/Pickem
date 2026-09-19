@@ -95,23 +95,33 @@ def _user_entry_fee_statuses(user, user_leagues, active_season):
         season=active_season,
         entry_fee__gt=0,
     ).select_related("league")
-    paid_by_league = dict(
-        MemberSeasonPayment.objects.filter(
+    payment_by_league = {
+        league_id: {"paid": paid, "paid_receipt_dismissed": dismissed}
+        for league_id, paid, dismissed in MemberSeasonPayment.objects.filter(
             league_id__in=league_ids,
             season=active_season,
             user=user,
-        ).values_list("league_id", "paid")
-    )
+        ).values_list("league_id", "paid", "paid_receipt_dismissed")
+    }
 
-    return [
-        {
-            "league": rules.league,
-            "entry_fee": rules.entry_fee,
-            "paid": paid_by_league.get(rules.league_id, False),
-            "season_year": active_season.year,
-        }
-        for rules in rules_with_fee
-    ]
+    statuses = []
+    for rules in rules_with_fee:
+        payment = payment_by_league.get(
+            rules.league_id,
+            {"paid": False, "paid_receipt_dismissed": False},
+        )
+        # Paid receipt is one-time; hide after the user dismisses it.
+        if payment["paid"] and payment["paid_receipt_dismissed"]:
+            continue
+        statuses.append(
+            {
+                "league": rules.league,
+                "entry_fee": rules.entry_fee,
+                "paid": payment["paid"],
+                "season_year": active_season.year,
+            }
+        )
+    return statuses
 
 
 def _user_is_active_member(league, user):
@@ -198,6 +208,34 @@ def announcement_dismiss_view(request, announcement_id):
         announcement=announcement,
         user=request.user,
     )
+    return redirect(request.META.get("HTTP_REFERER") or reverse("home"))
+
+
+@login_required
+@require_POST
+def entry_fee_receipt_dismiss_view(request, league_id):
+    """Dismiss the one-time 'entry fee received' home alert for the active season."""
+    league = get_object_or_404(League, pk=league_id)
+    if not _user_is_active_member(league, request.user):
+        messages.error(request, "You are not a member of that league.")
+        return redirect("home")
+
+    active_season = Season.objects.filter(is_active=True).first()
+    if not active_season:
+        return redirect(request.META.get("HTTP_REFERER") or reverse("home"))
+
+    payment = MemberSeasonPayment.objects.filter(
+        league=league,
+        season=active_season,
+        user=request.user,
+        paid=True,
+    ).first()
+    if not payment:
+        messages.error(request, "Only paid entry-fee receipts can be dismissed.")
+        return redirect(request.META.get("HTTP_REFERER") or reverse("home"))
+
+    payment.paid_receipt_dismissed = True
+    payment.save(update_fields=["paid_receipt_dismissed"])
     return redirect(request.META.get("HTTP_REFERER") or reverse("home"))
 
 
@@ -3370,11 +3408,13 @@ def league_member_paid_view(request, league_id, membership_id):
         messages.error(request, "Invalid payment status.")
         return redirect("league_detail", league_id=league.id)
 
+    is_paid = paid == "paid"
     payment, _ = MemberSeasonPayment.objects.update_or_create(
         league=league,
         season=active_season,
         user=membership.user,
-        defaults={"paid": paid == "paid"},
+        # Reset dismiss so a fresh paid mark shows the home receipt again.
+        defaults={"paid": is_paid, "paid_receipt_dismissed": False},
     )
 
     label = "paid" if payment.paid else "unpaid"

@@ -331,8 +331,8 @@ class MemberSeasonAdmin(admin.ModelAdmin):
 
 @admin.register(MemberSeasonPayment)
 class MemberSeasonPaymentAdmin(admin.ModelAdmin):
-    list_display = ("league", "season", "user", "paid")
-    list_filter = ("paid", "season", "league")
+    list_display = ("league", "season", "user", "paid", "paid_receipt_dismissed")
+    list_filter = ("paid", "paid_receipt_dismissed", "season", "league")
     search_fields = ("league__name", "user__username", "season__year")
     autocomplete_fields = ("league", "season", "user")
 
