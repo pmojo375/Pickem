@@ -13,7 +13,7 @@
                 Make Your Picks
             </h1>
             <p class="text-base-content/70">Select your winners and mark your confidence picks</p>
-            {% if league_rules and league_rules.key_picks_enabled %}
+            {% if league_rules and league_rules.key_picks_enabled and league_rules.number_of_key_picks > 0 %}
             <div class="mt-2">
                 <div class="badge badge-info badge-sm">
                     <i class="fas fa-star mr-1"></i>
@@ -251,22 +251,23 @@
                     </div>
                     
                     <!-- Key Pick Toggle -->
-                    {% if league_rules and league_rules.key_picks_enabled %}
-                    <div class="divider my-1">Options</div>
-                    
-                    <div class="flex justify-center">
-                        <label class="key-pick-label label {% if not game_started %}cursor-pointer{% else %}cursor-not-allowed{% endif %} gap-2 bg-base-200 px-3 py-2 md:px-4 md:py-2 rounded-lg {% if not game_started %}hover:bg-base-300{% endif %} transition-colors {% if game_started %}opacity-60{% endif %}">
-                            <span class="label-text text-sm md:text-base font-semibold">
-                                <i class="fas fa-star text-warning mr-1"></i>
-                                Key Pick
-                                <span class="key-pick-warning text-xs text-error ml-1" style="display: none;">(Limit Reached)</span>
-                            </span>
-                            <input type="checkbox" 
-                                   name="game_{{ lg.game.id }}_is_key_pick" 
-                                   class="key-pick-checkbox checkbox checkbox-warning checkbox-sm md:checkbox-md" 
-                                   {% if game_started %}disabled data-game-started="true"{% endif %}
-                                   {% if p and p.is_key_pick %}checked{% endif %} />
-                        </label>
+                    {% if league_rules and league_rules.key_picks_enabled and league_rules.number_of_key_picks > 0 %}
+                    <div class="key-pick-options">
+                        <div class="divider my-1">Options</div>
+                        
+                        <div class="flex justify-center">
+                            <label class="key-pick-label label {% if not game_started %}cursor-pointer{% else %}cursor-not-allowed{% endif %} gap-2 bg-base-200 px-3 py-2 md:px-4 md:py-2 rounded-lg {% if not game_started %}hover:bg-base-300{% endif %} transition-colors {% if game_started %}opacity-60{% endif %}">
+                                <span class="label-text text-sm md:text-base font-semibold">
+                                    <i class="fas fa-star text-warning mr-1"></i>
+                                    Key Pick
+                                </span>
+                                <input type="checkbox" 
+                                       name="game_{{ lg.game.id }}_is_key_pick" 
+                                       class="key-pick-checkbox checkbox checkbox-warning checkbox-sm md:checkbox-md" 
+                                       {% if game_started %}disabled data-game-started="true"{% endif %}
+                                       {% if p and p.is_key_pick %}checked{% endif %} />
+                            </label>
+                        </div>
                     </div>
                     {% endif %}
                     
@@ -763,7 +764,7 @@
         if (!form) return;
         
         // Dynamic Key Pick Management
-        {% if league_rules and league_rules.key_picks_enabled %}
+        {% if league_rules and league_rules.key_picks_enabled and league_rules.number_of_key_picks > 0 %}
         const maxKeyPicks = {{ league_rules.number_of_key_picks }};
         const keyPickCounter = document.getElementById('key-pick-counter');
         const keyPickCheckboxes = document.querySelectorAll('.key-pick-checkbox');
@@ -782,34 +783,24 @@
                 keyPickCounter.textContent = checkedCount;
             }
             
-            // Enable/disable checkboxes based on limit
+            // Hide unused key-pick toggles when the weekly limit is reached
+            // (instead of leaving them visible but grayed out).
             keyPickCheckboxes.forEach(checkbox => {
-                // Skip game-started checkboxes
-                if (checkbox.dataset.gameStarted) return;
-                
-                const label = checkbox.closest('.key-pick-label');
-                const warning = label ? label.querySelector('.key-pick-warning') : null;
-                
+                const options = checkbox.closest('.key-pick-options');
+                if (!options) return;
+
+                if (checkbox.dataset.gameStarted) {
+                    // Keep locked key picks visible; hide locked non-key options at limit
+                    options.style.display = (checkbox.checked || checkedCount < maxKeyPicks) ? '' : 'none';
+                    return;
+                }
+
                 if (checkedCount >= maxKeyPicks && !checkbox.checked) {
-                    // Limit reached, disable unchecked boxes
+                    options.style.display = 'none';
                     checkbox.disabled = true;
-                    if (label) {
-                        label.classList.add('cursor-not-allowed', 'opacity-60');
-                        label.classList.remove('cursor-pointer', 'hover:bg-base-300');
-                    }
-                    if (warning) {
-                        warning.style.display = 'inline';
-                    }
                 } else {
-                    // Enable checkbox
+                    options.style.display = '';
                     checkbox.disabled = false;
-                    if (label) {
-                        label.classList.remove('cursor-not-allowed', 'opacity-60');
-                        label.classList.add('cursor-pointer', 'hover:bg-base-300');
-                    }
-                    if (warning) {
-                        warning.style.display = 'none';
-                    }
                 }
             });
         }
@@ -875,7 +866,7 @@
             {% endif %}
             
             // Warning 2: Not enough key picks
-            {% if league_rules and league_rules.key_picks_enabled %}
+            {% if league_rules and league_rules.key_picks_enabled and league_rules.number_of_key_picks > 0 %}
                 const requiredKeyPicks = {{ league_rules.number_of_key_picks }};
                 if (keyPicksMade < requiredKeyPicks) {
                     warnings.push(`You've only made ${keyPicksMade} key pick${keyPicksMade !== 1 ? 's' : ''} out of ${requiredKeyPicks} allowed.`);
