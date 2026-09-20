@@ -272,6 +272,38 @@ def format_spread_display(spread, force_hooks=False):
         return f"{spread_float:.1f}"
 
 
+def _stat_row(name, value, compare_value, higher_is_better=True):
+    """Build a displayable stat row with comparison metadata."""
+    return {
+        'name': name,
+        'value': value,
+        'compare_value': compare_value,
+        'higher_is_better': higher_is_better,
+        'is_better': False,
+    }
+
+
+def _mark_better_stat_lists(away_list, home_list):
+    """Flag the better value on matching stat rows between two teams."""
+    home_by_name = {stat['name']: stat for stat in home_list}
+    for away_stat in away_list:
+        home_stat = home_by_name.get(away_stat['name'])
+        if not home_stat:
+            continue
+        away_val = away_stat.get('compare_value')
+        home_val = home_stat.get('compare_value')
+        if away_val is None or home_val is None:
+            continue
+        if away_val == home_val:
+            continue
+        higher_is_better = away_stat.get('higher_is_better', True)
+        away_wins = away_val > home_val if higher_is_better else away_val < home_val
+        if away_wins:
+            away_stat['is_better'] = True
+        else:
+            home_stat['is_better'] = True
+
+
 @register.simple_tag
 def get_team_stats_organized(team_stats, team_id):
     """
@@ -322,10 +354,6 @@ def get_team_stats_organized(team_stats, team_id):
     def get_stat_value(stat_name):
         return stats.get(stat_name, 0)
     
-    def format_stat(stat_name, value):
-        display_name = stat_display_names.get(stat_name, stat_name)
-        return {'name': display_name, 'value': value, 'raw_name': stat_name}
-    
     # Calculate derived stats
     total_yards_off = get_stat_value('totalYards')
     total_yards_def = get_stat_value('totalYardsOpponent')
@@ -348,12 +376,20 @@ def get_team_stats_organized(team_stats, team_id):
     
     # Mobile stats (6 stats)
     mobile_stats = [
-        {'name': 'Total Yards (O / D)', 'value': f"{total_yards_off:,.0f} / {total_yards_def:,.0f}"},
-        {'name': 'Rush Yards', 'value': f"{rush_yards:,.0f}"},
-        {'name': 'Pass Yards', 'value': f"{pass_yards:,.0f}"},
-        {'name': 'Third Down %', 'value': f"{third_pct:.1f}%"},
-        {'name': 'Turnover Margin', 'value': f"{turnover_margin:+d}"},
-        {'name': 'Time of Possession', 'value': f"{possession_time_min:.1f} min" if possession_time_min else "N/A"},
+        _stat_row(
+            'Total Yards (O / D)',
+            f"{total_yards_off:,.0f} / {total_yards_def:,.0f}",
+            total_yards_off - total_yards_def,  # yards margin
+        ),
+        _stat_row('Rush Yards', f"{rush_yards:,.0f}", rush_yards),
+        _stat_row('Pass Yards', f"{pass_yards:,.0f}", pass_yards),
+        _stat_row('Third Down %', f"{third_pct:.1f}%", third_pct),
+        _stat_row('Turnover Margin', f"{turnover_margin:+d}", turnover_margin),
+        _stat_row(
+            'Time of Possession',
+            f"{possession_time_min:.1f} min" if possession_time_min else "N/A",
+            possession_time_sec or 0,
+        ),
     ]
     
     # Desktop/expandable stats
@@ -368,10 +404,23 @@ def get_team_stats_organized(team_stats, team_id):
     fourth_pct = (fourth_conv / fourth_attempts * 100) if fourth_attempts > 0 else 0
     
     desktop_stats = [
-        {'name': 'First Downs', 'value': f"{first_downs} / {first_downs_opp}"},
-        {'name': 'Penalties', 'value': f"{penalties} ({penalty_yards} yds)"},
-        {'name': 'Sack/TFL', 'value': f"{sacks} sacks / {tfl} TFL"},
-        {'name': '4th Down Stats', 'value': f"{fourth_pct:.1f}% ({fourth_conv}/{fourth_attempts})"},
+        _stat_row(
+            'First Downs',
+            f"{first_downs} / {first_downs_opp}",
+            first_downs - first_downs_opp,  # first-down margin
+        ),
+        _stat_row(
+            'Penalties',
+            f"{penalties} ({penalty_yards} yds)",
+            penalty_yards if penalty_yards else penalties,
+            higher_is_better=False,
+        ),
+        _stat_row('Sack/TFL', f"{sacks} sacks / {tfl} TFL", sacks),
+        _stat_row(
+            '4th Down Stats',
+            f"{fourth_pct:.1f}% ({fourth_conv}/{fourth_attempts})",
+            fourth_pct,
+        ),
     ]
     
     # All other stats
@@ -390,13 +439,22 @@ def get_team_stats_organized(team_stats, team_id):
             display_name = stat_display_names.get(stat_name, stat_name)
             # Format numeric values
             if isinstance(value, (int, float)):
+                compare_value = value
                 if value == int(value):
                     formatted_value = f"{int(value):,}"
                 else:
                     formatted_value = f"{value:,.1f}"
             else:
+                compare_value = None
                 formatted_value = str(value)
-            expandable_stats.append({'name': display_name, 'value': formatted_value})
+            # Opponent / penalty stats are better when lower
+            higher_is_better = (
+                'Opponent' not in display_name
+                and 'Penalt' not in display_name
+            )
+            expandable_stats.append(
+                _stat_row(display_name, formatted_value, compare_value, higher_is_better)
+            )
     
     return {
         'mobile_stats': mobile_stats,
@@ -404,6 +462,18 @@ def get_team_stats_organized(team_stats, team_id):
         'expandable_stats': expandable_stats,
         'all_stats': mobile_stats + desktop_stats + expandable_stats
     }
+
+
+@register.simple_tag
+def mark_better_team_stats(away_stats, home_stats):
+    """
+    Compare away vs home organized stats and set is_better on winning rows.
+    Returns {'away': away_stats, 'home': home_stats}.
+    """
+    if away_stats and home_stats:
+        for key in ('mobile_stats', 'desktop_stats', 'expandable_stats'):
+            _mark_better_stat_lists(away_stats.get(key, []), home_stats.get(key, []))
+    return {'away': away_stats, 'home': home_stats}
 
 
 @register.simple_tag

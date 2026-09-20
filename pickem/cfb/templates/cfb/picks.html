@@ -274,6 +274,8 @@
                     <!-- Team Stats Section -->
                     {% get_team_stats_organized team_stats lg.game.away_team.id as away_stats %}
                     {% get_team_stats_organized team_stats lg.game.home_team.id as home_stats %}
+                    {% mark_better_team_stats away_stats home_stats as compared_stats %}
+                    {% with away_stats=compared_stats.away home_stats=compared_stats.home %}
                     {% if away_stats.mobile_stats or home_stats.mobile_stats %}
                     <div class="divider my-1">Team Stats</div>
                     
@@ -295,9 +297,9 @@
                                     <div class="text-xs font-bold mb-2 text-primary">{{ lg.game.away_team.name }}</div>
                                     <div class="space-y-1">
                                         {% for stat in away_stats.mobile_stats %}
-                                        <div class="flex justify-between py-1 text-xs border-b border-base-300">
+                                        <div class="flex justify-between py-1 px-1 -mx-1 text-xs border-b border-base-300 rounded {% if stat.is_better %}bg-success/20{% endif %}">
                                             <span class="text-base-content/80">{{ stat.name }}</span>
-                                            <span class="font-semibold">{{ stat.value }}</span>
+                                            <span class="font-semibold {% if stat.is_better %}text-success{% endif %}">{{ stat.value }}</span>
                                         </div>
                                         {% endfor %}
                                     </div>
@@ -309,9 +311,9 @@
                                     <div class="text-xs font-bold mb-2 text-primary">{{ lg.game.home_team.name }}</div>
                                     <div class="space-y-1">
                                         {% for stat in home_stats.mobile_stats %}
-                                        <div class="flex justify-between py-1 text-xs border-b border-base-300">
+                                        <div class="flex justify-between py-1 px-1 -mx-1 text-xs border-b border-base-300 rounded {% if stat.is_better %}bg-success/20{% endif %}">
                                             <span class="text-base-content/80">{{ stat.name }}</span>
-                                            <span class="font-semibold">{{ stat.value }}</span>
+                                            <span class="font-semibold {% if stat.is_better %}text-success{% endif %}">{{ stat.value }}</span>
                                         </div>
                                         {% endfor %}
                                     </div>
@@ -328,9 +330,9 @@
                                         <div class="text-xs font-bold mb-2 text-primary">{{ lg.game.away_team.name }}</div>
                                         <div class="space-y-1 mb-3">
                                             {% for stat in away_stats.mobile_stats %}
-                                            <div class="flex justify-between py-1 text-xs border-b border-base-300">
+                                            <div class="flex justify-between py-1 px-1 -mx-1 text-xs border-b border-base-300 rounded {% if stat.is_better %}bg-success/20{% endif %}">
                                                 <span class="text-base-content/80">{{ stat.name }}</span>
-                                                <span class="font-semibold">{{ stat.value }}</span>
+                                                <span class="font-semibold {% if stat.is_better %}text-success{% endif %}">{{ stat.value }}</span>
                                             </div>
                                             {% endfor %}
                                         </div>
@@ -339,9 +341,9 @@
                                         <div class="divider my-1"></div>
                                         <div class="space-y-1 mb-3">
                                             {% for stat in away_stats.desktop_stats %}
-                                            <div class="flex justify-between py-1 text-xs border-b border-base-300">
+                                            <div class="flex justify-between py-1 px-1 -mx-1 text-xs border-b border-base-300 rounded {% if stat.is_better %}bg-success/20{% endif %}">
                                                 <span class="text-base-content/80">{{ stat.name }}</span>
-                                                <span class="font-semibold">{{ stat.value }}</span>
+                                                <span class="font-semibold {% if stat.is_better %}text-success{% endif %}">{{ stat.value }}</span>
                                             </div>
                                             {% endfor %}
                                         </div>
@@ -354,9 +356,9 @@
                                             <div class="collapse-content p-1">
                                                 <div class="space-y-1">
                                                     {% for stat in away_stats.expandable_stats %}
-                                                    <div class="flex justify-between py-0.5 text-xs border-b border-base-400">
+                                                    <div class="flex justify-between py-0.5 px-1 -mx-1 text-xs border-b border-base-400 rounded {% if stat.is_better %}bg-success/20{% endif %}">
                                                         <span class="text-base-content/80">{{ stat.name }}</span>
-                                                        <span class="font-semibold">{{ stat.value }}</span>
+                                                        <span class="font-semibold {% if stat.is_better %}text-success{% endif %}">{{ stat.value }}</span>
                                                     </div>
                                                     {% endfor %}
                                                 </div>
@@ -372,9 +374,9 @@
                                         <div class="text-xs font-bold mb-2 text-primary">{{ lg.game.home_team.name }}</div>
                                         <div class="space-y-1 mb-3">
                                             {% for stat in home_stats.mobile_stats %}
-                                            <div class="flex justify-between py-1 text-xs border-b border-base-300">
+                                            <div class="flex justify-between py-1 px-1 -mx-1 text-xs border-b border-base-300 rounded {% if stat.is_better %}bg-success/20{% endif %}">
                                                 <span class="text-base-content/80">{{ stat.name }}</span>
-                                                <span class="font-semibold">{{ stat.value }}</span>
+                                                <span class="font-semibold {% if stat.is_better %}text-success{% endif %}">{{ stat.value }}</span>
                                             </div>
                                             {% endfor %}
                                         </div>
@@ -383,9 +385,9 @@
                                         <div class="divider my-1"></div>
                                         <div class="space-y-1 mb-3">
                                             {% for stat in home_stats.desktop_stats %}
-                                            <div class="flex justify-between py-1 text-xs border-b border-base-300">
+                                            <div class="flex justify-between py-1 px-1 -mx-1 text-xs border-b border-base-300 rounded {% if stat.is_better %}bg-success/20{% endif %}">
                                                 <span class="text-base-content/80">{{ stat.name }}</span>
-                                                <span class="font-semibold">{{ stat.value }}</span>
+                                                <span class="font-semibold {% if stat.is_better %}text-success{% endif %}">{{ stat.value }}</span>
                                             </div>
                                             {% endfor %}
                                         </div>
@@ -398,9 +400,9 @@
                                             <div class="collapse-content p-1">
                                                 <div class="space-y-1">
                                                     {% for stat in home_stats.expandable_stats %}
-                                                    <div class="flex justify-between py-0.5 text-xs border-b border-base-400">
+                                                    <div class="flex justify-between py-0.5 px-1 -mx-1 text-xs border-b border-base-400 rounded {% if stat.is_better %}bg-success/20{% endif %}">
                                                         <span class="text-base-content/80">{{ stat.name }}</span>
-                                                        <span class="font-semibold">{{ stat.value }}</span>
+                                                        <span class="font-semibold {% if stat.is_better %}text-success{% endif %}">{{ stat.value }}</span>
                                                     </div>
                                                     {% endfor %}
                                                 </div>
@@ -414,6 +416,7 @@
                         </div>
                     </div>
                     {% endif %}
+                    {% endwith %}
                     
                     <!-- Line Movement Chart Section -->
                     <div class="divider my-1">Game Info</div>
