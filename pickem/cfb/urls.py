@@ -12,6 +12,7 @@ urlpatterns = [
     path('picks/', views.picks_view, name='picks'),
     path('live/', views.live_view, name='live'),
     path('standings/', views.standings_view, name='standings'),
+    path('standings/what-if/', views.standings_what_if_view, name='standings_what_if'),
     path('settings/', views.settings_view, name='settings'),
     path('settings/new-season/', views.start_new_season_view, name='start_new_season'),
     path('announcements/<int:announcement_id>/dismiss/', views.announcement_dismiss_view, name='announcement_dismiss'),

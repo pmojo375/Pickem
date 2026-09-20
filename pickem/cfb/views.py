@@ -1315,6 +1315,7 @@ def standings_view(request):
     # Check if user wants to see week standings or league picks
     week_id = request.GET.get('week')
     show_league_picks = request.GET.get('league_picks', 'false').lower() == 'true'
+    show_what_if = request.GET.get('what_if', 'false').lower() in ('true', '1', 'on')
     show_unstarted_picks = request.GET.get('show_unstarted', 'false').lower() == 'true'
     show_projected_prizes = request.GET.get('prizes', 'false').lower() in ('true', '1', 'on')
     selected_week = None
@@ -1328,6 +1329,9 @@ def standings_view(request):
         'available_weeks': [],
         'show_week_standings': False,  # Will be set later based on logic
         'show_league_picks': show_league_picks,
+        'show_what_if': show_what_if,
+        'what_if_games': [],
+        'what_if_endpoint': reverse('standings_what_if'),
         'show_unstarted_picks': show_unstarted_picks,
         'show_projected_prizes': show_projected_prizes,
         'league_picks_data': None,  # Will be set if showing league picks
@@ -1376,6 +1380,7 @@ def standings_view(request):
                 'number',
             )
             
+            now = timezone.now()
             for week in all_weeks:
                 # Check if this week has games in this league
                 week_games = Game.objects.filter(
@@ -1387,13 +1392,20 @@ def standings_view(request):
                 if week_games.exists():
                     # Check game status
                     live_games = week_games.filter(is_final=False, home_score__isnull=False)
+                    started_unfinished = week_games.filter(
+                        is_final=False, kickoff__lte=now
+                    )
                     all_final = not week_games.exclude(is_final=True).exists()
                     has_live_or_final = live_games.exists() or all_final
+                    # What If also needs weeks with started unfinished games (even without scores)
+                    include_week = has_live_or_final or (
+                        show_what_if and started_unfinished.exists()
+                    )
                     
-                    if has_live_or_final:
+                    if include_week:
                         available_weeks.append({
                             'week': week,
-                            'has_live_games': live_games.exists(),
+                            'has_live_games': live_games.exists() or started_unfinished.exists(),
                             'all_games_final': all_final,
                             'game_count': week_games.count()
                         })
@@ -1402,8 +1414,14 @@ def standings_view(request):
             
             # Handle 'latest' week parameter or validate week exists
             if week_id == 'latest' and available_weeks:
-                # Use the latest available week
-                latest_week_data = available_weeks[-1]
+                # Prefer latest week that still has unfinished started games for What If
+                if show_what_if:
+                    unfinished = [
+                        w for w in available_weeks if not w['all_games_final']
+                    ]
+                    latest_week_data = unfinished[-1] if unfinished else available_weeks[-1]
+                else:
+                    latest_week_data = available_weeks[-1]
                 week_id = latest_week_data['week'].id
             elif week_id and available_weeks:
                 # Validate that the requested week exists and is available
@@ -1417,15 +1435,37 @@ def standings_view(request):
                     # Invalid week_id, default to latest
                     latest_week_data = available_weeks[-1]
                     week_id = latest_week_data['week'].id
+
+            # What If requires a week; default to latest if only what_if is set
+            if show_what_if and not week_id and available_weeks:
+                unfinished = [w for w in available_weeks if not w['all_games_final']]
+                week_id = (unfinished[-1] if unfinished else available_weeks[-1])['week'].id
             
-            # Handle week standings vs season standings vs league picks
+            # Handle week standings vs season standings vs league picks vs what-if
             if week_id:
                 # Get week standings
                 try:
                     selected_week = Week.objects.get(id=week_id, season=active_season)
                     context['selected_week'] = selected_week
                     
-                    if show_league_picks:
+                    if show_what_if:
+                        context['show_what_if'] = True
+                        context['show_week_standings'] = False
+                        context['show_league_picks'] = False
+                        if league_rules:
+                            context['what_if_games'] = services.whatif.get_simulatable_games(
+                                league, selected_week, league_rules
+                            )
+                            context['what_if_allows_push'] = bool(
+                                league_rules.against_the_spread_enabled
+                                and not league_rules.force_hooks
+                            )
+                            context['what_if_against_the_spread'] = (
+                                league_rules.against_the_spread_enabled
+                            )
+                        # Empty standings so the regular table is hidden
+                        context['standings'] = []
+                    elif show_league_picks:
                         # Check if user is a league manager (owner or admin)
                         is_manager = False
                         try:
@@ -1747,6 +1787,89 @@ def standings_view(request):
             context['key_picks_enabled'] = fallback_league_rules and fallback_league_rules.key_picks_enabled
     
     return render(request, "cfb/standings.html", context)
+
+
+@login_required
+@require_POST
+def standings_what_if_view(request):
+    """
+    JSON endpoint: simulate week/season standings for assumed game outcomes.
+    Never writes MemberWeek / MemberSeason / Pick.
+    """
+    import json
+
+    try:
+        body = json.loads(request.body.decode("utf-8") or "{}")
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        body = {}
+
+    # Prefer explicit league_id from body, else fall back to query/membership default
+    league_id = body.get("league_id") or request.GET.get("league_id")
+    user_leagues = _user_leagues_qs(request.user)
+    if league_id:
+        league = user_leagues.filter(pk=league_id).first()
+    else:
+        league = user_leagues.first()
+
+    if not league:
+        return JsonResponse({"ok": False, "error": "No league selected"}, status=400)
+
+    active_season = Season.objects.filter(is_active=True).first()
+    if not active_season:
+        return JsonResponse({"ok": False, "error": "No active season"}, status=400)
+
+    try:
+        league_rules = LeagueRules.objects.get(league=league, season=active_season)
+    except LeagueRules.DoesNotExist:
+        return JsonResponse({"ok": False, "error": "League rules not found"}, status=400)
+
+    week_id = body.get("week_id") or request.GET.get("week")
+    if not week_id:
+        return JsonResponse({"ok": False, "error": "week_id is required"}, status=400)
+
+    try:
+        week = Week.objects.get(id=int(week_id), season=active_season)
+    except (Week.DoesNotExist, TypeError, ValueError):
+        return JsonResponse({"ok": False, "error": "Invalid week"}, status=400)
+
+    raw_outcomes = body.get("outcomes") or {}
+    if isinstance(raw_outcomes, list):
+        outcomes = {}
+        for item in raw_outcomes:
+            if isinstance(item, dict) and "game_id" in item and "outcome" in item:
+                outcomes[item["game_id"]] = item["outcome"]
+    elif isinstance(raw_outcomes, dict):
+        outcomes = raw_outcomes
+    else:
+        return JsonResponse({"ok": False, "error": "outcomes must be an object"}, status=400)
+
+    use_drops = body.get("use_drops", True)
+    if isinstance(use_drops, str):
+        use_drops = use_drops.lower() in ("true", "1", "on")
+
+    try:
+        result = services.whatif.simulate_standings(
+            league,
+            week,
+            league_rules,
+            outcomes,
+            use_season_drops=bool(use_drops),
+        )
+    except services.whatif.WhatIfError as exc:
+        return JsonResponse({"ok": False, "error": str(exc)}, status=400)
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "league_id": league.id,
+            "week_id": week.id,
+            "against_the_spread": result.against_the_spread,
+            "allows_push": result.allows_push,
+            "games": result.games,
+            "week_standings": result.week_standings,
+            "season_standings": result.season_standings,
+        }
+    )
 
 
 @sensitive_post_parameters("oldpassword", "password1", "password2")

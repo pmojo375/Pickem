@@ -7,5 +7,6 @@ from . import invites  # noqa: F401
 from . import payouts  # noqa: F401
 from . import announcements  # noqa: F401
 from . import contact  # noqa: F401
+from . import whatif  # noqa: F401
 
 

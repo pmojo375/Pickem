@@ -21,6 +21,7 @@ from cfb.models import (
     LeagueInvite,
     LeagueMembership,
     LeagueRules,
+    MemberSeason,
     MemberSeasonPayment,
     MemberWeek,
     Pick,
@@ -35,6 +36,11 @@ from cfb.services.scoring import (
     is_pick_correct,
     remaining_points_by_user,
     update_member_week_for_game,
+)
+from cfb.services.whatif import (
+    WhatIfError,
+    simulate_standings,
+    synthesize_scores,
 )
 from cfb.templatetags.cfb_tags import apply_hooks, format_spread_display
 
@@ -1356,4 +1362,308 @@ class InactiveLeagueGameScoringTests(TestCase):
         self.assertEqual(member_week.incorrect, 0)
         self.assertEqual(member_week.ties, 0)
         self.assertEqual(member_week.points, 1)
+
+
+class SynthesizeScoresTests(SimpleTestCase):
+    def test_straight_up_winners(self):
+        self.assertEqual(
+            synthesize_scores("home", against_the_spread=False, locked_home_spread=None, force_hooks=False),
+            (1, 0),
+        )
+        self.assertEqual(
+            synthesize_scores("away", against_the_spread=False, locked_home_spread=None, force_hooks=False),
+            (0, 1),
+        )
+
+    def test_ats_home_and_away_cover(self):
+        home_h, home_a = synthesize_scores(
+            "home",
+            against_the_spread=True,
+            locked_home_spread=Decimal("-7"),
+            force_hooks=False,
+        )
+        # Home -7 covers when margin > 7
+        self.assertGreater(home_h - home_a, 7)
+
+        away_h, away_a = synthesize_scores(
+            "away",
+            against_the_spread=True,
+            locked_home_spread=Decimal("-7"),
+            force_hooks=False,
+        )
+        self.assertLess(away_h - away_a, 7)
+
+    def test_ats_push_on_whole_spread(self):
+        h, a = synthesize_scores(
+            "push",
+            against_the_spread=True,
+            locked_home_spread=Decimal("-3"),
+            force_hooks=False,
+        )
+        self.assertEqual(h - a, 3)
+
+    def test_push_rejected_with_hooks_or_half_point(self):
+        with self.assertRaises(WhatIfError):
+            synthesize_scores(
+                "push",
+                against_the_spread=True,
+                locked_home_spread=Decimal("-3"),
+                force_hooks=True,
+            )
+        with self.assertRaises(WhatIfError):
+            synthesize_scores(
+                "push",
+                against_the_spread=True,
+                locked_home_spread=Decimal("-3.5"),
+                force_hooks=False,
+            )
+
+
+class WhatIfStandingsTests(TestCase):
+    def setUp(self):
+        self.user_a = User.objects.create_user("whatif_a", "a@example.com", "pass")
+        self.user_b = User.objects.create_user("whatif_b", "b@example.com", "pass")
+        self.league = League.objects.create(name="What If League", created_by=self.user_a)
+        LeagueMembership.objects.create(league=self.league, user=self.user_a, role="owner")
+        LeagueMembership.objects.create(league=self.league, user=self.user_b, role="member")
+        self.season = Season.objects.create(year=2026, is_active=True)
+        self.week1 = Week.objects.create(
+            season=self.season,
+            number=1,
+            start_date=timezone.localdate() - timedelta(days=14),
+            end_date=timezone.localdate() - timedelta(days=8),
+        )
+        self.week2 = Week.objects.create(
+            season=self.season,
+            number=2,
+            start_date=timezone.localdate(),
+            end_date=timezone.localdate() + timedelta(days=6),
+        )
+        self.rules = LeagueRules.objects.create(
+            league=self.league,
+            season=self.season,
+            against_the_spread_enabled=True,
+            force_hooks=False,
+            points_per_correct_pick=1,
+            key_pick_extra_points=1,
+            key_picks_enabled=True,
+            drop_weeks=1,
+        )
+        teams = [
+            Team.objects.create(season=self.season, name=f"WhatIf Team {i}")
+            for i in range(6)
+        ]
+        # Week 1 final game (already graded into MemberWeek below)
+        self.w1_game = Game.objects.create(
+            season=self.season,
+            week=self.week1,
+            home_team=teams[0],
+            away_team=teams[1],
+            kickoff=timezone.now() - timedelta(days=10),
+            is_final=True,
+            home_score=24,
+            away_score=17,
+        )
+        LeagueGame.objects.create(
+            league=self.league,
+            game=self.w1_game,
+            locked_home_spread=Decimal("-3"),
+            locked_away_spread=Decimal("3"),
+            is_active=True,
+        )
+        # Week 2: one final, one started, one unstarted
+        self.w2_final = Game.objects.create(
+            season=self.season,
+            week=self.week2,
+            home_team=teams[2],
+            away_team=teams[3],
+            kickoff=timezone.now() - timedelta(hours=6),
+            is_final=True,
+            home_score=21,
+            away_score=14,
+        )
+        self.w2_live = Game.objects.create(
+            season=self.season,
+            week=self.week2,
+            home_team=teams[4],
+            away_team=teams[5],
+            kickoff=timezone.now() - timedelta(hours=1),
+            is_final=False,
+            home_score=10,
+            away_score=7,
+        )
+        self.w2_upcoming = Game.objects.create(
+            season=self.season,
+            week=self.week2,
+            home_team=teams[0],
+            away_team=teams[2],
+            kickoff=timezone.now() + timedelta(days=1),
+            is_final=False,
+        )
+        self.lg_final = LeagueGame.objects.create(
+            league=self.league,
+            game=self.w2_final,
+            locked_home_spread=Decimal("-3.5"),
+            locked_away_spread=Decimal("3.5"),
+            is_active=True,
+        )
+        self.lg_live = LeagueGame.objects.create(
+            league=self.league,
+            game=self.w2_live,
+            locked_home_spread=Decimal("-7"),
+            locked_away_spread=Decimal("7"),
+            is_active=True,
+        )
+        LeagueGame.objects.create(
+            league=self.league,
+            game=self.w2_upcoming,
+            locked_home_spread=Decimal("-1"),
+            locked_away_spread=Decimal("1"),
+            is_active=True,
+        )
+
+        # Picks: A picks home on all; B picks away on live + final week2
+        for game, team_a, team_b in [
+            (self.w1_game, self.w1_game.home_team, self.w1_game.away_team),
+            (self.w2_final, self.w2_final.home_team, self.w2_final.away_team),
+            (self.w2_live, self.w2_live.home_team, self.w2_live.away_team),
+            (self.w2_upcoming, self.w2_upcoming.home_team, self.w2_upcoming.away_team),
+        ]:
+            Pick.objects.create(
+                user=self.user_a, league=self.league, game=game, picked_team=team_a
+            )
+            Pick.objects.create(
+                user=self.user_b, league=self.league, game=game, picked_team=team_b
+            )
+
+        # Persist official week1 + week2 partial stats
+        update_member_week_for_game(self.w1_game)
+        update_member_week_for_game(self.w2_final)
+
+    def test_hypo_week_grades_simulated_and_final_games(self):
+        # Home covers on live (-7): A picked home → correct; B picked away → incorrect
+        result = simulate_standings(
+            self.league,
+            self.week2,
+            self.rules,
+            {self.w2_live.id: "home"},
+        )
+        by_user = {row["user_id"]: row for row in result.week_standings}
+        # Final: home covered -3.5 (margin 7) → A correct, B incorrect
+        # Live hypo: home covers → A correct, B incorrect
+        self.assertEqual(by_user[self.user_a.id]["wins"], 2)
+        self.assertEqual(by_user[self.user_a.id]["points"], 2)
+        self.assertEqual(by_user[self.user_b.id]["wins"], 0)
+        self.assertEqual(by_user[self.user_b.id]["losses"], 2)
+        self.assertEqual(by_user[self.user_a.id]["hypo_rank"], 1)
+        self.assertEqual(by_user[self.user_b.id]["hypo_rank"], 2)
+
+    def test_unset_games_award_no_points(self):
+        result = simulate_standings(
+            self.league, self.week2, self.rules, {}
+        )
+        by_user = {row["user_id"]: row for row in result.week_standings}
+        # Only the final week2 game counts
+        self.assertEqual(by_user[self.user_a.id]["wins"], 1)
+        self.assertEqual(by_user[self.user_a.id]["picks_made"], 1)
+
+    def test_rejects_unstarted_game(self):
+        with self.assertRaises(WhatIfError):
+            simulate_standings(
+                self.league,
+                self.week2,
+                self.rules,
+                {self.w2_upcoming.id: "home"},
+            )
+
+    def test_does_not_mutate_persisted_stats(self):
+        mw_before = list(
+            MemberWeek.objects.filter(league=self.league).values_list(
+                "id", "points", "correct", "rank"
+            )
+        )
+        ms_before = list(
+            MemberSeason.objects.filter(league=self.league).values_list(
+                "id", "points", "correct", "rank"
+            )
+        )
+        picks_before = list(Pick.objects.filter(league=self.league).values_list("id", "is_correct"))
+
+        simulate_standings(
+            self.league,
+            self.week2,
+            self.rules,
+            {self.w2_live.id: "away"},
+        )
+
+        mw_after = list(
+            MemberWeek.objects.filter(league=self.league).values_list(
+                "id", "points", "correct", "rank"
+            )
+        )
+        ms_after = list(
+            MemberSeason.objects.filter(league=self.league).values_list(
+                "id", "points", "correct", "rank"
+            )
+        )
+        picks_after = list(Pick.objects.filter(league=self.league).values_list("id", "is_correct"))
+        self.assertEqual(mw_before, mw_after)
+        self.assertEqual(ms_before, ms_after)
+        self.assertEqual(picks_before, picks_after)
+
+    def test_season_respects_drop_weeks(self):
+        # User A: strong week1, strong week2 hypo → drop weaker if any
+        # User B: weak everywhere
+        result = simulate_standings(
+            self.league,
+            self.week2,
+            self.rules,
+            {self.w2_live.id: "home"},
+            use_season_drops=True,
+        )
+        by_user = {row["user_id"]: row for row in result.season_standings}
+        # With drop_weeks=1 and 2 weeks, one week is dropped.
+        # A has 1 pt week1 + 2 pts week2 = 3 full; drops worst (1) → 2 adjusted
+        self.assertEqual(by_user[self.user_a.id]["points"], 2)
+        self.assertEqual(by_user[self.user_a.id]["hypo_rank"], 1)
+
+    def test_endpoint_rejects_unstarted_and_returns_json(self):
+        self.client.force_login(self.user_a)
+        url = reverse("standings_what_if")
+        resp = self.client.post(
+            url,
+            data={
+                "league_id": self.league.id,
+                "week_id": self.week2.id,
+                "outcomes": {str(self.w2_upcoming.id): "home"},
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertFalse(resp.json()["ok"])
+
+        resp_ok = self.client.post(
+            url,
+            data={
+                "league_id": self.league.id,
+                "week_id": self.week2.id,
+                "outcomes": {str(self.w2_live.id): "home"},
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(resp_ok.status_code, 200)
+        payload = resp_ok.json()
+        self.assertTrue(payload["ok"])
+        self.assertEqual(len(payload["week_standings"]), 2)
+        self.assertEqual(len(payload["season_standings"]), 2)
+
+    def test_standings_what_if_tab_renders(self):
+        self.client.force_login(self.user_a)
+        resp = self.client.get(
+            reverse("standings"),
+            {"league_id": self.league.id, "what_if": "true", "week": self.week2.id},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Hypothetical")
+        self.assertContains(resp, "what-if-panel")
 

@@ -42,11 +42,11 @@
             <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                 <!-- Tab Selection -->
                 <div class="tabs tabs-boxed standings-tabs">
-                    <a class="tab standings-tab {% if not show_week_standings and not show_league_picks %}tab-active{% endif %}" onclick="switchToSeasonStandings()">
+                    <a class="tab standings-tab {% if not show_week_standings and not show_league_picks and not show_what_if %}tab-active{% endif %}" onclick="switchToSeasonStandings()">
                         <i class="fas fa-calendar-alt mr-2"></i>
                         Season
                     </a>
-                    <a class="tab standings-tab {% if show_week_standings and not show_league_picks %}tab-active{% endif %}" onclick="switchToWeekStandings()">
+                    <a class="tab standings-tab {% if show_week_standings and not show_league_picks and not show_what_if %}tab-active{% endif %}" onclick="switchToWeekStandings()">
                         <i class="fas fa-calendar-week mr-2"></i>
                         Week
                     </a>
@@ -54,10 +54,14 @@
                         <i class="fas fa-users mr-2"></i>
                         League Picks
                     </a>
+                    <a class="tab standings-tab {% if show_what_if %}tab-active{% endif %}" onclick="switchToWhatIf()">
+                        <i class="fas fa-flask mr-2"></i>
+                        What If
+                    </a>
                 </div>
                 
-                <!-- Week Selector (shown when week tab or league picks tab is active) -->
-                {% if available_weeks and show_week_standings or available_weeks and show_league_picks %}
+                <!-- Week Selector (shown when week tab, league picks, or what-if is active) -->
+                {% if available_weeks and show_week_standings or available_weeks and show_league_picks or available_weeks and show_what_if %}
                 <div class="form-control w-full lg:w-auto">
                     <select class="select select-bordered select-primary" onchange="changeWeek(this.value)">
                         {% for week_data in available_weeks %}
@@ -560,8 +564,163 @@
 </div>
 {% endif %}
 
-<!-- No Standings Yet (only show if no standings and not showing league picks) -->
-{% if current_league and standings|length == 0 and not show_league_picks %}
+<!-- What If Simulator -->
+{% if show_what_if and current_league and selected_week %}
+<div class="card bg-base-100 shadow-xl mb-6" id="what-if-panel"
+     data-endpoint="{{ what_if_endpoint }}"
+     data-league-id="{{ current_league.id }}"
+     data-week-id="{{ selected_week.id }}"
+     data-ats="{% if what_if_against_the_spread %}true{% else %}false{% endif %}">
+    <div class="card-body">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
+            <div>
+                <h2 class="card-title flex-wrap gap-2">
+                    <i class="fas fa-flask text-secondary"></i>
+                    {{ current_league.name }} — Week {{ selected_week.number }}
+                    <span class="badge badge-secondary badge-sm">Hypothetical</span>
+                </h2>
+                <p class="text-sm text-base-content/70 mt-1">
+                    Tap who covers (or wins) for started games that aren’t final yet. Standings update instantly and never change official scores.
+                </p>
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" id="what-if-reset" onclick="whatIfReset()">
+                <i class="fas fa-undo mr-1"></i> Reset
+            </button>
+        </div>
+
+        {% if what_if_games %}
+        <div class="grid gap-4 mb-6" id="what-if-games">
+            {% for game in what_if_games %}
+            <div class="border border-base-300 rounded-lg p-3 md:p-4 what-if-game"
+                 data-game-id="{{ game.id }}"
+                 data-allows-push="{% if game.allows_push %}true{% else %}false{% endif %}">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <div class="text-xs text-base-content/60 flex flex-wrap gap-2 items-center">
+                        {% if game.locked_home_spread %}
+                        <span>
+                            {% if what_if_against_the_spread %}
+                                Line: {{ game.home_team.abbreviation|default:game.home_team.name }} {{ game.locked_home_spread }}
+                            {% endif %}
+                        </span>
+                        {% endif %}
+                        {% if game.is_live %}
+                        <span class="badge badge-error badge-xs">Live</span>
+                        {% if game.away_score is not None and game.home_score is not None %}
+                        <span>{{ game.away_score }}–{{ game.home_score }}</span>
+                        {% endif %}
+                        {% else %}
+                        <span class="badge badge-ghost badge-xs">Started</span>
+                        {% endif %}
+                    </div>
+                    {% if game.allows_push %}
+                    <button type="button"
+                            class="btn btn-xs btn-ghost what-if-outcome"
+                            data-outcome="push"
+                            onclick="whatIfSetOutcome({{ game.id }}, 'push', this)">
+                        Push
+                    </button>
+                    {% endif %}
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 what-if-outcomes" role="group" aria-label="Assumed winner">
+                    <button type="button"
+                            class="what-if-outcome what-if-team-btn text-left p-0 border-0 bg-transparent"
+                            data-outcome="away"
+                            onclick="whatIfSetOutcome({{ game.id }}, 'away', this)">
+                        <div class="what-if-team-card flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-lg border-2 border-base-300 bg-base-200/50 hover:bg-base-200 transition-all w-full">
+                            {% if game.away_team|team_logo_url %}
+                            <img src="{% static game.away_team|team_logo_url %}"
+                                 alt="{{ game.away_team.name }}"
+                                 class="team-logo w-10 h-10 md:w-12 md:h-12 object-contain flex-shrink-0" />
+                            {% endif %}
+                            <div class="flex-1 min-w-0">
+                                <span class="font-bold text-sm md:text-base leading-tight block truncate">{{ game.away_team.name }}</span>
+                                <div class="badge badge-ghost badge-xs md:badge-sm mt-1">Away</div>
+                            </div>
+                        </div>
+                    </button>
+                    <button type="button"
+                            class="what-if-outcome what-if-team-btn text-left p-0 border-0 bg-transparent"
+                            data-outcome="home"
+                            onclick="whatIfSetOutcome({{ game.id }}, 'home', this)">
+                        <div class="what-if-team-card flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-lg border-2 border-base-300 bg-base-200/50 hover:bg-base-200 transition-all w-full">
+                            {% if game.home_team|team_logo_url %}
+                            <img src="{% static game.home_team|team_logo_url %}"
+                                 alt="{{ game.home_team.name }}"
+                                 class="team-logo w-10 h-10 md:w-12 md:h-12 object-contain flex-shrink-0" />
+                            {% endif %}
+                            <div class="flex-1 min-w-0">
+                                <span class="font-bold text-sm md:text-base leading-tight block truncate">{{ game.home_team.name }}</span>
+                                <div class="badge badge-ghost badge-xs md:badge-sm mt-1">Home</div>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="alert mb-6">
+            <i class="fas fa-info-circle"></i>
+            <span>No started, unfinished games to simulate for this week. Check back once games kick off.</span>
+        </div>
+        {% endif %}
+
+        <div id="what-if-status" class="text-sm text-base-content/60 mb-3 hidden"></div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div>
+                <h3 class="font-bold mb-2 flex items-center gap-2">
+                    <i class="fas fa-calendar-week text-primary"></i>
+                    Week standings
+                    <span class="badge badge-ghost badge-sm">Hypothetical</span>
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra table-sm w-full" id="what-if-week-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Δ</th>
+                                <th>Player</th>
+                                <th>W-L-T</th>
+                                <th>Pts</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="5" class="text-center text-base-content/50 py-6">Set an outcome to see results</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div>
+                <h3 class="font-bold mb-2 flex items-center gap-2">
+                    <i class="fas fa-calendar-alt text-primary"></i>
+                    Season standings
+                    <span class="badge badge-ghost badge-sm">Hypothetical</span>
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra table-sm w-full" id="what-if-season-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Δ</th>
+                                <th>Player</th>
+                                <th>W-L-T</th>
+                                <th>Pts</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="5" class="text-center text-base-content/50 py-6">Set an outcome to see results</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- No Standings Yet (only show if no standings and not showing league picks / what-if) -->
+{% if current_league and standings|length == 0 and not show_league_picks and not show_what_if %}
 <div class="card bg-base-100 shadow-xl">
     <div class="card-body items-center text-center py-16">
         <i class="fas fa-medal text-6xl text-warning mb-4"></i>
@@ -587,6 +746,30 @@
 
 {% block extra_css %}
 <style>
+    .what-if-team-btn {
+        cursor: pointer;
+    }
+
+    .what-if-team-btn .what-if-team-card {
+        cursor: pointer;
+    }
+
+    .what-if-team-btn.is-selected .what-if-team-card {
+        border-color: oklch(var(--p));
+        background-color: color-mix(in oklab, oklch(var(--p)) 18%, oklch(var(--b1)));
+        box-shadow: 0 0 0 1px oklch(var(--p));
+    }
+
+    .what-if-team-btn.is-selected .what-if-team-card img {
+        transform: scale(1.05);
+    }
+
+    .what-if-outcome.is-selected.btn-ghost {
+        color: oklch(var(--p));
+        font-weight: 600;
+        text-decoration: underline;
+    }
+
     .standings-tabs {
         width: 100%;
         display: flex;
@@ -926,6 +1109,7 @@ function switchToSeasonStandings() {
     url.searchParams.delete('week');
     url.searchParams.delete('full');
     url.searchParams.delete('league_picks');
+    url.searchParams.delete('what_if');
     window.location.href = url.toString();
 }
 
@@ -935,6 +1119,7 @@ function switchToWeekStandings() {
     // Remove full parameter when switching to week view
     url.searchParams.delete('full');
     url.searchParams.delete('league_picks');
+    url.searchParams.delete('what_if');
     
     // Add a week parameter to trigger week view, even if empty
     // Backend will handle setting the default week
@@ -949,6 +1134,7 @@ function switchToLeaguePicks() {
     // Remove full parameter when switching to league picks view
     url.searchParams.delete('full');
     url.searchParams.delete('prizes');
+    url.searchParams.delete('what_if');
     
     // Add league_picks parameter to trigger league picks view
     url.searchParams.set('league_picks', 'true');
@@ -957,6 +1143,16 @@ function switchToLeaguePicks() {
     // Backend will handle setting the default week
     url.searchParams.set('week', 'latest');
     
+    window.location.href = url.toString();
+}
+
+function switchToWhatIf() {
+    const url = new URL(window.location);
+    url.searchParams.delete('full');
+    url.searchParams.delete('prizes');
+    url.searchParams.delete('league_picks');
+    url.searchParams.set('what_if', 'true');
+    url.searchParams.set('week', 'latest');
     window.location.href = url.toString();
 }
 
@@ -972,7 +1168,7 @@ function changeWeek(weekId) {
     // Remove full parameter when switching weeks
     url.searchParams.delete('full');
     
-    // Preserve league_picks / prizes parameters if they exist
+    // Preserve league_picks / prizes / what_if parameters if they exist
     // (don't delete them, just keep as is)
     
     window.location.href = url.toString();
@@ -989,6 +1185,146 @@ function toggleUnstartedPicks(showUnstarted) {
     }
     
     window.location.href = url.toString();
+}
+
+/* ---- What If simulator ---- */
+const whatIfState = {
+    outcomes: {},
+    timer: null,
+};
+
+function whatIfGetCookie(name) {
+    const match = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : null;
+}
+
+function whatIfSetOutcome(gameId, outcome, btn) {
+    const card = btn.closest('.what-if-game');
+    const buttons = card.querySelectorAll('.what-if-outcome');
+    const current = whatIfState.outcomes[gameId];
+
+    if (current === outcome) {
+        delete whatIfState.outcomes[gameId];
+        buttons.forEach((b) => b.classList.remove('is-selected'));
+    } else {
+        whatIfState.outcomes[gameId] = outcome;
+        buttons.forEach((b) => {
+            b.classList.toggle('is-selected', b.dataset.outcome === outcome);
+        });
+    }
+    whatIfScheduleRefresh();
+}
+
+function whatIfReset() {
+    whatIfState.outcomes = {};
+    document.querySelectorAll('.what-if-outcome').forEach((b) => {
+        b.classList.remove('is-selected');
+    });
+    whatIfRenderEmpty();
+    whatIfScheduleRefresh();
+}
+
+function whatIfRenderEmpty() {
+    const empty = '<tr><td colspan="5" class="text-center text-base-content/50 py-6">Set an outcome to see results</td></tr>';
+    const weekBody = document.querySelector('#what-if-week-table tbody');
+    const seasonBody = document.querySelector('#what-if-season-table tbody');
+    if (weekBody) weekBody.innerHTML = empty;
+    if (seasonBody) seasonBody.innerHTML = empty;
+    const status = document.getElementById('what-if-status');
+    if (status) {
+        status.classList.add('hidden');
+        status.textContent = '';
+    }
+}
+
+function whatIfFormatDelta(delta) {
+    if (delta === null || delta === undefined || delta === 0) {
+        return '<span class="text-base-content/40">—</span>';
+    }
+    if (delta > 0) {
+        return `<span class="text-success font-semibold">↑${delta}</span>`;
+    }
+    return `<span class="text-error font-semibold">↓${Math.abs(delta)}</span>`;
+}
+
+function whatIfRenderRows(tbody, rows) {
+    if (!tbody) return;
+    if (!rows || !rows.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-base-content/50 py-6">No results</td></tr>';
+        return;
+    }
+    tbody.innerHTML = rows.map((row) => {
+        const name = row.display_name || row.username;
+        const wlt = `${row.wins}-${row.losses}-${row.ties}`;
+        return `<tr>
+            <td class="font-bold">${row.hypo_rank ?? '—'}</td>
+            <td>${whatIfFormatDelta(row.rank_delta)}</td>
+            <td class="font-medium">${name}</td>
+            <td>${wlt}</td>
+            <td class="font-semibold">${row.points}</td>
+        </tr>`;
+    }).join('');
+}
+
+function whatIfScheduleRefresh() {
+    if (whatIfState.timer) clearTimeout(whatIfState.timer);
+    whatIfState.timer = setTimeout(whatIfRefresh, 200);
+}
+
+async function whatIfRefresh() {
+    const panel = document.getElementById('what-if-panel');
+    if (!panel) return;
+
+    const status = document.getElementById('what-if-status');
+    const endpoint = panel.dataset.endpoint;
+    const leagueId = panel.dataset.leagueId;
+    const weekId = panel.dataset.weekId;
+
+    if (!Object.keys(whatIfState.outcomes).length) {
+        whatIfRenderEmpty();
+        // Still fetch baseline with empty outcomes so finals-only weeks show current hypo
+        // (finals already counted). Keep empty prompt until user picks something.
+        return;
+    }
+
+    if (status) {
+        status.classList.remove('hidden');
+        status.textContent = 'Updating…';
+    }
+
+    try {
+        const csrf = whatIfGetCookie('csrftoken');
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(csrf ? { 'X-CSRFToken': csrf } : {}),
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                league_id: Number(leagueId),
+                week_id: Number(weekId),
+                outcomes: whatIfState.outcomes,
+            }),
+        });
+        const data = await response.json();
+        if (!data.ok) {
+            if (status) {
+                status.textContent = data.error || 'Could not simulate standings';
+            }
+            return;
+        }
+        whatIfRenderRows(document.querySelector('#what-if-week-table tbody'), data.week_standings);
+        whatIfRenderRows(document.querySelector('#what-if-season-table tbody'), data.season_standings);
+        if (status) {
+            status.textContent = 'Hypothetical results — not official.';
+        }
+    } catch (err) {
+        if (status) {
+            status.classList.remove('hidden');
+            status.textContent = 'Network error updating what-if standings.';
+        }
+    }
 }
 
 </script>
