@@ -17,10 +17,16 @@ class LoggingEmailBackend(BaseEmailBackend):
         sent = 0
         chunks = []
         for message in email_messages:
+            reply_to = getattr(message, "reply_to", None) or []
+            reply_line = (
+                f"Reply-To: {', '.join(reply_to)}\n" if reply_to else ""
+            )
             block = (
                 f"\n{'=' * 72}\n"
                 f"EMAIL  {datetime.now().isoformat(timespec='seconds')}\n"
+                f"From: {message.from_email}\n"
                 f"To: {', '.join(message.to)}\n"
+                f"{reply_line}"
                 f"Subject: {message.subject}\n"
                 f"{'-' * 72}\n"
                 f"{message.body}\n"

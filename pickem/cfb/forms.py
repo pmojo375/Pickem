@@ -198,3 +198,61 @@ class PersonalInviteSetPasswordForm(forms.Form):
         if password1 and password2 and password1 != password2:
             self.add_error("password2", "Passwords do not match.")
         return cleaned
+
+
+class ContactForm(forms.Form):
+    name = forms.CharField(
+        label="Name",
+        max_length=100,
+        widget=forms.TextInput(
+            attrs={
+                "class": "input input-bordered w-full",
+                "placeholder": "Your name",
+                "autocomplete": "name",
+            }
+        ),
+    )
+    email = forms.EmailField(
+        label="Email",
+        widget=forms.EmailInput(
+            attrs={
+                "class": "input input-bordered w-full",
+                "placeholder": "you@example.com",
+                "autocomplete": "email",
+            }
+        ),
+    )
+    subject = forms.CharField(
+        label="Subject",
+        max_length=150,
+        widget=forms.TextInput(
+            attrs={
+                "class": "input input-bordered w-full",
+                "placeholder": "What's this about?",
+            }
+        ),
+    )
+    message = forms.CharField(
+        label="Message",
+        max_length=5000,
+        widget=forms.Textarea(
+            attrs={
+                "class": "textarea textarea-bordered w-full min-h-32",
+                "placeholder": "How can we help?",
+                "rows": 6,
+            }
+        ),
+    )
+
+    def clean_name(self):
+        return (self.cleaned_data.get("name") or "").strip()
+
+    def clean_email(self):
+        return (self.cleaned_data.get("email") or "").strip().lower()
+
+    def clean_subject(self):
+        return (self.cleaned_data.get("subject") or "").strip()
+
+    def clean_message(self):
+        return (self.cleaned_data.get("message") or "").strip()
+

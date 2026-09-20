@@ -414,6 +414,7 @@ EMAIL_BACKEND = os.getenv(
     else 'django.core.mail.backends.smtp.EmailBackend',
 )
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@bigpicks.app')
+SUPPORT_EMAIL = os.getenv('SUPPORT_EMAIL', 'support@bigpicks.app')
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'localhost')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', '25'))
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')

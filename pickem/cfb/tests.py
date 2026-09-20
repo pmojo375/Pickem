@@ -1070,3 +1070,92 @@ class EntryFeeReceiptDismissTests(TestCase):
         payment.refresh_from_db()
         self.assertTrue(payment.paid)
         self.assertFalse(payment.paid_receipt_dismissed)
+
+
+@override_settings(
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+    SUPPORT_EMAIL="support@bigpicks.app",
+    DEFAULT_FROM_EMAIL="noreply@bigpicks.app",
+)
+class ContactFormTests(TestCase):
+    def test_contact_page_shows_support_address_when_anonymous(self):
+        response = self.client.get(reverse("contact"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "support@bigpicks.app")
+        self.assertContains(response, 'href="mailto:support@bigpicks.app"')
+        self.assertContains(response, "Sign in to contact us")
+        self.assertNotContains(response, "Send message")
+
+    def test_footer_links_to_contact(self):
+        response = self.client.get(reverse("home"))
+        self.assertContains(response, reverse("contact"))
+        self.assertContains(response, "Contact")
+
+    def test_anonymous_submit_is_rejected(self):
+        response = self.client.post(
+            reverse("contact"),
+            {
+                "name": "Alex Fan",
+                "email": "alex@example.com",
+                "subject": "Help with picks",
+                "message": "I cannot save my picks.",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("account_login"), response["Location"])
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_logged_in_submit_sends_support_and_confirmation(self):
+        user = User.objects.create_user(
+            "contactuser",
+            "contactuser@example.com",
+            "pass",
+            first_name="Casey",
+            last_name="Pick",
+        )
+        self.client.force_login(user)
+        response = self.client.post(
+            reverse("contact"),
+            {
+                "name": "Casey Pick",
+                "email": "contactuser@example.com",
+                "subject": "Billing question",
+                "message": "Where do I pay?",
+            },
+        )
+        self.assertRedirects(response, f"{reverse('contact')}?sent=1")
+        self.assertEqual(len(mail.outbox), 2)
+
+        support_msg = mail.outbox[0]
+        self.assertEqual(support_msg.to, ["support@bigpicks.app"])
+        self.assertEqual(support_msg.from_email, "noreply@bigpicks.app")
+        self.assertEqual(support_msg.reply_to, ["contactuser@example.com"])
+        self.assertIn("[BigPicks Contact] Billing question", support_msg.subject)
+        self.assertIn("Casey Pick", support_msg.body)
+        self.assertIn("contactuser", support_msg.body)
+        self.assertIn(f"id {user.pk}", support_msg.body)
+        self.assertIn("Where do I pay?", support_msg.body)
+
+        confirm_msg = mail.outbox[1]
+        self.assertEqual(confirm_msg.to, ["contactuser@example.com"])
+        self.assertIn("We received your message", confirm_msg.subject)
+
+        success_page = self.client.get(f"{reverse('contact')}?sent=1")
+        self.assertContains(success_page, "Message sent")
+        self.assertContains(success_page, "support received your message")
+
+    def test_invalid_form_does_not_send_mail(self):
+        user = User.objects.create_user("badform", "badform@example.com", "pass")
+        self.client.force_login(user)
+        response = self.client.post(
+            reverse("contact"),
+            {
+                "name": "",
+                "email": "not-an-email",
+                "subject": "",
+                "message": "",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 0)
+

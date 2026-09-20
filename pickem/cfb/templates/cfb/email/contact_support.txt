@@ -1,0 +1,15 @@
+New contact form message from BigPicks
+
+From: {{ name }} <{{ email }}>
+{% if user %}Account: {{ user.username }} (id {{ user.pk }})
+Account email: {{ user.email|default:"—" }}
+{% else %}Account: (not signed in)
+{% endif %}
+Subject: {{ subject }}
+
+---
+
+{{ message }}
+
+—
+Reply directly to this email to respond to {{ email }}.

@@ -39,6 +39,7 @@ from datetime import datetime
 from . import services
 from .forms import (
     AccountNameForm,
+    ContactForm,
     PersonalInviteSignupForm,
     PersonalInviteSetPasswordForm,
     SecondaryEmailForm,
@@ -1770,6 +1771,66 @@ def account_view(request):
             "google_account": google_account,
             "social_accounts": social_accounts,
             "disconnect_form": disconnect_form,
+        },
+    )
+
+
+def contact_view(request):
+    """
+    Contact page is public so anyone can see support@, but only signed-in
+    users can submit the form (keeps bots from spamming it).
+    """
+    support_email = settings.SUPPORT_EMAIL
+    sent = request.GET.get("sent") == "1"
+
+    if not request.user.is_authenticated:
+        if request.method == "POST":
+            login_url = reverse(settings.LOGIN_URL)
+            return redirect(f"{login_url}?next={reverse('contact')}")
+        return render(
+            request,
+            "cfb/contact.html",
+            {
+                "form": None,
+                "support_email": support_email,
+                "sent": False,
+            },
+        )
+
+    user = request.user
+    display_name = user.get_full_name().strip() or user.username
+    initial = {
+        "name": display_name,
+        "email": user.email or "",
+    }
+
+    if request.method == "POST":
+        form = ContactForm(request.POST)
+        if form.is_valid():
+            sent_ok = services.contact.send_contact_emails(
+                name=form.cleaned_data["name"],
+                email=form.cleaned_data["email"],
+                subject=form.cleaned_data["subject"],
+                message=form.cleaned_data["message"],
+                user=user,
+            )
+            if sent_ok:
+                return redirect(f"{reverse('contact')}?sent=1")
+            messages.error(
+                request,
+                "Sorry, we couldn't send your message right now. "
+                f"Please email {support_email} directly.",
+            )
+    else:
+        form = ContactForm(initial=initial)
+
+    return render(
+        request,
+        "cfb/contact.html",
+        {
+            "form": form,
+            "support_email": support_email,
+            "sent": sent,
         },
     )
 
