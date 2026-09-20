@@ -631,6 +631,47 @@ class PayoutSummaryTests(TestCase):
         self.rules.season_payout_percent = Decimal("0.00")
         self.assertIsNone(build_payout_summary(self.rules, member_count=10))
 
+    def test_last_place_goes_to_most_incorrect_not_worst_rank(self):
+        from cfb.services.payouts import attach_prize_amounts
+
+        summary = build_payout_summary(self.rules, member_count=10)
+        # Only 1st is paid from places; last place uses most incorrect among unpaid.
+        standings = [
+            {"user_id": 1, "display_rank": 1, "incorrect": 2},
+            {"user_id": 2, "display_rank": 2, "incorrect": 8},
+            {"user_id": 3, "display_rank": 3, "incorrect": 0},  # worst rank, skipped picks
+        ]
+        attach_prize_amounts(
+            standings,
+            [{"place": 1, "label": "1st place", "amount": summary["season_places"][0]["amount"]}],
+            summary["last_place"],
+        )
+        by_user = {row["user_id"]: row for row in standings}
+        self.assertEqual(by_user[1]["prize_label"], "1st place")
+        self.assertEqual(by_user[2]["prize_label"], "Last place")
+        self.assertEqual(by_user[2]["prize_amount"], Decimal("30.00"))
+        self.assertIsNone(by_user[3]["prize_amount"])
+
+    def test_last_place_ties_split_on_incorrect(self):
+        from cfb.services.payouts import attach_prize_amounts
+
+        summary = build_payout_summary(self.rules, member_count=10)
+        standings = [
+            {"user_id": 1, "display_rank": 1, "incorrect": 1},
+            {"user_id": 2, "display_rank": 2, "incorrect": 5},
+            {"user_id": 3, "display_rank": 3, "incorrect": 5},
+        ]
+        attach_prize_amounts(
+            standings,
+            [{"place": 1, "label": "1st place", "amount": summary["season_places"][0]["amount"]}],
+            summary["last_place"],
+        )
+        by_user = {row["user_id"]: row for row in standings}
+        self.assertEqual(by_user[2]["prize_label"], "Last place (tie)")
+        self.assertEqual(by_user[3]["prize_label"], "Last place (tie)")
+        self.assertEqual(by_user[2]["prize_amount"], Decimal("15.00"))
+        self.assertEqual(by_user[3]["prize_amount"], Decimal("15.00"))
+
 
 class MemberRulesViewTests(TestCase):
     def setUp(self):

@@ -1140,6 +1140,30 @@ def _season_rank_by_user(league, season, league_rules, show_full_standings=False
     return ranks
 
 
+def _season_incorrect_by_user(league, season, league_rules, show_full_standings=False):
+    """Map user_id -> incorrect picks for season last-place prizes (drop-aware)."""
+    incorrect = {}
+    member_seasons = MemberSeason.objects.filter(
+        league=league,
+        season=season,
+        user_id__in=_active_member_user_ids(league),
+    )
+    use_drops = (
+        not show_full_standings
+        and league_rules
+        and league_rules.drop_weeks > 0
+    )
+    for member_season in member_seasons:
+        if use_drops:
+            incorrect[member_season.user_id] = max(
+                0,
+                member_season.incorrect - member_season.incorrect_dropped,
+            )
+        else:
+            incorrect[member_season.user_id] = member_season.incorrect
+    return incorrect
+
+
 def _week_rank_by_user(league, week):
     """Map user_id -> display rank for a week's standings."""
     if not week:
@@ -1259,12 +1283,20 @@ def _apply_standings_prizes(
             if include_season
             else {}
         )
+        season_incorrect = (
+            _season_incorrect_by_user(
+                league, season, league_rules, show_full_standings
+            )
+            if include_season
+            else {}
+        )
         services.payouts.apply_standings_money_columns(
             standings,
             payout_summary,
             completed_week_ranks=completed_ranks,
             projected_week_ranks=projected_ranks,
             season_ranks=season_ranks,
+            season_incorrect=season_incorrect,
             include_weeks_won=include_weeks_won,
             include_projected_week=include_projected_week,
             include_season=include_season,

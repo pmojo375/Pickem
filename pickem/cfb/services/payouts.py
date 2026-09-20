@@ -105,6 +105,17 @@ def _place_span_label(start_place: int, end_place: int, tied: bool) -> str:
     return f"{base} (tie)" if tied else base
 
 
+def _incorrect_for_last_place(row: Dict[str, Any]) -> int:
+    """Season last-place uses most incorrect picks (misses do not count)."""
+    value = row.get("incorrect")
+    if value is None:
+        value = row.get("losses")
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def attach_prize_amounts(
     standings: List[Dict[str, Any]],
     places: Optional[List[Dict[str, Any]]],
@@ -118,6 +129,11 @@ def attach_prize_amounts(
     (only pots that exist) evenly. Example: two tied for 1st with three
     paid spots split 1st+2nd; the next finisher gets 3rd. Same rule for
     ties at 2nd or lower.
+
+    Season last place (when configured) goes to the eligible row(s) with the
+    most incorrect picks — not the worst points rank. Missed games are not
+    incorrect, so skipping does not farm last place. Callers should pass
+    drop-adjusted incorrect when drop weeks are in effect.
     """
     for row in standings:
         row["prize_amount"] = None
@@ -178,13 +194,16 @@ def attach_prize_amounts(
         i = j
 
     if last_place:
-        last_rank = max((row.get("display_rank") or 0) for row in standings)
-        last_group = [
-            row
-            for row in standings
-            if row.get("display_rank") == last_rank and row.get("prize_amount") is None
+        eligible = [
+            row for row in standings if row.get("prize_amount") is None
         ]
-        if last_group:
+        if eligible:
+            max_incorrect = max(_incorrect_for_last_place(row) for row in eligible)
+            last_group = [
+                row
+                for row in eligible
+                if _incorrect_for_last_place(row) == max_incorrect
+            ]
             share = _money(_as_decimal(last_place["amount"]) / Decimal(len(last_group)))
             label = last_place["label"]
             if len(last_group) > 1:
@@ -224,9 +243,14 @@ def _prize_lookup_by_user(
     rank_by_user_id: Dict[int, int],
     places: Optional[List[Dict[str, Any]]],
     last_place: Optional[Dict[str, Any]] = None,
+    incorrect_by_user_id: Optional[Dict[int, int]] = None,
 ) -> Dict[int, Dict[str, Any]]:
     rows = [
-        {"user_id": user_id, "display_rank": rank}
+        {
+            "user_id": user_id,
+            "display_rank": rank,
+            "incorrect": (incorrect_by_user_id or {}).get(user_id, 0),
+        }
         for user_id, rank in rank_by_user_id.items()
     ]
     attach_prize_amounts(rows, places, last_place)
@@ -268,6 +292,7 @@ def apply_standings_money_columns(
     completed_week_ranks: Optional[List[Dict[int, int]]] = None,
     projected_week_ranks: Optional[Dict[int, int]] = None,
     season_ranks: Optional[Dict[int, int]] = None,
+    season_incorrect: Optional[Dict[int, int]] = None,
     include_weeks_won: bool = False,
     include_projected_week: bool = False,
     include_season: bool = False,
@@ -317,6 +342,7 @@ def apply_standings_money_columns(
             season_ranks,
             payout_summary.get("season_places"),
             payout_summary.get("last_place"),
+            incorrect_by_user_id=season_incorrect,
         )
 
     for row in standings:

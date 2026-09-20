@@ -290,7 +290,10 @@ class LeagueRules(models.Model):
         default=0.00,
         null=True,
         blank=True,
-        help_text="Optional: Percentage of season payout allocated to last place"
+        help_text=(
+            "Optional: Percentage of season payout for most incorrect picks "
+            "(drop weeks applied; missed games do not count as incorrect)"
+        ),
     )
     season_end_week = models.ForeignKey(
         'Week',
