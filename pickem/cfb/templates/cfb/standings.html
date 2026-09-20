@@ -208,6 +208,10 @@
                             {% endif %}
                         {% endif %}
                         <th class="bg-base-200">Pts</th>
+                        <th class="bg-base-200">
+                            <span class="md:hidden">Poss</span>
+                            <span class="hidden md:inline">Pts Possible</span>
+                        </th>
                         {% if show_week_standings %}
                         <th class="bg-base-200">
                             <span class="md:hidden">PB</span>
@@ -334,6 +338,7 @@
                             {% endif %}
                         {% endif %}
                         <td><span class="font-bold tabular-nums">{{ standing.points }}</span></td>
+                        <td class="tabular-nums">{{ standing.points_possible|default:standing.points }}</td>
                         {% if show_week_standings %}
                         <td class="tabular-nums">
                             {% if standing.points_behind != None %}

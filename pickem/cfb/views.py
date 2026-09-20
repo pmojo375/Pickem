@@ -983,6 +983,7 @@ def _empty_standing_row(user, week_picks_made=0, week_picks_total=0):
         "picks_made": 0,
         "win_pct": 0,
         "points": 0,
+        "points_possible": 0,
         "correct_key": 0,
         "key_picks_made": 0,
         "key_pick_pct": 0,
@@ -1420,6 +1421,9 @@ def standings_view(request):
                         key_made_by_user = _finished_key_picks_made_by_user(
                             league, week=selected_week
                         )
+                        remaining_by_user = services.scoring.remaining_points_by_user(
+                            league, league_rules, week=selected_week
+                        )
                         
                         for member_week in member_weeks:
                             total = member_week.correct + member_week.incorrect + member_week.ties
@@ -1428,6 +1432,7 @@ def standings_view(request):
                             # Finished key picks only (not max allowed / unstarted games)
                             key_picks_made = key_made_by_user.get(member_week.user_id, 0)
                             key_pick_pct = _key_pick_pct(member_week.correct_key, key_picks_made)
+                            points = member_week.points
                             
                             standings.append({
                                 'user': member_week.user,
@@ -1437,7 +1442,10 @@ def standings_view(request):
                                 'total': total,
                                 'picks_made': member_week.picks_made,
                                 'win_pct': win_pct,
-                                'points': member_week.points,
+                                'points': points,
+                                'points_possible': points + remaining_by_user.get(
+                                    member_week.user_id, 0
+                                ),
                                 'correct_key': member_week.correct_key,
                                 'key_picks_made': key_picks_made,
                                 'key_pick_pct': key_pick_pct,
@@ -1509,6 +1517,9 @@ def standings_view(request):
                 member_seasons = list(member_seasons)
                 user_ids = [ms.user_id for ms in member_seasons]
                 key_by_user_week = _finished_key_picks_by_user_week(league, active_season)
+                remaining_by_user = services.scoring.remaining_points_by_user(
+                    league, league_rules, season=active_season
+                )
                 dropped_weeks_by_user = {}
                 if not show_full_standings and league_rules and league_rules.drop_weeks > 0:
                     dropped_weeks_by_user = _dropped_week_ids_for_season_display(
@@ -1561,6 +1572,9 @@ def standings_view(request):
                         'picks_made': picks_made,
                         'win_pct': win_pct,
                         'points': points,
+                        'points_possible': points + remaining_by_user.get(
+                            member_season.user_id, 0
+                        ),
                         'correct_key': correct_key,
                         'key_picks_made': key_picks_made,
                         'key_pick_pct': key_pick_pct,
@@ -1627,6 +1641,9 @@ def standings_view(request):
             ).distinct()
             
             standings = []
+            remaining_by_user = services.scoring.remaining_points_by_user(
+                league, fallback_league_rules
+            )
             for member in members:
                 all_picks = Pick.objects.filter(user=member, league=league)
                 picks = Pick.objects.filter(user=member, league=league, is_correct__isnull=False)
@@ -1674,6 +1691,7 @@ def standings_view(request):
                     'picks_made': picks_made,
                     'win_pct': win_pct,
                     'points': points,
+                    'points_possible': points + remaining_by_user.get(member.id, 0),
                     'correct_key': correct_key,
                     'key_picks_made': key_picks_made,
                     'key_pick_pct': key_pick_pct,

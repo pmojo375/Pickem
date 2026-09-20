@@ -30,7 +30,7 @@ from cfb.models import (
 )
 from cfb.services import invites
 from cfb.services.payouts import build_payout_summary
-from cfb.services.scoring import is_pick_correct
+from cfb.services.scoring import is_pick_correct, remaining_points_by_user
 from cfb.templatetags.cfb_tags import apply_hooks, format_spread_display
 
 User = get_user_model()
@@ -1158,4 +1158,71 @@ class ContactFormTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(mail.outbox), 0)
+
+
+class RemainingPointsByUserTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("possuser", "poss@example.com", "pass")
+        self.league = League.objects.create(name="Points Possible League", created_by=self.user)
+        LeagueMembership.objects.create(league=self.league, user=self.user, role="owner")
+        self.season = Season.objects.create(year=2026, is_active=True)
+        self.week = Week.objects.create(
+            season=self.season,
+            number=1,
+            start_date=timezone.localdate(),
+            end_date=timezone.localdate() + timedelta(days=6),
+        )
+        self.rules = LeagueRules.objects.create(
+            league=self.league,
+            season=self.season,
+            points_per_correct_pick=1,
+            key_pick_extra_points=1,
+            key_picks_enabled=True,
+        )
+        teams = [
+            Team.objects.create(season=self.season, name=f"Poss Team {i}")
+            for i in range(4)
+        ]
+        self.open_game = Game.objects.create(
+            season=self.season,
+            week=self.week,
+            home_team=teams[0],
+            away_team=teams[1],
+            kickoff=timezone.now() + timedelta(days=1),
+            is_final=False,
+        )
+        self.final_game = Game.objects.create(
+            season=self.season,
+            week=self.week,
+            home_team=teams[2],
+            away_team=teams[3],
+            kickoff=timezone.now() - timedelta(days=1),
+            is_final=True,
+            home_score=21,
+            away_score=14,
+        )
+        LeagueGame.objects.create(league=self.league, game=self.open_game)
+        LeagueGame.objects.create(league=self.league, game=self.final_game)
+
+    def test_counts_key_pick_bonus_only_for_unfinished_games(self):
+        Pick.objects.create(
+            user=self.user,
+            league=self.league,
+            game=self.open_game,
+            picked_team=self.open_game.home_team,
+            is_key_pick=True,
+        )
+        Pick.objects.create(
+            user=self.user,
+            league=self.league,
+            game=self.final_game,
+            picked_team=self.final_game.home_team,
+            is_key_pick=False,
+            is_correct=True,
+        )
+
+        remaining = remaining_points_by_user(
+            self.league, self.rules, week=self.week
+        )
+        self.assertEqual(remaining, {self.user.id: 2})
 

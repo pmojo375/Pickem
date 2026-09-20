@@ -7,7 +7,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Tuple, Optional, List, Dict
 
 from django.db import transaction
-from django.db.models import Sum, Count, Q, F, Max
+from django.db.models import Case, Count, F, IntegerField, Max, Q, Sum, Value, When
 from ..models import Game, Pick, League, LeagueRules, MemberWeek, MemberSeason, Week, LeagueGame, LeagueMembership
 from .hooks import apply_forced_hook
 
@@ -121,6 +121,53 @@ def calculate_pick_points(pick: Pick, is_correct: Optional[bool], league_rules: 
         points += league_rules.key_pick_extra_points
     
     return points
+
+
+def remaining_points_by_user(
+    league: League,
+    league_rules: Optional[LeagueRules],
+    *,
+    week: Optional[Week] = None,
+    season=None,
+) -> Dict[int, int]:
+    """
+    Max points still available from unfinished picks, keyed by user_id.
+
+    Counts only non-final games the user has already picked. Key-pick bonus
+    is included when key picks are enabled for the league.
+    """
+    if league_rules is None:
+        base = 1
+        key_extra = 1
+        key_enabled = True
+    else:
+        base = league_rules.points_per_correct_pick
+        key_extra = league_rules.key_pick_extra_points
+        key_enabled = league_rules.key_picks_enabled
+
+    qs = Pick.objects.filter(league=league, game__is_final=False)
+    if week is not None:
+        qs = qs.filter(game__week=week)
+    if season is not None:
+        qs = qs.filter(
+            game__season=season,
+            game__league_selections__league=league,
+            game__league_selections__is_active=True,
+        )
+
+    key_value = base + key_extra if key_enabled else base
+    qs = qs.annotate(
+        pick_pts=Case(
+            When(is_key_pick=True, then=Value(key_value)),
+            default=Value(base),
+            output_field=IntegerField(),
+        )
+    )
+    return dict(
+        qs.values("user_id")
+        .annotate(total=Sum("pick_pts"))
+        .values_list("user_id", "total")
+    )
 
 
 def resolve_total_points_tiebreak(week_picks) -> tuple:
