@@ -22,6 +22,19 @@ def round_to_half(value: Decimal) -> Decimal:
     return apply_forced_hook(value)
 
 
+def filter_active_league_picks(qs, league: League):
+    """
+    Restrict a Pick queryset to games currently on the league slate.
+
+    Deselected LeagueGames stay in the DB (is_active=False) and their Pick
+    rows are kept for history, but they must not affect week/season scoring.
+    """
+    return qs.filter(
+        game__league_selections__league=league,
+        game__league_selections__is_active=True,
+    )
+
+
 def is_pick_correct(
     pick: Pick,
     game: Game,
@@ -145,15 +158,14 @@ def remaining_points_by_user(
         key_extra = league_rules.key_pick_extra_points
         key_enabled = league_rules.key_picks_enabled
 
-    qs = Pick.objects.filter(league=league, game__is_final=False)
+    qs = filter_active_league_picks(
+        Pick.objects.filter(league=league, game__is_final=False),
+        league,
+    )
     if week is not None:
         qs = qs.filter(game__week=week)
     if season is not None:
-        qs = qs.filter(
-            game__season=season,
-            game__league_selections__league=league,
-            game__league_selections__is_active=True,
-        )
+        qs = qs.filter(game__season=season)
 
     key_value = base + key_extra if key_enabled else base
     qs = qs.annotate(
@@ -405,13 +417,16 @@ def update_member_week_for_game(game: Game) -> int:
                 user=pick.user
             )
             
-            # Stats from all picks on final games this week.
+            # Stats from picks on final games still active on this league's slate.
             # is_correct=None on a final game means push/tie (not "ungraded").
-            user_picks = Pick.objects.filter(
-                league=league,
-                user=pick.user,
-                game__week=game.week,
-                game__is_final=True,
+            user_picks = filter_active_league_picks(
+                Pick.objects.filter(
+                    league=league,
+                    user=pick.user,
+                    game__week=game.week,
+                    game__is_final=True,
+                ),
+                league,
             )
             
             correct_count = user_picks.filter(is_correct=True).count()
@@ -701,12 +716,15 @@ def recalculate_all_member_stats(season) -> dict:
                         points=0
                     )
                     
-                    # Picks on final games this week (None is_correct = push/tie)
-                    week_picks = Pick.objects.filter(
-                        league=league,
-                        user=member.user,
-                        game__week=week,
-                        game__is_final=True,
+                    # Picks on final, still-active league games (None = push/tie)
+                    week_picks = filter_active_league_picks(
+                        Pick.objects.filter(
+                            league=league,
+                            user=member.user,
+                            game__week=week,
+                            game__is_final=True,
+                        ),
+                        league,
                     )
                     
                     if week_picks.exists():

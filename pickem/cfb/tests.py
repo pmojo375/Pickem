@@ -22,6 +22,7 @@ from cfb.models import (
     LeagueMembership,
     LeagueRules,
     MemberSeasonPayment,
+    MemberWeek,
     Pick,
     Season,
     Team,
@@ -30,7 +31,11 @@ from cfb.models import (
 )
 from cfb.services import invites
 from cfb.services.payouts import build_payout_summary
-from cfb.services.scoring import is_pick_correct, remaining_points_by_user
+from cfb.services.scoring import (
+    is_pick_correct,
+    remaining_points_by_user,
+    update_member_week_for_game,
+)
 from cfb.templatetags.cfb_tags import apply_hooks, format_spread_display
 
 User = get_user_model()
@@ -1266,4 +1271,89 @@ class RemainingPointsByUserTests(TestCase):
             self.league, self.rules, week=self.week
         )
         self.assertEqual(remaining, {self.user.id: 2})
+
+
+class InactiveLeagueGameScoringTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("inactivepick", "inactive@example.com", "pass")
+        self.league = League.objects.create(name="Inactive Slate League", created_by=self.user)
+        LeagueMembership.objects.create(league=self.league, user=self.user, role="owner")
+        self.season = Season.objects.create(year=2026, is_active=True)
+        self.week = Week.objects.create(
+            season=self.season,
+            number=1,
+            start_date=timezone.localdate(),
+            end_date=timezone.localdate() + timedelta(days=6),
+        )
+        LeagueRules.objects.create(
+            league=self.league,
+            season=self.season,
+            against_the_spread_enabled=True,
+            force_hooks=True,
+            points_per_correct_pick=1,
+        )
+        teams = [
+            Team.objects.create(season=self.season, name=f"Inactive Team {i}")
+            for i in range(4)
+        ]
+        self.active_game = Game.objects.create(
+            season=self.season,
+            week=self.week,
+            home_team=teams[0],
+            away_team=teams[1],
+            kickoff=timezone.now() - timedelta(hours=3),
+            is_final=True,
+            home_score=28,
+            away_score=21,
+        )
+        self.removed_game = Game.objects.create(
+            season=self.season,
+            week=self.week,
+            home_team=teams[2],
+            away_team=teams[3],
+            kickoff=timezone.now() - timedelta(hours=1),
+            is_final=True,
+            home_score=17,
+            away_score=14,
+        )
+        LeagueGame.objects.create(
+            league=self.league,
+            game=self.active_game,
+            locked_home_spread=Decimal("-3.5"),
+            locked_away_spread=Decimal("3.5"),
+            is_active=True,
+        )
+        LeagueGame.objects.create(
+            league=self.league,
+            game=self.removed_game,
+            locked_home_spread=Decimal("-7"),
+            locked_away_spread=Decimal("7"),
+            is_active=False,
+        )
+        Pick.objects.create(
+            user=self.user,
+            league=self.league,
+            game=self.active_game,
+            picked_team=self.active_game.home_team,
+            is_correct=None,
+        )
+        Pick.objects.create(
+            user=self.user,
+            league=self.league,
+            game=self.removed_game,
+            picked_team=self.removed_game.home_team,
+            is_correct=None,
+        )
+
+    def test_week_stats_ignore_picks_on_inactive_league_games(self):
+        update_member_week_for_game(self.active_game)
+
+        member_week = MemberWeek.objects.get(
+            league=self.league, week=self.week, user=self.user
+        )
+        self.assertEqual(member_week.picks_made, 1)
+        self.assertEqual(member_week.correct, 1)
+        self.assertEqual(member_week.incorrect, 0)
+        self.assertEqual(member_week.ties, 0)
+        self.assertEqual(member_week.points, 1)
 

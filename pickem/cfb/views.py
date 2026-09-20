@@ -283,6 +283,8 @@ def home_view(request):
                     user=request.user,
                     league=league,
                     game__kickoff__range=(start, end),
+                    game__league_selections__league=league,
+                    game__league_selections__is_active=True,
                 )
                 if active_season:
                     week_picks = week_picks.filter(game__season=active_season)
@@ -1002,15 +1004,13 @@ def _finished_key_picks_made_by_user(league, *, week=None, season=None, exclude_
         league=league,
         is_key_pick=True,
         game__is_final=True,
+        game__league_selections__league=league,
+        game__league_selections__is_active=True,
     )
     if week is not None:
         qs = qs.filter(game__week=week)
     if season is not None:
-        qs = qs.filter(
-            game__season=season,
-            game__league_selections__league=league,
-            game__league_selections__is_active=True,
-        )
+        qs = qs.filter(game__season=season)
     if exclude_week_ids:
         qs = qs.exclude(game__week_id__in=exclude_week_ids)
     return dict(
@@ -1677,18 +1677,23 @@ def standings_view(request):
                 league, fallback_league_rules
             )
             for member in members:
-                all_picks = Pick.objects.filter(user=member, league=league)
-                picks = Pick.objects.filter(user=member, league=league, is_correct__isnull=False)
+                all_picks = Pick.objects.filter(
+                    user=member,
+                    league=league,
+                    game__league_selections__league=league,
+                    game__league_selections__is_active=True,
+                )
+                picks = all_picks.filter(is_correct__isnull=False)
                 total = picks.count()
                 wins = picks.filter(is_correct=True).count()
                 losses = picks.filter(is_correct=False).count()
-                ties = picks.filter(is_correct=None).count() if picks.filter(is_correct=None).exists() else 0
+                ties = all_picks.filter(
+                    game__is_final=True, is_correct__isnull=True
+                ).count()
                 picks_made = all_picks.count()
                 
                 # Key picks on finished games only
-                finished_key_picks = Pick.objects.filter(
-                    user=member,
-                    league=league,
+                finished_key_picks = all_picks.filter(
                     is_key_pick=True,
                     game__is_final=True,
                 )
@@ -1700,11 +1705,7 @@ def standings_view(request):
                 key_pick_pct = _key_pick_pct(correct_key, key_picks_made)
                 
                 # Calculate points (1 for correct, 2 for key pick correct)
-                points = Pick.objects.filter(
-                    user=member, 
-                    league=league, 
-                    is_correct=True
-                ).aggregate(
+                points = picks.filter(is_correct=True).aggregate(
                     total_points=Sum(
                         Case(
                             When(is_key_pick=True, then=2),
