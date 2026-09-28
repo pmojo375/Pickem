@@ -73,14 +73,16 @@
                 {% with p=item.pick lg=item.league_game %}
                 <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow" 
              data-game-id="{{ p.game.id }}"
-             data-external-id="{{ p.game.external_id }}">
+             data-external-id="{{ p.game.external_id }}"
+             data-picked-side="{% if p.picked_team_id == p.game.home_team.id %}home{% else %}away{% endif %}"
+             data-locked-home-spread="{% if lg and lg.locked_home_spread is not None %}{{ lg.locked_home_spread }}{% endif %}">
             <div class="card-body p-3 md:p-4">
                 
                 <!-- Score Display -->
                 <div class="flex flex-col md:flex-row items-stretch justify-between gap-0 relative">
                     <!-- Away Team -->
                     {% team_covered_spread p.game.away_team p.game lg.locked_home_spread as away_covered %}
-                    <div class="flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-t-lg md:rounded-l-lg md:rounded-tr-none w-full md:w-auto md:flex-1 border-b md:border-b-0 md:border-r-2 border-base-300 {% if p.game.is_final and p.picked_team_id == p.game.away_team.id and p.is_correct %}bg-success/10 ring-4 ring-green-500 z-20{% elif p.game.is_final and p.picked_team_id != p.game.away_team.id and away_covered %}bg-error/10 ring-4 ring-red-500 z-20{% elif p.picked_team_id == p.game.away_team.id %}bg-primary/20 ring-2 ring-primary z-10{% else %}bg-base-200{% endif %}">
+                    <div data-team-side="away" class="flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-t-lg md:rounded-l-lg md:rounded-tr-none w-full md:w-auto md:flex-1 border-b md:border-b-0 md:border-r-2 border-base-300 {% if p.game.is_final and p.picked_team_id == p.game.away_team.id and p.is_correct %}bg-success/10 ring-4 ring-green-500 z-20{% elif p.game.is_final and p.picked_team_id != p.game.away_team.id and away_covered %}bg-error/10 ring-4 ring-red-500 z-20{% elif p.picked_team_id == p.game.away_team.id %}bg-primary/20 ring-2 ring-primary z-10{% else %}bg-base-200{% endif %}">
                         {% if p.game.away_team|team_logo_url %}
                         <img src="{% static p.game.away_team|team_logo_url %}" 
                              alt="{{ p.game.away_team.name }}" 
@@ -165,7 +167,7 @@
                     
                     <!-- Home Team -->
                     {% team_covered_spread p.game.home_team p.game lg.locked_home_spread as home_covered %}
-                    <div class="flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-b-lg md:rounded-r-lg md:rounded-bl-none w-full md:w-auto md:flex-1 {% if p.game.is_final and p.picked_team_id == p.game.home_team.id and p.is_correct %}bg-success/10 ring-4 ring-green-500 z-20{% elif p.game.is_final and p.picked_team_id != p.game.home_team.id and home_covered %}bg-error/10 ring-4 ring-red-500 z-20{% elif p.picked_team_id == p.game.home_team.id %}bg-primary/20 ring-2 ring-primary z-10{% else %}bg-base-200{% endif %}">
+                    <div data-team-side="home" class="flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-b-lg md:rounded-r-lg md:rounded-bl-none w-full md:w-auto md:flex-1 {% if p.game.is_final and p.picked_team_id == p.game.home_team.id and p.is_correct %}bg-success/10 ring-4 ring-green-500 z-20{% elif p.game.is_final and p.picked_team_id != p.game.home_team.id and home_covered %}bg-error/10 ring-4 ring-red-500 z-20{% elif p.picked_team_id == p.game.home_team.id %}bg-primary/20 ring-2 ring-primary z-10{% else %}bg-base-200{% endif %}">
                         {% if p.game.home_team|team_logo_url %}
                         <img src="{% static p.game.home_team|team_logo_url %}" 
                              alt="{{ p.game.home_team.name }}" 
@@ -255,7 +257,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/live-score-updater.js' %}?v=13"></script>
+<script src="{% static 'js/live-score-updater.js' %}?v=14"></script>
 <script>
 /**
  * Initialize Live Score Updates
