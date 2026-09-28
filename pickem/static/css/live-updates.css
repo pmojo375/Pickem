@@ -193,3 +193,70 @@
     font-weight: 500;
 }
 
+
+
+/* Provisional ATS state for the user's picked team.
+ * Deliberately uses a hatched/inset treatment so it cannot be mistaken for
+ * the solid final-result rings rendered after grading. */
+[data-team-side] {
+    position: relative;
+}
+
+.live-covering {
+    background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(16, 185, 129, 0.10) 0,
+        rgba(16, 185, 129, 0.10) 7px,
+        rgba(16, 185, 129, 0.02) 7px,
+        rgba(16, 185, 129, 0.02) 14px
+    );
+    box-shadow: inset 0 0 0 2px rgba(16, 185, 129, 0.55);
+}
+
+.live-not-covering {
+    background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(245, 158, 11, 0.09) 0,
+        rgba(245, 158, 11, 0.09) 7px,
+        rgba(245, 158, 11, 0.015) 7px,
+        rgba(245, 158, 11, 0.015) 14px
+    );
+    box-shadow: inset 0 0 0 2px rgba(245, 158, 11, 0.45);
+}
+
+.live-push {
+    background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(148, 163, 184, 0.10) 0,
+        rgba(148, 163, 184, 0.10) 7px,
+        rgba(148, 163, 184, 0.02) 7px,
+        rgba(148, 163, 184, 0.02) 14px
+    );
+    box-shadow: inset 0 0 0 2px rgba(148, 163, 184, 0.45);
+}
+
+.live-cover-status {
+    position: absolute;
+    top: 0.35rem;
+    right: 0.35rem;
+    z-index: 30;
+    padding: 0.15rem 0.4rem;
+    border-radius: 9999px;
+    font-size: 0.625rem;
+    line-height: 1rem;
+    font-weight: 800;
+    letter-spacing: 0.025em;
+    white-space: nowrap;
+    background: rgba(15, 23, 42, 0.88);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+@media (max-width: 768px) {
+    .live-cover-status {
+        top: 0.2rem;
+        right: 0.2rem;
+        font-size: 0.55rem;
+        padding: 0.1rem 0.3rem;
+    }
+}
