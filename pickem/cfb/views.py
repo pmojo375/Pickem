@@ -1338,6 +1338,7 @@ def standings_view(request):
         'is_league_manager': False,  # Will be set based on user role
         'key_picks_enabled': False,  # Will be set based on league rules
         'show_total_points_tiebreak': False,
+        'show_points_possible': False,
         'tiebreak_points_actual': None,
         'show_week_pick_status': False,
         'show_pick_status_only': False,
@@ -1538,6 +1539,18 @@ def standings_view(request):
                             behind = leader_points - row['points']
                             row['points_behind'] = behind if behind > 0 else None
 
+                        # Only show points possible while this week's slate has a
+                        # started game that is not final. Future games should not expose
+                        # the projection column before live play begins.
+                        context['show_points_possible'] = LeagueGame.objects.filter(
+                            league=league,
+                            is_active=True,
+                            game__week=selected_week,
+                            game__season=active_season,
+                            game__kickoff__lte=now,
+                            game__is_final=False,
+                        ).exists()
+
                         week_is_final = services.payouts.is_week_slate_final(
                             league, selected_week
                         )
@@ -1655,6 +1668,23 @@ def standings_view(request):
                 
                 # Sort standings by display rank (ascending)
                 standings.sort(key=lambda x: x['display_rank'])
+
+                # Points behind the season leader use the same displayed points
+                # (including any configured drop-week adjustment).
+                leader_points = standings[0]['points'] if standings else 0
+                for row in standings:
+                    behind = leader_points - row['points']
+                    row['points_behind'] = behind if behind > 0 else None
+
+                # Season points possible is useful only while a league game is
+                # actually in progress, not merely because future games remain.
+                context['show_points_possible'] = LeagueGame.objects.filter(
+                    league=league,
+                    is_active=True,
+                    game__season=active_season,
+                    game__kickoff__lte=now,
+                    game__is_final=False,
+                ).exists()
 
                 league_is_final = services.payouts.is_league_season_final(league, league_rules)
                 context['league_is_final'] = league_is_final
