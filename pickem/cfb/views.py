@@ -1207,6 +1207,7 @@ def _apply_standings_prizes(
     show_full_standings=False,
     season=None,
     preferred_projected_week=None,
+    week_only=False,
 ):
     """
     Money columns:
@@ -1244,9 +1245,26 @@ def _apply_standings_prizes(
     # Projected toggle does nothing once the season is final.
     project = bool(show_projected_prizes and not league_is_final)
 
-    include_weeks_won = bool(has_weekly and completed_weeks)
-    include_projected_week = bool(project and has_weekly and in_progress_week)
-    include_season = bool(has_season and (league_is_final or project))
+    if week_only and preferred_projected_week:
+        # Week standings should describe this week only. Do not carry forward
+        # winnings from earlier weeks or mix in season payouts.
+        selected_week_final = services.payouts.is_week_slate_final(
+            league, preferred_projected_week
+        )
+        selected_week_ranks = _week_rank_by_user(league, preferred_projected_week)
+        include_weeks_won = bool(has_weekly and selected_week_final)
+        include_projected_week = bool(
+            project and has_weekly and not selected_week_final
+        )
+        include_season = False
+        completed_weeks = [preferred_projected_week] if include_weeks_won else []
+        in_progress_week = (
+            preferred_projected_week if include_projected_week else None
+        )
+    else:
+        include_weeks_won = bool(has_weekly and completed_weeks)
+        include_projected_week = bool(project and has_weekly and in_progress_week)
+        include_season = bool(has_season and (league_is_final or project))
     show_prizes = include_weeks_won or include_projected_week or include_season
     include_total = bool(
         show_prizes
@@ -1265,7 +1283,21 @@ def _apply_standings_prizes(
     context["prize_week"] = in_progress_week if include_projected_week else None
     context["completed_prize_weeks"] = len(completed_weeks)
     context["can_project_prizes"] = bool(
-        not league_is_final and context["prizes_available"]
+        not league_is_final
+        and (
+            has_weekly
+            if week_only
+            else context["prizes_available"]
+        )
+        and (
+            not week_only
+            or (
+                preferred_projected_week
+                and not services.payouts.is_week_slate_final(
+                    league, preferred_projected_week
+                )
+            )
+        )
     )
     context["prizes_are_projected"] = project and show_prizes
 
@@ -1569,6 +1601,7 @@ def standings_view(request):
                             show_full_standings=show_full_standings,
                             season=active_season,
                             preferred_projected_week=selected_week,
+                            week_only=True,
                         )
 
                         context['standings'] = standings
