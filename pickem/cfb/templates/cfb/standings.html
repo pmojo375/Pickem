@@ -193,7 +193,7 @@
                         <th class="standings-sticky-player bg-base-200">Player</th>
                         {% if show_prizes %}
                             {% if show_weeks_won_col %}
-                            <th class="bg-base-200">Weeks $</th>
+                            <th class="bg-base-200">{% if show_week_standings %}Week ${% else %}Weeks ${% endif %}</th>
                             {% endif %}
                             {% if show_projected_week_col %}
                             <th class="bg-base-200">
