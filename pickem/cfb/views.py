@@ -1251,7 +1251,6 @@ def _apply_standings_prizes(
         selected_week_final = services.payouts.is_week_slate_final(
             league, preferred_projected_week
         )
-        selected_week_ranks = _week_rank_by_user(league, preferred_projected_week)
         include_weeks_won = bool(has_weekly and selected_week_final)
         include_projected_week = bool(
             project and has_weekly and not selected_week_final
