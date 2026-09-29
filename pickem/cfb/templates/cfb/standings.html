@@ -54,14 +54,16 @@
                         <i class="fas fa-users mr-2"></i>
                         League Picks
                     </a>
+                    {% if can_show_what_if %}
                     <a class="tab standings-tab {% if show_what_if %}tab-active{% endif %}" onclick="switchToWhatIf()">
                         <i class="fas fa-flask mr-2"></i>
                         What If
                     </a>
+                    {% endif %}
                 </div>
                 
                 <!-- Week Selector (shown when week tab, league picks, or what-if is active) -->
-                {% if available_weeks and show_week_standings or available_weeks and show_league_picks or available_weeks and show_what_if %}
+                {% if available_weeks and show_week_standings or available_weeks and show_league_picks %}
                 <div class="form-control w-full lg:w-auto">
                     <select class="select select-bordered select-primary" onchange="changeWeek(this.value)">
                         {% for week_data in available_weeks %}
@@ -1152,7 +1154,7 @@ function switchToWhatIf() {
     url.searchParams.delete('prizes');
     url.searchParams.delete('league_picks');
     url.searchParams.set('what_if', 'true');
-    url.searchParams.set('week', 'latest');
+    url.searchParams.delete('week');
     window.location.href = url.toString();
 }
 
