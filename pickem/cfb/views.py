@@ -1361,6 +1361,7 @@ def standings_view(request):
         'show_week_standings': False,  # Will be set later based on logic
         'show_league_picks': show_league_picks,
         'show_what_if': show_what_if,
+        'can_show_what_if': False,
         'what_if_games': [],
         'what_if_endpoint': reverse('standings_what_if'),
         'show_unstarted_picks': show_unstarted_picks,
@@ -1443,6 +1444,33 @@ def standings_view(request):
                         })
             
             context['available_weeks'] = available_weeks
+
+            # What If is only useful for the calendar-active week while at
+            # least one league game has started and is still unfinished.
+            active_week = services.schedule.get_current_week(
+                season=active_season, now=now
+            )
+            can_show_what_if = bool(
+                active_week
+                and LeagueGame.objects.filter(
+                    league=league,
+                    is_active=True,
+                    game__week=active_week,
+                    game__season=active_season,
+                    game__kickoff__lte=now,
+                    game__is_final=False,
+                ).exists()
+            )
+            context['can_show_what_if'] = can_show_what_if
+
+            # Ignore stale/manual What If URLs outside its live window.
+            if show_what_if:
+                if can_show_what_if:
+                    week_id = active_week.id
+                else:
+                    show_what_if = False
+                    context['show_what_if'] = False
+                    week_id = None
             
             # Handle 'latest' week parameter or validate week exists
             if week_id == 'latest' and available_weeks:
@@ -1468,11 +1496,7 @@ def standings_view(request):
                     latest_week_data = available_weeks[-1]
                     week_id = latest_week_data['week'].id
 
-            # What If requires a week; default to latest if only what_if is set
-            if show_what_if and not week_id and available_weeks:
-                unfinished = [w for w in available_weeks if not w['all_games_final']]
-                week_id = (unfinished[-1] if unfinished else available_weeks[-1])['week'].id
-            
+
             # Handle week standings vs season standings vs league picks vs what-if
             if week_id:
                 # Get week standings
