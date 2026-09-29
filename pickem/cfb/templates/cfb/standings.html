@@ -212,16 +212,16 @@
                             {% endif %}
                         {% endif %}
                         <th class="bg-base-200">Pts</th>
+                        {% if show_points_possible %}
                         <th class="bg-base-200">
                             <span class="md:hidden">Poss</span>
                             <span class="hidden md:inline">Pts Possible</span>
                         </th>
-                        {% if show_week_standings %}
+                        {% endif %}
                         <th class="bg-base-200">
                             <span class="md:hidden">PB</span>
                             <span class="hidden md:inline">Pts Behind</span>
                         </th>
-                        {% endif %}
                         {% if show_total_points_tiebreak %}
                         <th class="bg-base-200">
                             <span class="md:hidden">Pred</span>
@@ -342,8 +342,9 @@
                             {% endif %}
                         {% endif %}
                         <td><span class="font-bold tabular-nums">{{ standing.points }}</span></td>
+                        {% if show_points_possible %}
                         <td class="tabular-nums">{{ standing.points_possible|default:standing.points }}</td>
-                        {% if show_week_standings %}
+                        {% endif %}
                         <td class="tabular-nums">
                             {% if standing.points_behind != None %}
                             {{ standing.points_behind }}
@@ -351,7 +352,6 @@
                             <span class="text-base-content/50">—</span>
                             {% endif %}
                         </td>
-                        {% endif %}
                         {% if show_total_points_tiebreak %}
                         <td class="tabular-nums">
                             {% if standing.points_guess != None %}
