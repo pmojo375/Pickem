@@ -344,6 +344,13 @@ class LiveScoreUpdater {
                     }
                 }
             }
+
+            // Keep the user's provisional ATS result in sync with every poll.
+            // This is intentionally separate from final pick grading.
+            const gameElement = document.querySelector(`[data-game-id="${game.id}"]`);
+            if (gameElement) {
+                this.updateLiveCoverIndicator(gameElement, game);
+            }
         });
         
         // Update live game state
@@ -517,6 +524,74 @@ class LiveScoreUpdater {
         window.scrollTo(0, scrollY);
     }
     
+    /**
+     * Show the user's provisional ATS state while a game is live.
+     * Final grading remains server-rendered and visually distinct.
+     */
+    updateLiveCoverIndicator(gameElement, game) {
+        const pickedSide = gameElement.getAttribute('data-picked-side');
+        const spreadValue = gameElement.getAttribute('data-locked-home-spread');
+        const teamElements = gameElement.querySelectorAll('[data-team-side]');
+
+        // Always clear stale live state first (including when a game becomes final).
+        teamElements.forEach(teamElement => {
+            teamElement.classList.remove('live-covering', 'live-not-covering', 'live-push');
+            const oldBadge = teamElement.querySelector('[data-live-cover-status]');
+            if (oldBadge) {
+                oldBadge.remove();
+            }
+        });
+
+        if (
+            game.is_final ||
+            !this.isGameLive(game) ||
+            (pickedSide !== 'home' && pickedSide !== 'away') ||
+            spreadValue === '' ||
+            game.home_score === null || game.home_score === undefined ||
+            game.away_score === null || game.away_score === undefined
+        ) {
+            return;
+        }
+
+        const spread = Number(spreadValue);
+        const homeScore = Number(game.home_score);
+        const awayScore = Number(game.away_score);
+        if (![spread, homeScore, awayScore].every(Number.isFinite)) {
+            return;
+        }
+
+        // Same convention used by server-side pick grading:
+        // home covers when (home - away) > -homeSpread.
+        const atsMargin = (homeScore - awayScore) + spread;
+        const pickedMargin = pickedSide === 'home' ? atsMargin : -atsMargin;
+        const pickedElement = gameElement.querySelector(`[data-team-side="${pickedSide}"]`);
+        if (!pickedElement) {
+            return;
+        }
+
+        let stateClass;
+        let label;
+        if (pickedMargin > 0) {
+            stateClass = 'live-covering';
+            label = 'LIVE · COVERING';
+        } else if (pickedMargin < 0) {
+            stateClass = 'live-not-covering';
+            label = 'LIVE · NOT COVERING';
+        } else {
+            stateClass = 'live-push';
+            label = 'LIVE · PUSH';
+        }
+
+        pickedElement.classList.add(stateClass);
+
+        const badge = document.createElement('span');
+        badge.setAttribute('data-live-cover-status', '');
+        badge.className = 'live-cover-status';
+        badge.textContent = label;
+        badge.title = 'Provisional result using the current score and locked spread';
+        pickedElement.appendChild(badge);
+    }
+
     /**
      * Show/hide football icon for which team has possession
      */
