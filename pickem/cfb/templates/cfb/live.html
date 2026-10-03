@@ -264,13 +264,13 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/live-score-updater.js' %}?v=15"></script>
+<script src="{% static 'js/live-score-updater.js' %}?v=17"></script>
 <script>
 /**
  * Initialize Live Score Updates
  *
- * Inline score helpers (not cacheable separately) so a stale live-score-updater.js
- * cannot turn a real 0 into "-" / "—".
+ * Inline helpers (not cacheable separately) so a stale live-score-updater.js
+ * cannot wipe scores or down/distance after the first poll.
  */
 (function() {
     'use strict';
@@ -317,6 +317,52 @@
             setTimeout(function() {
                 scoreElement.classList.remove('score-pulse');
             }, (self.config && self.config.highlightDuration) || 2000);
+        };
+
+        // Stale JS rebuilds the status block without down/distance and wipes SSR.
+        // Wrap updateGameStatus so server-rendered (or API) down info survives.
+        var _origUpdateGameStatus = LiveScoreUpdater.prototype.updateGameStatus;
+        LiveScoreUpdater.prototype.updateGameStatus = function(gameElement, game) {
+            var statusElement = gameElement && gameElement.querySelector('[data-game-status]');
+            var savedDown = null;
+            if (statusElement && !(game && game.is_final)) {
+                var existing = statusElement.querySelector('[data-down-distance]');
+                if (existing && !existing.classList.contains('hidden') && (existing.textContent || '').trim()) {
+                    savedDown = existing.outerHTML;
+                }
+            }
+
+            if (typeof _origUpdateGameStatus === 'function') {
+                _origUpdateGameStatus.call(this, gameElement, game);
+            }
+
+            if (!statusElement || (game && game.is_final)) {
+                return;
+            }
+
+            // Prefer API value when present; otherwise put SSR/prior text back.
+            // Empty API (between plays or stale poll) must not blank the UI.
+            if (game && game.down_distance_text) {
+                if (typeof this.updateDownDistance === 'function') {
+                    this.updateDownDistance(gameElement, game);
+                }
+                return;
+            }
+            if (!savedDown) {
+                return;
+            }
+            var after = statusElement.querySelector('[data-down-distance]');
+            if (after) {
+                after.outerHTML = savedDown;
+            } else {
+                var clockEl = statusElement.querySelector('.text-sm.md\\:text-base.font-semibold.text-warning');
+                var center = statusElement.querySelector('.text-center');
+                if (clockEl) {
+                    clockEl.insertAdjacentHTML('afterend', savedDown);
+                } else if (center) {
+                    center.insertAdjacentHTML('beforeend', savedDown);
+                }
+            }
         };
     }
     
@@ -413,7 +459,7 @@
     // Expose updater globally for debugging
     window.liveScoreUpdater = updater;
     
-    console.log('[LiveScores] Auto-update active (score guard v15)');
+    console.log('[LiveScores] Auto-update active (score guard v17)');
     
     } catch (error) {
         console.error('[LiveScores] Initialization error:', error);

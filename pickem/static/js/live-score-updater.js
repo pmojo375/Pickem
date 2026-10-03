@@ -276,22 +276,18 @@ class LiveScoreUpdater {
             const existingGame = this.state.gamesData.get(game.id);
             
             if (!existingGame) {
-                // First sight of this game: store state, but do NOT rewrite scores.
-                // The server already rendered the correct 0/— via display_score; an
-                // immediate client rewrite was turning real 0s into "—" (falsy/null
-                // handling and kickoff edge cases). Only sync live status fields here.
+                // First sight of this game: store state, but do NOT rebuild the status
+                // block. SSR already has quarter/clock/down-distance; a full
+                // updateGameStatus here was wiping down/distance a second after load
+                // (especially with a stale cached live-score-updater.js).
                 this.state.gamesData.set(game.id, game);
 
                 const initialChanges = [];
-                if (game.quarter != null && game.quarter !== '') {
-                    initialChanges.push({ type: 'quarter', old: null, new: game.quarter });
-                }
-                if (game.clock) {
-                    initialChanges.push({ type: 'clock', old: null, new: game.clock });
-                }
                 if (game.possession) {
                     initialChanges.push({ type: 'possession', old: null, new: game.possession });
                 }
+                // Only patch down/distance when the API has a value; never clear SSR
+                // on first poll if the API field is empty/missing.
                 if (game.down_distance_text || game.ball_on) {
                     initialChanges.push({
                         type: 'down_distance',
@@ -642,7 +638,9 @@ class LiveScoreUpdater {
         const ballOn = (!game.is_final && game.ball_on) ? game.ball_on : '';
 
         if (!downText) {
-            if (el) {
+            // Final → clear. Otherwise keep the last shown down/distance so a
+            // status rebuild / empty poll cannot blank the SSR text.
+            if (game.is_final && el) {
                 el.textContent = '';
                 el.classList.add('hidden');
                 el.removeAttribute('title');
@@ -654,7 +652,7 @@ class LiveScoreUpdater {
             // Insert under the clock when the status block was rebuilt without it
             el = document.createElement('div');
             el.setAttribute('data-down-distance', '');
-            el.className = 'text-xs font-semibold text-base-content/80 mt-1';
+            el.className = 'text-xs font-bold text-warning/90 mt-1';
             const clockEl = statusElement.querySelector('.text-sm.md\\:text-base.font-semibold.text-warning');
             const center = statusElement.querySelector('.text-center');
             if (clockEl && clockEl.parentElement) {
@@ -666,11 +664,12 @@ class LiveScoreUpdater {
             }
         }
 
+        el.className = 'text-xs font-bold text-warning/90 mt-1';
         el.textContent = '';
         el.appendChild(document.createTextNode(downText));
         if (ballOn) {
             const spot = document.createElement('span');
-            spot.className = 'text-base-content/50 font-normal';
+            spot.className = 'opacity-70 font-semibold';
             spot.textContent = ` · ${ballOn}`;
             el.appendChild(spot);
         }
@@ -783,6 +782,18 @@ class LiveScoreUpdater {
             // Save the entire spread container (including the mt-2 wrapper)
             spreadBadgeHTML = spreadContainer.outerHTML;
         }
+
+        // Keep SSR / prior down-distance if this rebuild would otherwise drop it
+        // (stale JS build, or API briefly missing the field).
+        let preservedDownHTML = '';
+        const existingDown = statusElement.querySelector('[data-down-distance]');
+        if (
+            existingDown &&
+            !existingDown.classList.contains('hidden') &&
+            (existingDown.textContent || '').trim()
+        ) {
+            preservedDownHTML = existingDown.outerHTML;
+        }
         
         let statusHTML = '';
         
@@ -796,9 +807,14 @@ ${spreadBadgeHTML}`;
         } else if (game.quarter != null && game.quarter !== '') {
             const downText = game.down_distance_text || '';
             const ballOn = game.ball_on || '';
-            const downHTML = downText
-                ? `<div class="text-xs font-semibold text-base-content/80 mt-1" data-down-distance title="${ballOn ? `${downText} at ${ballOn}` : downText}">${downText}${ballOn ? `<span class="text-base-content/50 font-normal"> · ${ballOn}</span>` : ''}</div>`
-                : `<div class="text-xs font-semibold text-base-content/80 mt-1 hidden" data-down-distance></div>`;
+            let downHTML;
+            if (downText) {
+                downHTML = `<div class="text-xs font-bold text-warning/90 mt-1" data-down-distance title="${ballOn ? `${downText} at ${ballOn}` : downText}">${downText}${ballOn ? `<span class="opacity-70 font-semibold"> · ${ballOn}</span>` : ''}</div>`;
+            } else if (preservedDownHTML) {
+                downHTML = preservedDownHTML;
+            } else {
+                downHTML = `<div class="text-xs font-bold text-warning/90 mt-1 hidden" data-down-distance></div>`;
+            }
             statusHTML = `
 <div class="text-center">
     <div class="text-xl md:text-2xl font-bold text-warning animate-pulse mb-1">
