@@ -546,9 +546,9 @@ class LiveScoreUpdater {
     }
     
     /**
-     * Hatch whichever side is covering the locked spread while a game is live.
-     * A picked covering team keeps its highlight; any other covering team
-     * keeps the plain unpicked color. Final grading stays server-rendered.
+     * While a game is live, mark the team covering the locked spread with a
+     * text chip. The purple pick highlight stays on the picked team either way.
+     * Final green and red rings stay server-rendered.
      */
     updateLiveCoverIndicator(gameElement, game) {
         const spreadValue = gameElement.getAttribute('data-locked-home-spread');
@@ -591,13 +591,11 @@ class LiveScoreUpdater {
             return;
         }
 
-        coveringElement.classList.add('live-covering');
-
         const badge = document.createElement('span');
         badge.setAttribute('data-live-cover-status', '');
         badge.className = 'live-cover-status';
-        badge.textContent = 'LIVE · COVERING';
-        badge.title = 'This team is covering the locked spread at the current score';
+        badge.textContent = 'COVERING';
+        badge.title = 'Covering the locked spread at the current score';
         // Info column keeps the chip under the team name, clear of the score
         // on short mobile rows.
         const info = coveringElement.querySelector('[data-team-info]');

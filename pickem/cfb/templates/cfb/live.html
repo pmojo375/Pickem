@@ -7,18 +7,17 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/live-updates.css' %}">
 <style>
-    /* Hatch only. A stale stylesheet still paints the covering row as an
-       unpicked card and removes the pick ring. */
-    [data-team-side].live-covering {
-        background-image: repeating-linear-gradient(
-            -45deg,
-            rgba(255, 255, 255, 0.07) 0,
-            rgba(255, 255, 255, 0.07) 7px,
-            rgba(255, 255, 255, 0) 7px,
-            rgba(255, 255, 255, 0) 14px
-        );
+    /* A stale stylesheet still draws a green outline on the covering team.
+       Purple stays the pick. Covering is the text chip only. */
+    [data-team-side].live-covering,
+    [data-team-side].live-not-covering,
+    [data-team-side].live-push {
+        background-image: none;
+        box-shadow: none;
     }
-    [data-team-side].ring-primary.live-covering {
+    [data-team-side].ring-primary.live-covering,
+    [data-team-side].ring-primary.live-not-covering,
+    [data-team-side].ring-primary.live-push {
         background-color: var(--fallback-p, oklch(var(--p) / 0.2));
         box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow, 0 0 #0000);
     }
@@ -345,8 +344,8 @@
             return null; // leave server-rendered value alone
         };
 
-        // Cached live-score-updater.js still paints the pick green or amber.
-        // Replace it here so the hatch and label follow the covering team.
+        // Cached live-score-updater.js still paints a green or amber outline.
+        // Covering is a text chip. The purple highlight stays on the pick.
         LiveScoreUpdater.prototype.updateLiveCoverIndicator = function(gameElement, game) {
             if (!gameElement) {
                 return;
@@ -388,12 +387,11 @@
                 return;
             }
 
-            coveringElement.classList.add('live-covering');
             var badge = document.createElement('span');
             badge.setAttribute('data-live-cover-status', '');
             badge.className = 'live-cover-status';
-            badge.textContent = 'LIVE · COVERING';
-            badge.title = 'This team is covering the locked spread at the current score';
+            badge.textContent = 'COVERING';
+            badge.title = 'Covering the locked spread at the current score';
             var info = coveringElement.querySelector('[data-team-info]');
             (info || coveringElement).appendChild(badge);
         };

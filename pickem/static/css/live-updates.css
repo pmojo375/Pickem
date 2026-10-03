@@ -195,26 +195,24 @@
 
 
 
-/* Provisional cover mark for whichever team is covering right now.
- * The hatch sits on that team's existing color: the pick highlight when
- * you picked them, the plain unpicked color when you did not. */
+/* Live games use one color and one word.
+ * Purple is only "your pick." The COVERING chip is only "who is covering."
+ * Green and red stay reserved for the final result. */
 [data-team-side] {
     position: relative;
 }
 
-[data-team-side].live-covering {
-    background-image: repeating-linear-gradient(
-        -45deg,
-        rgba(255, 255, 255, 0.07) 0,
-        rgba(255, 255, 255, 0.07) 7px,
-        rgba(255, 255, 255, 0) 7px,
-        rgba(255, 255, 255, 0) 14px
-    );
+/* Drop a cached green or amber outline. Purple comes back only on the pick. */
+[data-team-side].live-covering,
+[data-team-side].live-not-covering,
+[data-team-side].live-push {
+    background-image: none;
+    box-shadow: none;
 }
 
-/* A cached stylesheet may flatten every covering row to the unpicked
-   color and drop its ring. Put the pick highlight back. */
-[data-team-side].ring-primary.live-covering {
+[data-team-side].ring-primary.live-covering,
+[data-team-side].ring-primary.live-not-covering,
+[data-team-side].ring-primary.live-push {
     background-color: var(--fallback-p, oklch(var(--p) / 0.2));
     box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow, 0 0 #0000);
 }
