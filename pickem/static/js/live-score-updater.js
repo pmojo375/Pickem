@@ -546,17 +546,18 @@ class LiveScoreUpdater {
     }
     
     /**
-     * While a game is live, mark the team covering the locked spread with a
-     * text chip. The purple pick highlight stays on the picked team either way.
-     * Final green and red rings stay server-rendered.
+     * While a game is live, stripe the team that is covering.
+     * Green stripes when that team is the user's pick, red stripes otherwise.
+     * The purple pick highlight stays in place either way.
      */
     updateLiveCoverIndicator(gameElement, game) {
+        const pickedSide = gameElement.getAttribute('data-picked-side');
         const spreadValue = gameElement.getAttribute('data-locked-home-spread');
         const teamElements = gameElement.querySelectorAll('[data-team-side]');
 
         // Always clear stale live state first (including when a game becomes final).
         teamElements.forEach(teamElement => {
-            teamElement.classList.remove('live-covering', 'live-not-covering', 'live-push');
+            teamElement.classList.remove('live-covering', 'live-opponent-covering', 'live-not-covering', 'live-push');
             const oldBadge = teamElement.querySelector('[data-live-cover-status]');
             if (oldBadge) {
                 oldBadge.remove();
@@ -590,6 +591,10 @@ class LiveScoreUpdater {
         if (!coveringElement) {
             return;
         }
+
+        coveringElement.classList.add(
+            coveringSide === pickedSide ? 'live-covering' : 'live-opponent-covering'
+        );
 
         const badge = document.createElement('span');
         badge.setAttribute('data-live-cover-status', '');

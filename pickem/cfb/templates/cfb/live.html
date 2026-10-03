@@ -7,17 +7,29 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/live-updates.css' %}">
 <style>
-    /* A stale stylesheet still draws a green outline on the covering team.
-       Purple stays the pick. Covering is the text chip only. */
-    [data-team-side].live-covering,
-    [data-team-side].live-not-covering,
-    [data-team-side].live-push {
-        background-image: none;
+    /* Stripes mark who is covering. Transparent gaps leave the purple pick
+       highlight, or the plain unpicked fill, visible underneath. */
+    [data-team-side].live-covering {
+        background-image: repeating-linear-gradient(
+            -45deg,
+            rgba(34, 197, 94, 0.55) 0,
+            rgba(34, 197, 94, 0.55) 8px,
+            transparent 8px,
+            transparent 16px
+        );
+    }
+    [data-team-side].live-opponent-covering {
+        background-image: repeating-linear-gradient(
+            -45deg,
+            rgba(239, 68, 68, 0.5) 0,
+            rgba(239, 68, 68, 0.5) 8px,
+            transparent 8px,
+            transparent 16px
+        );
         box-shadow: none;
     }
     [data-team-side].ring-primary.live-covering,
-    [data-team-side].ring-primary.live-not-covering,
-    [data-team-side].ring-primary.live-push {
+    [data-team-side].ring-primary.live-opponent-covering {
         background-color: var(--fallback-p, oklch(var(--p) / 0.2));
         box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow, 0 0 #0000);
     }
@@ -344,16 +356,18 @@
             return null; // leave server-rendered value alone
         };
 
-        // Cached live-score-updater.js still paints a green or amber outline.
-        // Covering is a text chip. The purple highlight stays on the pick.
+        // Cached live-score-updater.js still paints the old outline.
+        // Green stripes mean your pick is covering. Red stripes mean the
+        // other team is. The purple highlight stays on the pick.
         LiveScoreUpdater.prototype.updateLiveCoverIndicator = function(gameElement, game) {
             if (!gameElement) {
                 return;
             }
+            var pickedSide = gameElement.getAttribute('data-picked-side');
             var spreadValue = gameElement.getAttribute('data-locked-home-spread');
             var teamElements = gameElement.querySelectorAll('[data-team-side]');
             teamElements.forEach(function(teamElement) {
-                teamElement.classList.remove('live-covering', 'live-not-covering', 'live-push');
+                teamElement.classList.remove('live-covering', 'live-opponent-covering', 'live-not-covering', 'live-push');
                 var oldBadge = teamElement.querySelector('[data-live-cover-status]');
                 if (oldBadge) {
                     oldBadge.remove();
@@ -386,6 +400,10 @@
             if (!coveringElement) {
                 return;
             }
+
+            coveringElement.classList.add(
+                coveringSide === pickedSide ? 'live-covering' : 'live-opponent-covering'
+            );
 
             var badge = document.createElement('span');
             badge.setAttribute('data-live-cover-status', '');

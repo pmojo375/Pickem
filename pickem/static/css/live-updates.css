@@ -195,24 +195,37 @@
 
 
 
-/* Live games use one color and one word.
- * Purple is only "your pick." The COVERING chip is only "who is covering."
- * Green and red stay reserved for the final result. */
+/* Live stripes say who is covering. Gaps stay transparent so the pick
+   highlight (purple) or the plain unpicked fill still shows through.
+   Solid green and red rings stay reserved for the final result. */
 [data-team-side] {
     position: relative;
 }
 
-/* Drop a cached green or amber outline. Purple comes back only on the pick. */
-[data-team-side].live-covering,
-[data-team-side].live-not-covering,
-[data-team-side].live-push {
-    background-image: none;
+[data-team-side].live-covering {
+    background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(34, 197, 94, 0.55) 0,
+        rgba(34, 197, 94, 0.55) 8px,
+        transparent 8px,
+        transparent 16px
+    );
+}
+
+[data-team-side].live-opponent-covering {
+    background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(239, 68, 68, 0.5) 0,
+        rgba(239, 68, 68, 0.5) 8px,
+        transparent 8px,
+        transparent 16px
+    );
     box-shadow: none;
 }
 
+/* A cached outline must not replace the purple pick ring. */
 [data-team-side].ring-primary.live-covering,
-[data-team-side].ring-primary.live-not-covering,
-[data-team-side].ring-primary.live-push {
+[data-team-side].ring-primary.live-opponent-covering {
     background-color: var(--fallback-p, oklch(var(--p) / 0.2));
     box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow, 0 0 #0000);
 }
