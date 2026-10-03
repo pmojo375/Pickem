@@ -365,6 +365,17 @@ STATICFILES_DIRS = [
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# Hashed filenames (live-updates.<hash>.css) come from staticfiles.json,
+# written by collectstatic. Nginx must serve STATIC_ROOT.
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "pickem.storage.HashedStaticFilesStorage",
+    },
+}
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
