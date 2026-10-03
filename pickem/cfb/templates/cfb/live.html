@@ -6,6 +6,43 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/live-updates.css' %}">
+<style>
+    /* Phone team rows are short. A stale live-updates.css still pins the
+       cover chip to the top-right, on top of the score. This override ships
+       with the page so that cached stylesheet cannot put it back. */
+    @media (max-width: 767px) {
+        [data-team-info] > .live-cover-status {
+            position: static;
+            top: auto;
+            right: auto;
+            left: auto;
+            display: inline-block;
+            margin-top: 0.3rem;
+            max-width: 100%;
+            white-space: normal;
+            z-index: auto;
+            font-size: 0.55rem;
+            padding: 0.1rem 0.3rem;
+        }
+        [data-team-side]:has(> .live-cover-status) {
+            padding-top: 1.9rem;
+        }
+        [data-team-side] > .live-cover-status {
+            position: absolute;
+            top: 0.22rem;
+            left: 0.4rem;
+            right: auto;
+            margin-top: 0;
+            z-index: 1;
+            max-width: calc(100% - 0.8rem);
+            white-space: nowrap;
+        }
+        [data-team-side] [data-score] {
+            position: relative;
+            z-index: 2;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -88,7 +125,7 @@
                              alt="{{ p.game.away_team.name }}" 
                              class="team-logo w-10 h-10 md:w-12 md:h-12 object-contain flex-shrink-0" />
                         {% endif %}
-                        <div class="flex-1 min-w-0">
+                        <div class="flex-1 min-w-0" data-team-info>
                             <div class="flex items-center gap-1 mb-1">
                                 {% if team_rankings and p.game.away_team.id in team_rankings %}
                                     <span class="badge badge-warning badge-xs font-bold mr-1">#{{ team_rankings|get_item:p.game.away_team.id }}</span>
@@ -180,7 +217,7 @@
                              alt="{{ p.game.home_team.name }}" 
                              class="team-logo w-10 h-10 md:w-12 md:h-12 object-contain flex-shrink-0" />
                         {% endif %}
-                        <div class="flex-1 min-w-0">
+                        <div class="flex-1 min-w-0" data-team-info>
                             <div class="flex items-center gap-1 mb-1">
                                 {% if team_rankings and p.game.home_team.id in team_rankings %}
                                     <span class="badge badge-warning badge-xs font-bold mr-1">#{{ team_rankings|get_item:p.game.home_team.id }}</span>
@@ -291,6 +328,25 @@
                 return '0';
             }
             return null; // leave server-rendered value alone
+        };
+
+        // Move the cover chip under the team name. A cached updater still
+        // appends it to the team row, where it covers the score on a phone.
+        var placeCoverBadge = LiveScoreUpdater.prototype.updateLiveCoverIndicator;
+        LiveScoreUpdater.prototype.updateLiveCoverIndicator = function(gameElement, game) {
+            if (typeof placeCoverBadge === 'function') {
+                placeCoverBadge.call(this, gameElement, game);
+            }
+            if (!gameElement) {
+                return;
+            }
+            gameElement.querySelectorAll('[data-live-cover-status]').forEach(function(badge) {
+                var team = badge.closest('[data-team-side]');
+                var info = team && team.querySelector('[data-team-info]');
+                if (info && badge.parentElement !== info) {
+                    info.appendChild(badge);
+                }
+            });
         };
 
         LiveScoreUpdater.prototype.updateScore = function(gameElement, team, newScore, game) {

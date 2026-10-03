@@ -610,7 +610,10 @@ class LiveScoreUpdater {
         badge.className = 'live-cover-status';
         badge.textContent = label;
         badge.title = 'Provisional result using the current score and locked spread';
-        pickedElement.appendChild(badge);
+        // Info column keeps the chip under the team name, clear of the score
+        // on short mobile rows.
+        const info = pickedElement.querySelector('[data-team-info]');
+        (info || pickedElement).appendChild(badge);
     }
 
     /**

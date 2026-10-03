@@ -236,27 +236,64 @@
 }
 
 .live-cover-status {
-    position: absolute;
-    top: 0.35rem;
-    right: 0.35rem;
-    z-index: 30;
+    display: inline-block;
+    margin-top: 0.35rem;
+    max-width: 100%;
     padding: 0.15rem 0.4rem;
     border-radius: 9999px;
     font-size: 0.625rem;
-    line-height: 1rem;
+    line-height: 1.15;
     font-weight: 800;
     letter-spacing: 0.025em;
-    white-space: nowrap;
     background: rgba(15, 23, 42, 0.88);
     color: white;
     border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
-@media (max-width: 768px) {
-    .live-cover-status {
-        top: 0.2rem;
-        right: 0.2rem;
+/* Desktop team rows stretch to the status column, so a corner chip
+   sits above the vertically centered score. */
+@media (min-width: 768px) {
+    [data-team-side] > .live-cover-status {
+        position: absolute;
+        top: 0.35rem;
+        right: 0.35rem;
+        z-index: 30;
+        margin-top: 0;
+        white-space: nowrap;
+    }
+}
+
+/* Phone rows are only as tall as the team line, so a top-right chip
+   covers the score. Keep it in the info column, under the team name. */
+@media (max-width: 767px) {
+    [data-team-info] > .live-cover-status {
+        position: static;
+        white-space: normal;
         font-size: 0.55rem;
         padding: 0.1rem 0.3rem;
+    }
+
+    /* Updater builds that still append the chip to the team row:
+       park it in a strip above the score. */
+    [data-team-side]:has(> .live-cover-status) {
+        padding-top: 1.9rem;
+    }
+
+    [data-team-side] > .live-cover-status {
+        position: absolute;
+        top: 0.22rem;
+        left: 0.4rem;
+        right: auto;
+        z-index: 1;
+        margin-top: 0;
+        max-width: calc(100% - 0.8rem);
+        font-size: 0.55rem;
+        padding: 0.1rem 0.3rem;
+        white-space: nowrap;
+    }
+
+    [data-team-side] [data-score] {
+        position: relative;
+        z-index: 2;
     }
 }
