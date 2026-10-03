@@ -7,10 +7,9 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/live-updates.css' %}">
 <style>
-    /* Covering team uses the unpicked card color. A stale stylesheet still
-       paints the pick green or amber. */
+    /* Hatch only. A stale stylesheet still paints the covering row as an
+       unpicked card and removes the pick ring. */
     [data-team-side].live-covering {
-        background-color: var(--fallback-b2, oklch(var(--b2) / 1));
         background-image: repeating-linear-gradient(
             -45deg,
             rgba(255, 255, 255, 0.07) 0,
@@ -18,7 +17,10 @@
             rgba(255, 255, 255, 0) 7px,
             rgba(255, 255, 255, 0) 14px
         );
-        box-shadow: none;
+    }
+    [data-team-side].ring-primary.live-covering {
+        background-color: var(--fallback-p, oklch(var(--p) / 0.2));
+        box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow, 0 0 #0000);
     }
     /* Phone team rows are short. A stale live-updates.css still pins the
        cover chip to the top-right, on top of the score. This override ships

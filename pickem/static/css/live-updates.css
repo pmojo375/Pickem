@@ -196,14 +196,13 @@
 
 
 /* Provisional cover mark for whichever team is covering right now.
- * Uses the unpicked-team color (base-200) plus a hatch, so it stays distinct
- * from both the pick highlight and the solid final-result rings. */
+ * The hatch sits on that team's existing color: the pick highlight when
+ * you picked them, the plain unpicked color when you did not. */
 [data-team-side] {
     position: relative;
 }
 
 [data-team-side].live-covering {
-    background-color: var(--fallback-b2, oklch(var(--b2) / 1));
     background-image: repeating-linear-gradient(
         -45deg,
         rgba(255, 255, 255, 0.07) 0,
@@ -211,7 +210,13 @@
         rgba(255, 255, 255, 0) 7px,
         rgba(255, 255, 255, 0) 14px
     );
-    box-shadow: none;
+}
+
+/* A cached stylesheet may flatten every covering row to the unpicked
+   color and drop its ring. Put the pick highlight back. */
+[data-team-side].ring-primary.live-covering {
+    background-color: var(--fallback-p, oklch(var(--p) / 0.2));
+    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow, 0 0 #0000);
 }
 
 .live-cover-status {

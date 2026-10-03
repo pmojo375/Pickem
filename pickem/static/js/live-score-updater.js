@@ -547,8 +547,8 @@ class LiveScoreUpdater {
     
     /**
      * Hatch whichever side is covering the locked spread while a game is live.
-     * The chip uses the unpicked-team color, not the pick highlight.
-     * Final grading remains server-rendered and visually distinct.
+     * A picked covering team keeps its highlight; any other covering team
+     * keeps the plain unpicked color. Final grading stays server-rendered.
      */
     updateLiveCoverIndicator(gameElement, game) {
         const spreadValue = gameElement.getAttribute('data-locked-home-spread');
