@@ -500,10 +500,7 @@ class LiveScoreUpdater {
         
         // Save scroll position
         const scrollY = window.scrollY;
-        
-        // Check if game just became final
-        const gameBecameFinal = changes.some(c => c.type === 'is_final' && c.new === true);
-        
+
         changes.forEach(change => {
             switch (change.type) {
                 case 'home_score':
@@ -536,13 +533,193 @@ class LiveScoreUpdater {
             }
         });
         
-        // If game just became final, show notification
-        if (gameBecameFinal) {
-            this.showGameFinalNotification(game);
+        // Graded colors, cover marks, and the winner trophy paint on the card.
+        if (game.is_final) {
+            this.applyGradedResult(gameElement, game);
         }
-        
+
         // Restore scroll position
         window.scrollTo(0, scrollY);
+    }
+
+    /**
+     * Whole-number spreads pick up a half point when the league forces hooks.
+     * Matches cfb.services.hooks.apply_forced_hook.
+     */
+    applyForcedHook(spread) {
+        if (!Number.isFinite(spread) || spread === 0 || !Number.isInteger(spread)) {
+            return spread;
+        }
+        return spread > 0 ? spread + 0.5 : spread - 0.5;
+    }
+
+    /**
+     * Whether this side covered the locked spread. Same rule as the
+     * team_covered_spread template tag (hooks are not applied here).
+     * Returns true, false, or null when there is no spread.
+     */
+    teamCovered(side, homeScore, awayScore, spread) {
+        if (!Number.isFinite(spread)) {
+            return null;
+        }
+        const homeCovered = (homeScore - awayScore) > -spread;
+        if (side === 'home') {
+            return homeCovered;
+        }
+        if (side === 'away') {
+            return !homeCovered;
+        }
+        return null;
+    }
+
+    /**
+     * Whether the user's pick is correct. Matches is_pick_correct:
+     * against-the-spread with optional hooks, otherwise straight-up.
+     * Returns true, false, or null for a push / tie.
+     */
+    gradePick(pickedSide, homeScore, awayScore, spread, atsEnabled, forceHooks) {
+        const margin = homeScore - awayScore;
+        if (!atsEnabled) {
+            if (margin === 0) {
+                return null;
+            }
+            if (pickedSide === 'home') {
+                return margin > 0;
+            }
+            if (pickedSide === 'away') {
+                return margin < 0;
+            }
+            return null;
+        }
+        if (!Number.isFinite(spread)) {
+            return null;
+        }
+        const gradedSpread = forceHooks ? this.applyForcedHook(spread) : spread;
+        if (!forceHooks && Math.abs(margin - (-gradedSpread)) < 1e-9) {
+            return null;
+        }
+        const homeCovered = margin > -gradedSpread;
+        if (pickedSide === 'home') {
+            return homeCovered;
+        }
+        if (pickedSide === 'away') {
+            return !homeCovered;
+        }
+        return null;
+    }
+
+    /**
+     * Paint the same final-result styling a reload would render:
+     * green ring on a correct pick, red ring on the covering opponent,
+     * cover check / x, and a trophy on the winner.
+     */
+    applyGradedResult(gameElement, game) {
+        if (!gameElement || !game || !game.is_final) {
+            return;
+        }
+        const homeScore = Number(game.home_score);
+        const awayScore = Number(game.away_score);
+        if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore)) {
+            return;
+        }
+
+        const container = gameElement.closest('#games-container');
+        const atsEnabled = !container || container.getAttribute('data-ats-enabled') !== 'false';
+        const forceHooks = !!(container && container.getAttribute('data-force-hooks') === 'true');
+        const pickedSide = gameElement.getAttribute('data-picked-side');
+        const spreadRaw = gameElement.getAttribute('data-locked-home-spread');
+        const hasSpread = spreadRaw !== null && spreadRaw !== '';
+        const spread = hasSpread ? Number(spreadRaw) : NaN;
+        const isCorrect = this.gradePick(
+            pickedSide, homeScore, awayScore, spread, atsEnabled, forceHooks
+        );
+
+        ['away', 'home'].forEach(side => {
+            const teamElement = gameElement.querySelector(`[data-team-side="${side}"]`);
+            if (!teamElement) {
+                return;
+            }
+            const covered = hasSpread ? this.teamCovered(side, homeScore, awayScore, spread) : null;
+            this.paintTeamResult(teamElement, {
+                picked: side === pickedSide,
+                correct: isCorrect === true && side === pickedSide,
+                opponentCovered: covered === true && side !== pickedSide,
+                covered: covered,
+                won: side === 'home' ? homeScore > awayScore : awayScore > homeScore
+            });
+        });
+    }
+
+    paintTeamResult(teamElement, state) {
+        teamElement.classList.remove(
+            'bg-success/10', 'bg-error/10', 'bg-primary/20', 'bg-base-200',
+            'ring-2', 'ring-4', 'ring-green-500', 'ring-red-500', 'ring-primary',
+            'z-10', 'z-20'
+        );
+        if (state.correct) {
+            teamElement.classList.add('bg-success/10', 'ring-4', 'ring-green-500', 'z-20');
+        } else if (state.opponentCovered) {
+            teamElement.classList.add('bg-error/10', 'ring-4', 'ring-red-500', 'z-20');
+        } else if (state.picked) {
+            teamElement.classList.add('bg-primary/20', 'ring-2', 'ring-primary', 'z-10');
+        } else {
+            teamElement.classList.add('bg-base-200');
+        }
+
+        const nameRow = teamElement.querySelector('[data-team-info] > .flex');
+        if (nameRow) {
+            let trophy = nameRow.querySelector('[data-winner-trophy]');
+            if (!trophy) {
+                const existing = nameRow.querySelector('.fa-trophy');
+                if (existing) {
+                    existing.setAttribute('data-winner-trophy', '');
+                    trophy = existing;
+                }
+            }
+            if (state.won) {
+                if (!trophy) {
+                    trophy = document.createElement('i');
+                    trophy.className = 'fas fa-trophy text-success text-xs';
+                    trophy.title = 'Winner';
+                    trophy.setAttribute('data-winner-trophy', '');
+                    nameRow.appendChild(trophy);
+                }
+            } else if (trophy) {
+                trophy.remove();
+            }
+        }
+
+        const ghost = teamElement.querySelector('.badge-ghost');
+        const row = ghost ? ghost.parentElement : null;
+        if (!row) {
+            return;
+        }
+        let badge = row.querySelector('[data-cover-badge]');
+        if (!badge) {
+            const existingBadge = row.querySelector('.badge-success, .badge-error');
+            if (existingBadge) {
+                existingBadge.setAttribute('data-cover-badge', '');
+                badge = existingBadge;
+            }
+        }
+        if (state.covered == null) {
+            if (badge) {
+                badge.remove();
+            }
+            return;
+        }
+        if (!badge) {
+            badge = document.createElement('div');
+            badge.setAttribute('data-cover-badge', '');
+            row.appendChild(badge);
+        }
+        const covered = state.covered === true;
+        badge.className = covered ? 'badge badge-success badge-xs' : 'badge badge-error badge-xs';
+        badge.title = covered ? 'Covered the spread' : 'Did not cover';
+        badge.textContent = '';
+        const icon = document.createElement('i');
+        icon.className = covered ? 'fas fa-check text-[8px]' : 'fas fa-times text-[8px]';
+        badge.appendChild(icon);
     }
     
     /**
@@ -832,48 +1009,18 @@ ${spreadBadgeHTML}`;
     }
     
     /**
-     * Update game final indicators (winner, spread coverage)
-     * Note: This is a simplified version. Full details require page refresh.
+     * Mark the card final and paint the graded result in place.
      */
     updateGameFinalIndicators(gameElement, game) {
-        // Add visual feedback that game is final
         gameElement.classList.add('game-final');
+        this.applyGradedResult(gameElement, game);
     }
-    
+
     /**
-     * Show notification when a game becomes final
+     * Kept so an older cached script that still calls this does not throw.
+     * The graded result is drawn on the card, so there is nothing to prompt.
      */
-    showGameFinalNotification(game) {
-        // Create a toast notification
-        const toast = document.createElement('div');
-        toast.className = 'toast toast-end toast-bottom z-50';
-        toast.innerHTML = `
-            <div class="alert alert-success shadow-lg">
-                <div>
-                    <i class="fas fa-flag-checkered text-xl"></i>
-                    <div>
-                        <h3 class="font-bold">Game Final!</h3>
-                        <div class="text-sm">Your pick has been graded. Refresh to see results!</div>
-                    </div>
-                </div>
-                <div class="flex gap-2">
-                    <button class="btn btn-sm btn-ghost" onclick="this.closest('.toast').remove()">
-                        Dismiss
-                    </button>
-                    <button class="btn btn-sm btn-primary" onclick="window.location.reload()">
-                        Refresh Now
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(toast);
-        
-        // Auto-remove after 30 seconds
-        setTimeout(() => {
-            toast.remove();
-        }, 30000);
-    }
+    showGameFinalNotification() {}
     
     /**
      * Update status indicator in header
