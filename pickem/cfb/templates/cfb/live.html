@@ -264,7 +264,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/live-score-updater.js' %}?v=17"></script>
+<script src="{% static 'js/live-score-updater.js' %}?v=18"></script>
 <script>
 /**
  * Initialize Live Score Updates
@@ -319,50 +319,97 @@
             }, (self.config && self.config.highlightDuration) || 2000);
         };
 
-        // Stale JS rebuilds the status block without down/distance and wipes SSR.
-        // Wrap updateGameStatus so server-rendered (or API) down info survives.
-        var _origUpdateGameStatus = LiveScoreUpdater.prototype.updateGameStatus;
+        // nginx is still serving an old live-score-updater.js that rebuilds the
+        // status block with no down/distance. Replace that method here (this
+        // script is in the HTML, so it updates with the app even when /static
+        // does not).
+        function esc(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function downMarkup(game, savedDown) {
+            if (game && game.is_final) {
+                return '';
+            }
+            var downText = (game && game.down_distance_text) ? String(game.down_distance_text) : '';
+            var ballOn = (game && game.ball_on) ? String(game.ball_on) : '';
+            if (downText) {
+                var title = ballOn ? (downText + ' at ' + ballOn) : downText;
+                var spot = ballOn
+                    ? '<span class="opacity-70 font-semibold"> · ' + esc(ballOn) + '</span>'
+                    : '';
+                return '<div class="text-xs font-bold text-warning mt-1" data-down-distance title="' +
+                    esc(title) + '">' + esc(downText) + spot + '</div>';
+            }
+            return savedDown || '';
+        }
+
         LiveScoreUpdater.prototype.updateGameStatus = function(gameElement, game) {
             var statusElement = gameElement && gameElement.querySelector('[data-game-status]');
-            var savedDown = null;
-            if (statusElement && !(game && game.is_final)) {
-                var existing = statusElement.querySelector('[data-down-distance]');
-                if (existing && !existing.classList.contains('hidden') && (existing.textContent || '').trim()) {
-                    savedDown = existing.outerHTML;
+            if (!statusElement) {
+                return;
+            }
+
+            var savedDown = '';
+            var existing = statusElement.querySelector('[data-down-distance]');
+            if (existing && !existing.classList.contains('hidden') && (existing.textContent || '').trim()) {
+                savedDown = existing.outerHTML;
+            }
+
+            var kickoffTimeText = '';
+            var timeSelectors = [
+                '.text-base.md\\:text-lg',
+                '.text-xs.text-base-content\\/60'
+            ];
+            for (var i = 0; i < timeSelectors.length; i++) {
+                var timeElement = statusElement.querySelector(timeSelectors[i]);
+                if (timeElement && timeElement.textContent && timeElement.textContent.indexOf('Scheduled') === -1) {
+                    kickoffTimeText = timeElement.textContent.trim();
+                    break;
+                }
+            }
+            if (!kickoffTimeText) {
+                var timeMatch = (statusElement.textContent || '').match(/(Mon|Tue|Wed|Thu|Fri|Sat|Sun),.*?ET/);
+                if (timeMatch) {
+                    kickoffTimeText = timeMatch[0];
                 }
             }
 
-            if (typeof _origUpdateGameStatus === 'function') {
-                _origUpdateGameStatus.call(this, gameElement, game);
+            var spreadBadgeHTML = '';
+            var spreadContainer = statusElement.querySelector('.text-center.mt-2');
+            if (spreadContainer) {
+                spreadBadgeHTML = spreadContainer.outerHTML;
             }
 
-            if (!statusElement || (game && game.is_final)) {
-                return;
-            }
-
-            // Prefer API value when present; otherwise put SSR/prior text back.
-            // Empty API (between plays or stale poll) must not blank the UI.
-            if (game && game.down_distance_text) {
-                if (typeof this.updateDownDistance === 'function') {
-                    this.updateDownDistance(gameElement, game);
-                }
-                return;
-            }
-            if (!savedDown) {
-                return;
-            }
-            var after = statusElement.querySelector('[data-down-distance]');
-            if (after) {
-                after.outerHTML = savedDown;
+            var statusHTML;
+            if (game && game.is_final) {
+                statusHTML =
+                    '<div class="text-center">' +
+                    '<div class="text-2xl md:text-3xl font-bold text-success mb-1">FINAL</div>' +
+                    (kickoffTimeText ? '<div class="text-xs text-base-content/60">' + kickoffTimeText + '</div>' : '') +
+                    '</div>' + spreadBadgeHTML;
+            } else if (game && game.quarter != null && game.quarter !== '') {
+                statusHTML =
+                    '<div class="text-center">' +
+                    '<div class="text-xl md:text-2xl font-bold text-warning animate-pulse mb-1">Q' + game.quarter + '</div>' +
+                    '<div class="text-sm md:text-base font-semibold text-warning">' + (game.clock || '') + '</div>' +
+                    downMarkup(game, savedDown) +
+                    (kickoffTimeText ? '<div class="text-xs text-base-content/60 mt-1">' + kickoffTimeText + '</div>' : '') +
+                    '</div>' + spreadBadgeHTML;
             } else {
-                var clockEl = statusElement.querySelector('.text-sm.md\\:text-base.font-semibold.text-warning');
-                var center = statusElement.querySelector('.text-center');
-                if (clockEl) {
-                    clockEl.insertAdjacentHTML('afterend', savedDown);
-                } else if (center) {
-                    center.insertAdjacentHTML('beforeend', savedDown);
-                }
+                statusHTML =
+                    '<div class="text-center">' +
+                    (kickoffTimeText ? '<div class="text-base md:text-lg font-semibold text-base-content/70 mb-1">' + kickoffTimeText + '</div>' : '') +
+                    '<div class="text-xs text-base-content/50">Scheduled</div>' +
+                    downMarkup(game, savedDown) +
+                    '</div>' + spreadBadgeHTML;
             }
+
+            statusElement.innerHTML = statusHTML;
         };
     }
     
@@ -459,7 +506,7 @@
     // Expose updater globally for debugging
     window.liveScoreUpdater = updater;
     
-    console.log('[LiveScores] Auto-update active (score guard v17)');
+    console.log('[LiveScores] Auto-update active (score guard v18)');
     
     } catch (error) {
         console.error('[LiveScores] Initialization error:', error);
