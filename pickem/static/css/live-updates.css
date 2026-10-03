@@ -195,44 +195,23 @@
 
 
 
-/* Provisional ATS state for the user's picked team.
- * Deliberately uses a hatched/inset treatment so it cannot be mistaken for
- * the solid final-result rings rendered after grading. */
+/* Provisional cover mark for whichever team is covering right now.
+ * Uses the unpicked-team color (base-200) plus a hatch, so it stays distinct
+ * from both the pick highlight and the solid final-result rings. */
 [data-team-side] {
     position: relative;
 }
 
-.live-covering {
+[data-team-side].live-covering {
+    background-color: var(--fallback-b2, oklch(var(--b2) / 1));
     background-image: repeating-linear-gradient(
         -45deg,
-        rgba(16, 185, 129, 0.10) 0,
-        rgba(16, 185, 129, 0.10) 7px,
-        rgba(16, 185, 129, 0.02) 7px,
-        rgba(16, 185, 129, 0.02) 14px
+        rgba(255, 255, 255, 0.07) 0,
+        rgba(255, 255, 255, 0.07) 7px,
+        rgba(255, 255, 255, 0) 7px,
+        rgba(255, 255, 255, 0) 14px
     );
-    box-shadow: inset 0 0 0 2px rgba(16, 185, 129, 0.55);
-}
-
-.live-not-covering {
-    background-image: repeating-linear-gradient(
-        -45deg,
-        rgba(245, 158, 11, 0.09) 0,
-        rgba(245, 158, 11, 0.09) 7px,
-        rgba(245, 158, 11, 0.015) 7px,
-        rgba(245, 158, 11, 0.015) 14px
-    );
-    box-shadow: inset 0 0 0 2px rgba(245, 158, 11, 0.45);
-}
-
-.live-push {
-    background-image: repeating-linear-gradient(
-        -45deg,
-        rgba(148, 163, 184, 0.10) 0,
-        rgba(148, 163, 184, 0.10) 7px,
-        rgba(148, 163, 184, 0.02) 7px,
-        rgba(148, 163, 184, 0.02) 14px
-    );
-    box-shadow: inset 0 0 0 2px rgba(148, 163, 184, 0.45);
+    box-shadow: none;
 }
 
 .live-cover-status {

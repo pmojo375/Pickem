@@ -7,6 +7,19 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/live-updates.css' %}">
 <style>
+    /* Covering team uses the unpicked card color. A stale stylesheet still
+       paints the pick green or amber. */
+    [data-team-side].live-covering {
+        background-color: var(--fallback-b2, oklch(var(--b2) / 1));
+        background-image: repeating-linear-gradient(
+            -45deg,
+            rgba(255, 255, 255, 0.07) 0,
+            rgba(255, 255, 255, 0.07) 7px,
+            rgba(255, 255, 255, 0) 7px,
+            rgba(255, 255, 255, 0) 14px
+        );
+        box-shadow: none;
+    }
     /* Phone team rows are short. A stale live-updates.css still pins the
        cover chip to the top-right, on top of the score. This override ships
        with the page so that cached stylesheet cannot put it back. */
@@ -330,23 +343,57 @@
             return null; // leave server-rendered value alone
         };
 
-        // Move the cover chip under the team name. A cached updater still
-        // appends it to the team row, where it covers the score on a phone.
-        var placeCoverBadge = LiveScoreUpdater.prototype.updateLiveCoverIndicator;
+        // Cached live-score-updater.js still paints the pick green or amber.
+        // Replace it here so the hatch and label follow the covering team.
         LiveScoreUpdater.prototype.updateLiveCoverIndicator = function(gameElement, game) {
-            if (typeof placeCoverBadge === 'function') {
-                placeCoverBadge.call(this, gameElement, game);
-            }
             if (!gameElement) {
                 return;
             }
-            gameElement.querySelectorAll('[data-live-cover-status]').forEach(function(badge) {
-                var team = badge.closest('[data-team-side]');
-                var info = team && team.querySelector('[data-team-info]');
-                if (info && badge.parentElement !== info) {
-                    info.appendChild(badge);
+            var spreadValue = gameElement.getAttribute('data-locked-home-spread');
+            var teamElements = gameElement.querySelectorAll('[data-team-side]');
+            teamElements.forEach(function(teamElement) {
+                teamElement.classList.remove('live-covering', 'live-not-covering', 'live-push');
+                var oldBadge = teamElement.querySelector('[data-live-cover-status]');
+                if (oldBadge) {
+                    oldBadge.remove();
                 }
             });
+
+            if (
+                !game ||
+                game.is_final ||
+                (typeof this.isGameLive === 'function' && !this.isGameLive(game)) ||
+                spreadValue === '' || spreadValue === null ||
+                game.home_score === null || game.home_score === undefined ||
+                game.away_score === null || game.away_score === undefined
+            ) {
+                return;
+            }
+
+            var spread = Number(spreadValue);
+            var homeScore = Number(game.home_score);
+            var awayScore = Number(game.away_score);
+            if (![spread, homeScore, awayScore].every(Number.isFinite)) {
+                return;
+            }
+
+            var atsMargin = (homeScore - awayScore) + spread;
+            var coveringSide = atsMargin > 0 ? 'home' : (atsMargin < 0 ? 'away' : '');
+            var coveringElement = coveringSide
+                ? gameElement.querySelector('[data-team-side="' + coveringSide + '"]')
+                : null;
+            if (!coveringElement) {
+                return;
+            }
+
+            coveringElement.classList.add('live-covering');
+            var badge = document.createElement('span');
+            badge.setAttribute('data-live-cover-status', '');
+            badge.className = 'live-cover-status';
+            badge.textContent = 'LIVE · COVERING';
+            badge.title = 'This team is covering the locked spread at the current score';
+            var info = coveringElement.querySelector('[data-team-info]');
+            (info || coveringElement).appendChild(badge);
         };
 
         LiveScoreUpdater.prototype.updateScore = function(gameElement, team, newScore, game) {

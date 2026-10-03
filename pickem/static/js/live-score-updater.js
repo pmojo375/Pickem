@@ -546,11 +546,11 @@ class LiveScoreUpdater {
     }
     
     /**
-     * Show the user's provisional ATS state while a game is live.
+     * Hatch whichever side is covering the locked spread while a game is live.
+     * The chip uses the unpicked-team color, not the pick highlight.
      * Final grading remains server-rendered and visually distinct.
      */
     updateLiveCoverIndicator(gameElement, game) {
-        const pickedSide = gameElement.getAttribute('data-picked-side');
         const spreadValue = gameElement.getAttribute('data-locked-home-spread');
         const teamElements = gameElement.querySelectorAll('[data-team-side]');
 
@@ -566,7 +566,6 @@ class LiveScoreUpdater {
         if (
             game.is_final ||
             !this.isGameLive(game) ||
-            (pickedSide !== 'home' && pickedSide !== 'away') ||
             spreadValue === '' ||
             game.home_score === null || game.home_score === undefined ||
             game.away_score === null || game.away_score === undefined
@@ -582,38 +581,27 @@ class LiveScoreUpdater {
         }
 
         // Same convention used by server-side pick grading:
-        // home covers when (home - away) > -homeSpread.
+        // home covers when (home - away) > -homeSpread. A push has no covering team.
         const atsMargin = (homeScore - awayScore) + spread;
-        const pickedMargin = pickedSide === 'home' ? atsMargin : -atsMargin;
-        const pickedElement = gameElement.querySelector(`[data-team-side="${pickedSide}"]`);
-        if (!pickedElement) {
+        const coveringSide = atsMargin > 0 ? 'home' : (atsMargin < 0 ? 'away' : '');
+        const coveringElement = coveringSide
+            ? gameElement.querySelector(`[data-team-side="${coveringSide}"]`)
+            : null;
+        if (!coveringElement) {
             return;
         }
 
-        let stateClass;
-        let label;
-        if (pickedMargin > 0) {
-            stateClass = 'live-covering';
-            label = 'LIVE · COVERING';
-        } else if (pickedMargin < 0) {
-            stateClass = 'live-not-covering';
-            label = 'LIVE · NOT COVERING';
-        } else {
-            stateClass = 'live-push';
-            label = 'LIVE · PUSH';
-        }
-
-        pickedElement.classList.add(stateClass);
+        coveringElement.classList.add('live-covering');
 
         const badge = document.createElement('span');
         badge.setAttribute('data-live-cover-status', '');
         badge.className = 'live-cover-status';
-        badge.textContent = label;
-        badge.title = 'Provisional result using the current score and locked spread';
+        badge.textContent = 'LIVE · COVERING';
+        badge.title = 'This team is covering the locked spread at the current score';
         // Info column keeps the chip under the team name, clear of the score
         // on short mobile rows.
-        const info = pickedElement.querySelector('[data-team-info]');
-        (info || pickedElement).appendChild(badge);
+        const info = coveringElement.querySelector('[data-team-info]');
+        (info || coveringElement).appendChild(badge);
     }
 
     /**
