@@ -56,6 +56,8 @@ def _serialize_game(game: Game, include_cached_data: bool = True) -> Dict[str, A
         'quarter': game.quarter,
         'clock': game.clock,
         'possession': game.possession or '',
+        'down_distance_text': game.down_distance_text or '',
+        'ball_on': game.ball_on or '',
         'is_final': game.is_final,
         'spread': {
             'home': float(game.current_home_spread) if game.current_home_spread else None,

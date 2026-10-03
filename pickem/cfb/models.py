@@ -494,6 +494,9 @@ class Game(models.Model):
     clock = models.CharField(max_length=16, blank=True)
     # 'home', 'away', or blank when unknown / not in progress
     possession = models.CharField(max_length=4, blank=True, default="")
+    # ESPN situation: e.g. "3rd & 5" / ball spot e.g. "MSST 30"
+    down_distance_text = models.CharField(max_length=32, blank=True, default="")
+    ball_on = models.CharField(max_length=32, blank=True, default="")
     is_final = models.BooleanField(default=False)
 
     class Meta:

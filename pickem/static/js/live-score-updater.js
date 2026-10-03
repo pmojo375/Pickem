@@ -292,6 +292,13 @@ class LiveScoreUpdater {
                 if (game.possession) {
                     initialChanges.push({ type: 'possession', old: null, new: game.possession });
                 }
+                if (game.down_distance_text || game.ball_on) {
+                    initialChanges.push({
+                        type: 'down_distance',
+                        old: null,
+                        new: game.down_distance_text || ''
+                    });
+                }
                 if (game.is_final) {
                     initialChanges.push({ type: 'is_final', old: false, new: true });
                 }
@@ -466,6 +473,19 @@ class LiveScoreUpdater {
                 new: newPoss
             });
         }
+
+        // Down & distance / ball spot
+        const oldDown = oldGame.down_distance_text || '';
+        const newDown = newGame.down_distance_text || '';
+        const oldBall = oldGame.ball_on || '';
+        const newBall = newGame.ball_on || '';
+        if (oldDown !== newDown || oldBall !== newBall) {
+            changes.push({
+                type: 'down_distance',
+                old: oldDown,
+                new: newDown
+            });
+        }
         
         return changes;
     }
@@ -507,10 +527,15 @@ class LiveScoreUpdater {
                     this.updateGameStatus(gameElement, game);
                     this.updateGameFinalIndicators(gameElement, game);
                     this.updatePossession(gameElement, game);
+                    this.updateDownDistance(gameElement, game);
                     break;
 
                 case 'possession':
                     this.updatePossession(gameElement, game);
+                    break;
+
+                case 'down_distance':
+                    this.updateDownDistance(gameElement, game);
                     break;
             }
         });
@@ -601,6 +626,56 @@ class LiveScoreUpdater {
             const side = icon.getAttribute('data-possession-icon');
             icon.classList.toggle('hidden', side !== possession);
         });
+    }
+
+    /**
+     * Update live down & distance (e.g. "3rd & 5 · MSST 30")
+     */
+    updateDownDistance(gameElement, game) {
+        const statusElement = gameElement.querySelector('[data-game-status]');
+        if (!statusElement) {
+            return;
+        }
+
+        let el = statusElement.querySelector('[data-down-distance]');
+        const downText = (!game.is_final && game.down_distance_text) ? game.down_distance_text : '';
+        const ballOn = (!game.is_final && game.ball_on) ? game.ball_on : '';
+
+        if (!downText) {
+            if (el) {
+                el.textContent = '';
+                el.classList.add('hidden');
+                el.removeAttribute('title');
+            }
+            return;
+        }
+
+        if (!el) {
+            // Insert under the clock when the status block was rebuilt without it
+            el = document.createElement('div');
+            el.setAttribute('data-down-distance', '');
+            el.className = 'text-xs font-semibold text-base-content/80 mt-1';
+            const clockEl = statusElement.querySelector('.text-sm.md\\:text-base.font-semibold.text-warning');
+            const center = statusElement.querySelector('.text-center');
+            if (clockEl && clockEl.parentElement) {
+                clockEl.insertAdjacentElement('afterend', el);
+            } else if (center) {
+                center.appendChild(el);
+            } else {
+                statusElement.appendChild(el);
+            }
+        }
+
+        el.textContent = '';
+        el.appendChild(document.createTextNode(downText));
+        if (ballOn) {
+            const spot = document.createElement('span');
+            spot.className = 'text-base-content/50 font-normal';
+            spot.textContent = ` · ${ballOn}`;
+            el.appendChild(spot);
+        }
+        el.title = ballOn ? `${downText} at ${ballOn}` : downText;
+        el.classList.remove('hidden');
     }
 
     /**
@@ -719,12 +794,18 @@ class LiveScoreUpdater {
 </div>
 ${spreadBadgeHTML}`;
         } else if (game.quarter != null && game.quarter !== '') {
+            const downText = game.down_distance_text || '';
+            const ballOn = game.ball_on || '';
+            const downHTML = downText
+                ? `<div class="text-xs font-semibold text-base-content/80 mt-1" data-down-distance title="${ballOn ? `${downText} at ${ballOn}` : downText}">${downText}${ballOn ? `<span class="text-base-content/50 font-normal"> · ${ballOn}</span>` : ''}</div>`
+                : `<div class="text-xs font-semibold text-base-content/80 mt-1 hidden" data-down-distance></div>`;
             statusHTML = `
 <div class="text-center">
     <div class="text-xl md:text-2xl font-bold text-warning animate-pulse mb-1">
         Q${game.quarter}
     </div>
     <div class="text-sm md:text-base font-semibold text-warning">${game.clock || ''}</div>
+    ${downHTML}
     ${kickoffTimeText ? `<div class="text-xs text-base-content/60 mt-1">${kickoffTimeText}</div>` : ''}
 </div>
 ${spreadBadgeHTML}`;

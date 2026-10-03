@@ -54,6 +54,38 @@ def _possession_side(competition, home_competitor, away_competitor, is_final: bo
     return ""
 
 
+def _situation_down_and_distance(competition, is_final: bool) -> tuple[str, str]:
+    """
+    Extract down & distance / ball spot from ESPN competition.situation.
+
+    Returns (down_distance_text, ball_on), e.g. ("3rd & 5", "MSST 30").
+    Cleared when the game is final or ESPN has no active down (kickoff/XP/etc).
+    """
+    if is_final:
+        return "", ""
+    situation = competition.get("situation") or {}
+    if not situation:
+        return "", ""
+
+    # ESPN uses down/distance of -1 between plays (extra points, kickoffs, etc.)
+    down = situation.get("down")
+    try:
+        down_num = int(down) if down is not None and down != "" else 0
+    except (TypeError, ValueError):
+        down_num = 0
+
+    short = (situation.get("shortDownDistanceText") or "").strip()
+    full = (situation.get("downDistanceText") or "").strip()
+    ball_on = (situation.get("possessionText") or "").strip()
+
+    if down_num > 0 and short:
+        return short[:32], ball_on[:32]
+    if down_num > 0 and full:
+        # Fallback if short text is missing
+        return full[:32], ball_on[:32]
+    return "", ""
+
+
 def _apply_event_to_game(game: Game, event: dict) -> bool:
     """Update a Game from an ESPN scoreboard event. Returns True if applied."""
     status = event.get("status", {})
@@ -99,6 +131,7 @@ def _apply_event_to_game(game: Game, event: dict) -> bool:
     period = status.get("period")
     clock = status.get("displayClock", "")
     possession = _possession_side(competition, home_competitor, away_competitor, is_final)
+    down_distance_text, ball_on = _situation_down_and_distance(competition, is_final)
 
     game.home_score = home_score
     game.away_score = away_score
@@ -106,6 +139,8 @@ def _apply_event_to_game(game: Game, event: dict) -> bool:
     game.quarter = period
     game.clock = clock
     game.possession = possession
+    game.down_distance_text = down_distance_text
+    game.ball_on = ball_on
     game.save(
         update_fields=[
             "home_score",
@@ -114,6 +149,8 @@ def _apply_event_to_game(game: Game, event: dict) -> bool:
             "quarter",
             "clock",
             "possession",
+            "down_distance_text",
+            "ball_on",
         ]
     )
     # Grading + MemberWeek updates happen in the Game post_save signal
@@ -125,7 +162,8 @@ def _apply_event_to_game(game: Game, event: dict) -> bool:
 def fetch_single_game_score(game: Game) -> bool:
     """
     Fetch score for a single game from ESPN API.
-    Updates Game record with current score, quarter, clock, possession, and final status.
+    Updates Game record with current score, quarter, clock, possession,
+    down/distance, and final status.
     
     Returns True if the game was updated, False otherwise.
     """
@@ -168,7 +206,8 @@ def grade_picks_for_game(game: Game) -> int:
 def fetch_and_store_live_scores() -> int:
     """
     Fetch live scores from ESPN API for games that have started or finished.
-    Updates Game records with current scores, quarter, clock, possession, and final status.
+    Updates Game records with current scores, quarter, clock, possession,
+    down/distance, and final status.
     """
     import pytz
 
