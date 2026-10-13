@@ -6,7 +6,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.core.exceptions import ValidationError
 from django.db.models import Case, Count, IntegerField, Q, Sum, Value, When
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.debug import sensitive_post_parameters
 from allauth.account.forms import ChangePasswordForm, SetPasswordForm
 from allauth.account.models import EmailAddress
@@ -900,6 +900,7 @@ def live_view(request):
             for team in teams_with_records
         }
     
+    live_standing = _live_standing_payload(league, request.user)
     context = {
         "picks_with_league_game": picks_with_league_game,  # Keep for backward compatibility
         "picks_with_sections": picks_with_sections,  # New organized structure
@@ -908,8 +909,33 @@ def live_view(request):
         "league_rules": league_rules,
         "team_rankings": team_rankings,
         "team_records": team_records,
+        "live_standing": live_standing,
     }
     return render(request, "cfb/live.html", context)
+
+
+def _live_standing_payload(league, user):
+    """Week rank and points for the live bar, including in-progress games."""
+    if not league:
+        return None
+    snapshot = services.scoring.live_week_snapshot(league, user)
+    if not snapshot:
+        return None
+    snapshot["standings_url"] = (
+        f"{reverse('standings')}?league_id={league.id}&week={snapshot['week_id']}"
+    )
+    return snapshot
+
+
+@login_required
+@require_GET
+def live_standing_api(request):
+    """Current user's week standing, updated while games are in progress."""
+    league, _user_leagues = _resolve_user_league(request)
+    snapshot = _live_standing_payload(league, request.user)
+    response = JsonResponse({"standing": snapshot})
+    response["Cache-Control"] = "no-store"
+    return response
 
 
 def _get_display_week_pick_status(league, season):

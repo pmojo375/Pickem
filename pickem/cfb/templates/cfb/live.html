@@ -68,6 +68,63 @@
             z-index: 2;
         }
     }
+
+    .live-week-bar {
+        position: fixed;
+        z-index: 40;
+        left: 0.75rem;
+        right: 0.75rem;
+        bottom: calc(4rem + 0.65rem);
+        text-decoration: none;
+        color: inherit;
+    }
+    .live-week-bar.is-updated {
+        box-shadow: 0 0 0 2px oklch(var(--p)), 0 10px 30px oklch(0% 0 0 / 0.28);
+    }
+    @media (min-width: 768px) {
+        .live-week-bar {
+            left: 50%;
+            right: auto;
+            width: min(36rem, calc(100% - 2rem));
+            transform: translateX(-50%);
+            bottom: 1.25rem;
+        }
+        body:has(.live-week-bar) .main-content {
+            padding-bottom: 6rem;
+        }
+        body:has(.live-week-bar) footer.footer {
+            margin-bottom: 5rem;
+        }
+    }
+    @media (max-width: 767px) {
+        body:has(.live-week-bar) .main-content {
+            padding-bottom: 11rem !important;
+        }
+    }
+    /* Firefox mobile pins the bottom nav in document flow. A fixed bar
+       sits in the wrong place when the browser chrome resizes, so the
+       bar joins that column instead, just above the nav. */
+    @supports (-moz-appearance: none) {
+        @media (max-width: 767px) {
+            .live-week-bar {
+                position: relative;
+                left: auto;
+                right: auto;
+                bottom: auto;
+                transform: none;
+                width: auto;
+                order: 3;
+                flex-shrink: 0;
+                margin: 0 0.75rem 0.5rem;
+            }
+            .btm-nav.bottom-nav {
+                order: 4;
+            }
+            body:has(.live-week-bar) .main-content {
+                padding-bottom: 1rem !important;
+            }
+        }
+    }
 </style>
 {% endblock %}
 
@@ -328,6 +385,40 @@
 {% endif %}
 {% endblock %}
 
+{% block page_chrome %}
+{% if live_standing %}
+<a id="live-week-bar"
+   class="live-week-bar flex items-center justify-between gap-3 px-4 py-2.5 rounded-2xl bg-base-100/95 border border-base-300 shadow-2xl backdrop-blur-md"
+   href="{{ live_standing.standings_url }}"
+   data-endpoint="{% url 'api_live_standing' %}?league_id={{ current_league.id }}"
+   data-live="{% if live_standing.has_live_games %}true{% else %}false{% endif %}"
+   title="Week place if every started game ended at the current score"
+   aria-live="polite"
+   aria-label="{{ live_standing.week_label }}, {{ live_standing.rank_label }} of {{ live_standing.field_size }}, {{ live_standing.points }} points">
+    <span class="min-w-0">
+        <span class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-base-content/60">
+            <span data-live-week-label>{{ live_standing.week_label }}</span>
+            <span data-live-note
+                  class="text-success normal-case tracking-normal {% if not live_standing.has_live_games %}hidden{% endif %}">Live</span>
+        </span>
+        <span class="flex items-baseline gap-1 leading-tight">
+            <span class="text-xl font-bold tabular-nums" data-live-rank>{{ live_standing.rank_label }}</span>
+            <span class="text-xs text-base-content/60" data-live-field>of {{ live_standing.field_size }}</span>
+        </span>
+    </span>
+    <span class="text-right shrink-0">
+        <span class="block text-xl font-bold tabular-nums leading-tight">
+            <span data-live-points>{{ live_standing.points }}</span>
+            <span class="text-sm font-semibold text-base-content/70">pts</span>
+        </span>
+        <span data-live-behind
+              class="block text-xs font-semibold tabular-nums {% if live_standing.points_behind %}text-base-content/70{% elif live_standing.rank == 1 %}text-success{% else %}text-base-content/60{% endif %}">{% if live_standing.points_behind %}{{ live_standing.points_behind }} behind{% elif live_standing.rank == 1 %}Leading{% else %}Even{% endif %}</span>
+    </span>
+    <i class="fas fa-chevron-right text-base-content/40 text-xs" aria-hidden="true"></i>
+</a>
+{% endif %}
+{% endblock %}
+
 {% block extra_js %}
 <script src="{% static 'js/live-score-updater.js' %}"></script>
 <script>
@@ -339,6 +430,134 @@
  */
 (function() {
     'use strict';
+
+    function behindLabel(standing) {
+        if (standing.points_behind) {
+            return standing.points_behind + ' behind';
+        }
+        if (standing.rank === 1) {
+            return 'Leading';
+        }
+        return 'Even';
+    }
+
+    function applyLiveStanding(standing) {
+        var bar = document.getElementById('live-week-bar');
+        if (!bar || !standing) {
+            return;
+        }
+        var changed = false;
+        function setText(selector, value) {
+            var el = bar.querySelector(selector);
+            if (!el || el.textContent.trim() === value) {
+                return;
+            }
+            el.textContent = value;
+            changed = true;
+        }
+        setText('[data-live-week-label]', standing.week_label);
+        setText('[data-live-rank]', standing.rank_label);
+        setText('[data-live-field]', 'of ' + standing.field_size);
+        setText('[data-live-points]', String(standing.points));
+        setText('[data-live-behind]', behindLabel(standing));
+
+        var behind = bar.querySelector('[data-live-behind]');
+        if (behind) {
+            behind.classList.remove('text-success', 'text-base-content/70', 'text-base-content/60');
+            if (standing.points_behind) {
+                behind.classList.add('text-base-content/70');
+            } else if (standing.rank === 1) {
+                behind.classList.add('text-success');
+            } else {
+                behind.classList.add('text-base-content/60');
+            }
+        }
+
+        var note = bar.querySelector('[data-live-note]');
+        if (note) {
+            note.classList.toggle('hidden', !standing.has_live_games);
+        }
+        bar.dataset.live = standing.has_live_games ? 'true' : 'false';
+        if (standing.standings_url) {
+            bar.setAttribute('href', standing.standings_url);
+        }
+        bar.setAttribute(
+            'aria-label',
+            standing.week_label + ', ' + standing.rank_label + ' of ' +
+            standing.field_size + ', ' + standing.points + ' points'
+        );
+        if (changed) {
+            bar.classList.add('is-updated');
+            window.setTimeout(function() {
+                bar.classList.remove('is-updated');
+            }, 700);
+        }
+    }
+
+    function refreshLiveStanding() {
+        var bar = document.getElementById('live-week-bar');
+        if (!bar) {
+            return;
+        }
+        if (bar.dataset.loading === '1') {
+            bar.dataset.dirty = '1';
+            return;
+        }
+        var endpoint = bar.getAttribute('data-endpoint');
+        if (!endpoint) {
+            return;
+        }
+        bar.dataset.loading = '1';
+        fetch(endpoint, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            credentials: 'same-origin'
+        }).then(function(response) {
+            if (!response.ok) {
+                throw new Error('HTTP ' + response.status);
+            }
+            return response.json();
+        }).then(function(data) {
+            if (data && data.standing) {
+                applyLiveStanding(data.standing);
+            }
+        }).catch(function() {
+            // Keep the last numbers on screen if a poll fails.
+        }).finally(function() {
+            bar.dataset.loading = '0';
+            if (bar.dataset.dirty === '1') {
+                bar.dataset.dirty = '0';
+                refreshLiveStanding();
+            }
+        });
+    }
+
+    function scheduleLiveStanding() {
+        var bar = document.getElementById('live-week-bar');
+        if (!bar) {
+            return;
+        }
+        var delay = 30000;
+        if (document.hidden) {
+            delay = 60000;
+        } else if (bar.dataset.live === 'true') {
+            delay = 5000;
+        }
+        window.setTimeout(function() {
+            refreshLiveStanding();
+            scheduleLiveStanding();
+        }, delay);
+    }
+
+    if (document.getElementById('live-week-bar')) {
+        scheduleLiveStanding();
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                refreshLiveStanding();
+            }
+        });
+        window.refreshLiveStanding = refreshLiveStanding;
+    }
 
     if (typeof LiveScoreUpdater !== 'undefined') {
         LiveScoreUpdater.prototype.formatScore = function(score, game) {
@@ -745,6 +964,9 @@
         
         // Callbacks
         onUpdate: function(updatedGames) {
+            if (window.refreshLiveStanding) {
+                window.refreshLiveStanding();
+            }
             // Show subtle notifications for score changes
             updatedGames.forEach(({ game, changes }) => {
                 const scoreChanged = changes.some(c => 

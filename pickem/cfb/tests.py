@@ -34,6 +34,7 @@ from cfb.services import invites
 from cfb.services.payouts import build_payout_summary
 from cfb.services.scoring import (
     is_pick_correct,
+    live_week_snapshot,
     remaining_points_by_user,
     update_member_week_for_game,
 )
@@ -1666,4 +1667,218 @@ class WhatIfStandingsTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Hypothetical")
         self.assertContains(resp, "what-if-panel")
+
+
+class LiveWeekSnapshotTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("livebar", "livebar@example.com", "pass")
+        self.rival = User.objects.create_user("liverival", "liverival@example.com", "pass")
+        self.spectator = User.objects.create_user("livespec", "livespec@example.com", "pass")
+        self.league = League.objects.create(name="Live Bar League", created_by=self.user)
+        LeagueMembership.objects.create(league=self.league, user=self.user, role="owner")
+        LeagueMembership.objects.create(league=self.league, user=self.rival, role="member")
+        LeagueMembership.objects.create(league=self.league, user=self.spectator, role="member")
+        self.season = Season.objects.create(year=2026, is_active=True)
+        today = timezone.localdate()
+        self.week = Week.objects.create(
+            season=self.season,
+            number=7,
+            start_date=today - timedelta(days=1),
+            end_date=today + timedelta(days=5),
+        )
+        self.rules = LeagueRules.objects.create(
+            league=self.league,
+            season=self.season,
+            against_the_spread_enabled=True,
+            force_hooks=False,
+            points_per_correct_pick=1,
+            key_pick_extra_points=1,
+            key_picks_enabled=True,
+            tiebreaker=0,
+        )
+        teams = [
+            Team.objects.create(season=self.season, name=f"Live Team {i}")
+            for i in range(8)
+        ]
+        self.live_game = Game.objects.create(
+            season=self.season,
+            week=self.week,
+            home_team=teams[0],
+            away_team=teams[1],
+            kickoff=timezone.now() - timedelta(hours=1),
+            is_final=False,
+            home_score=21,
+            away_score=14,
+            quarter=2,
+        )
+        self.final_game = Game.objects.create(
+            season=self.season,
+            week=self.week,
+            home_team=teams[2],
+            away_team=teams[3],
+            kickoff=timezone.now() - timedelta(days=1),
+            is_final=True,
+            home_score=17,
+            away_score=10,
+        )
+        self.future_game = Game.objects.create(
+            season=self.season,
+            week=self.week,
+            home_team=teams[4],
+            away_team=teams[5],
+            kickoff=timezone.now() + timedelta(days=1),
+            is_final=False,
+            home_score=100,
+            away_score=0,
+        )
+        self.removed_game = Game.objects.create(
+            season=self.season,
+            week=self.week,
+            home_team=teams[6],
+            away_team=teams[7],
+            kickoff=timezone.now() - timedelta(hours=2),
+            is_final=True,
+            home_score=35,
+            away_score=0,
+        )
+        LeagueGame.objects.create(
+            league=self.league,
+            game=self.live_game,
+            locked_home_spread=Decimal("-3.5"),
+            is_active=True,
+        )
+        LeagueGame.objects.create(
+            league=self.league,
+            game=self.final_game,
+            locked_home_spread=Decimal("-3"),
+            is_active=True,
+        )
+        LeagueGame.objects.create(
+            league=self.league,
+            game=self.future_game,
+            locked_home_spread=Decimal("-7"),
+            is_active=True,
+        )
+        LeagueGame.objects.create(
+            league=self.league,
+            game=self.removed_game,
+            locked_home_spread=Decimal("-3"),
+            is_active=False,
+        )
+
+    def _pick(self, user, game, team, key=False):
+        return Pick.objects.create(
+            user=user,
+            league=self.league,
+            game=game,
+            picked_team=team,
+            is_key_pick=key,
+        )
+
+    def test_live_cover_and_final_count_future_and_inactive_do_not(self):
+        # Live: home 21-14 vs -3.5 covers. Key pick is worth 2.
+        self._pick(self.user, self.live_game, self.live_game.home_team, key=True)
+        self._pick(self.rival, self.live_game, self.live_game.away_team)
+        # Final: home 17-10 vs -3 covers. Worth 1.
+        self._pick(self.user, self.final_game, self.final_game.home_team)
+        self._pick(self.rival, self.final_game, self.final_game.away_team)
+        # Future score and a removed slate game must not move the total.
+        self._pick(self.user, self.future_game, self.future_game.home_team, key=True)
+        self._pick(self.user, self.removed_game, self.removed_game.home_team, key=True)
+
+        snapshot = live_week_snapshot(self.league, self.user, week=self.week)
+
+        self.assertEqual(snapshot["points"], 3)
+        self.assertEqual(snapshot["correct"], 2)
+        self.assertEqual(snapshot["rank"], 1)
+        self.assertEqual(snapshot["rank_label"], "1st")
+        self.assertEqual(snapshot["field_size"], 3)
+        self.assertIsNone(snapshot["points_behind"])
+        self.assertTrue(snapshot["has_live_games"])
+        self.assertEqual(snapshot["week_label"], "Week 7")
+
+        rival = live_week_snapshot(self.league, self.rival, week=self.week)
+        self.assertEqual(rival["points"], 0)
+        self.assertEqual(rival["rank"], 2)
+        self.assertEqual(rival["rank_label"], "2nd")
+        self.assertEqual(rival["points_behind"], 3)
+
+    def test_force_hooks_change_a_live_push_into_a_cover(self):
+        self.rules.force_hooks = True
+        self.rules.save(update_fields=["force_hooks"])
+        # Margin 7 against a -7 spread is a push until the hook makes it -7.5.
+        self.live_game.home_score = 28
+        self.live_game.away_score = 21
+        self.live_game.save(update_fields=["home_score", "away_score"])
+        LeagueGame.objects.filter(league=self.league, game=self.live_game).update(
+            locked_home_spread=Decimal("-7")
+        )
+        self._pick(self.user, self.live_game, self.live_game.away_team)
+
+        snapshot = live_week_snapshot(self.league, self.user, week=self.week)
+        self.assertEqual(snapshot["points"], 1)
+        self.assertEqual(snapshot["correct"], 1)
+
+    def test_equal_points_still_rank_by_live_key_picks(self):
+        self.rules.key_pick_extra_points = 0
+        self.rules.tiebreaker = 1
+        self.rules.save(update_fields=["key_pick_extra_points", "tiebreaker"])
+        self._pick(self.user, self.live_game, self.live_game.home_team, key=True)
+        self._pick(self.rival, self.live_game, self.live_game.home_team)
+
+        snapshot = live_week_snapshot(self.league, self.user, week=self.week)
+        rival = live_week_snapshot(self.league, self.rival, week=self.week)
+
+        self.assertEqual(snapshot["points"], 1)
+        self.assertEqual(rival["points"], 1)
+        self.assertEqual(snapshot["rank"], 1)
+        self.assertEqual(rival["rank"], 2)
+        self.assertIsNone(snapshot["points_behind"])
+        self.assertIsNone(rival["points_behind"])
+
+    def test_no_scored_games_hides_the_snapshot(self):
+        self.live_game.home_score = None
+        self.live_game.away_score = None
+        self.live_game.save(update_fields=["home_score", "away_score"])
+        self.final_game.home_score = None
+        self.final_game.away_score = None
+        self.final_game.is_final = False
+        self.final_game.save(update_fields=["home_score", "away_score", "is_final"])
+        self.removed_game.delete()
+
+        self.assertIsNone(live_week_snapshot(self.league, self.user, week=self.week))
+
+    @override_settings(
+        STORAGES={
+            "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+            "staticfiles": {
+                "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+            },
+        }
+    )
+    def test_live_page_and_api_show_the_viewer(self):
+        self._pick(self.user, self.live_game, self.live_game.home_team)
+        self.client.force_login(self.user)
+
+        page = self.client.get(reverse("live"), {"league_id": self.league.id})
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, 'id="live-week-bar"')
+        self.assertContains(page, "1st")
+        self.assertContains(page, "Week 7")
+
+        self.client.logout()
+        anon = self.client.get(reverse("api_live_standing"))
+        self.assertEqual(anon.status_code, 302)
+
+        self.client.force_login(self.user)
+        api = self.client.get(
+            reverse("api_live_standing"), {"league_id": self.league.id}
+        )
+        self.assertEqual(api.status_code, 200)
+        self.assertEqual(api["Cache-Control"], "no-store")
+        standing = api.json()["standing"]
+        self.assertEqual(standing["rank"], 1)
+        self.assertEqual(standing["points"], 1)
+        self.assertEqual(standing["field_size"], 3)
+        self.assertIn(f"week={self.week.id}", standing["standings_url"])
 

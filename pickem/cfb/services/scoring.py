@@ -2,14 +2,17 @@
 Scoring service for grading picks and updating member statistics.
 Handles complex scoring logic including ATS with/without hooks, straight-up picks, and key pick bonuses.
 """
+import copy
 import logging
 from decimal import Decimal, InvalidOperation
 from typing import Tuple, Optional, List, Dict
 
 from django.db import transaction
 from django.db.models import Case, Count, F, IntegerField, Max, Q, Sum, Value, When
+from django.utils import timezone
 from ..models import Game, Pick, League, LeagueRules, MemberWeek, MemberSeason, Week, LeagueGame, LeagueMembership
 from .hooks import apply_forced_hook
+from .schedule import get_display_week, get_week_datetime_range
 
 logger = logging.getLogger(__name__)
 
@@ -919,3 +922,188 @@ def recalculate_all_member_stats(season) -> dict:
             stats['errors'].append(f"League {league.id}: {str(e)}")
     
     return stats
+
+
+def _ordinal(n: int) -> str:
+    if 10 <= (n % 100) <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
+
+
+def _game_has_score(game: Game) -> bool:
+    return game.home_score is not None and game.away_score is not None
+
+
+def _game_counts_now(game: Game, now) -> bool:
+    """Final games, and started games that already have a score."""
+    if not _game_has_score(game):
+        return False
+    if game.is_final:
+        return True
+    return game.kickoff <= now
+
+
+def live_week_snapshot(league: League, user, week: Optional[Week] = None) -> Optional[dict]:
+    """
+    This user's week rank and points if every started game ended at the current score.
+
+    Final games use the same grader as standings. In-progress games with a score
+    count too, so the live page can show a total without waiting for final.
+    Unstarted games are left out. Returns None until at least one slate game
+    has a score.
+    """
+    if week is None:
+        week = get_display_week()
+    if week is None:
+        return None
+
+    member_ids = list(
+        LeagueMembership.objects.filter(league=league, is_active=True).values_list(
+            "user_id", flat=True
+        )
+    )
+    if user.id not in member_ids:
+        return None
+
+    start, end = get_week_datetime_range(week)
+    league_games = list(
+        LeagueGame.objects.filter(
+            league=league,
+            is_active=True,
+            game__season=week.season,
+            game__kickoff__range=(start, end),
+        ).select_related("game")
+    )
+    if not league_games:
+        return None
+
+    now = timezone.now()
+    any_scoreable = False
+    has_live_games = False
+    for league_game in league_games:
+        game = league_game.game
+        if not _game_counts_now(game, now):
+            continue
+        any_scoreable = True
+        if not game.is_final:
+            has_live_games = True
+    if not any_scoreable:
+        return None
+
+    league_rules = LeagueRules.objects.filter(league=league, season=week.season).first()
+    if league_rules is None:
+        league_rules = LeagueRules(
+            against_the_spread_enabled=True,
+            force_hooks=False,
+            points_per_correct_pick=1,
+            key_pick_extra_points=1,
+            key_picks_enabled=True,
+            tiebreaker=0,
+        )
+
+    league_game_by_game = {lg.game_id: lg for lg in league_games}
+    rows = {
+        user_id: {
+            "points": 0,
+            "correct": 0,
+            "incorrect": 0,
+            "ties": 0,
+            "correct_key": 0,
+            "tiebreak_abs_diff": None,
+            "tb_pick_id": None,
+        }
+        for user_id in member_ids
+    }
+    simulated_games = {}
+
+    picks = Pick.objects.filter(
+        league=league,
+        game_id__in=league_game_by_game,
+        user_id__in=member_ids,
+    ).select_related("game")
+
+    for pick in picks:
+        row = rows.get(pick.user_id)
+        if row is None:
+            continue
+        game = pick.game
+        if (
+            league_rules.tiebreaker == 2
+            and pick.is_total_points_game
+            and pick.points_guess is not None
+            and (row["tb_pick_id"] is None or pick.id < row["tb_pick_id"])
+            and _game_has_score(game)
+        ):
+            actual = game.home_score + game.away_score
+            row["tb_pick_id"] = pick.id
+            row["tiebreak_abs_diff"] = abs(pick.points_guess - actual)
+
+        if not _game_counts_now(game, now):
+            continue
+
+        simulated = simulated_games.get(game.id)
+        if simulated is None:
+            simulated = copy.copy(game)
+            simulated.is_final = True
+            simulated_games[game.id] = simulated
+
+        result = is_pick_correct(
+            pick,
+            simulated,
+            league_rules,
+            league_game=league_game_by_game.get(game.id),
+        )
+        if result is True:
+            row["correct"] += 1
+            row["points"] += calculate_pick_points(pick, True, league_rules)
+            if pick.is_key_pick:
+                row["correct_key"] += 1
+        elif result is False:
+            row["incorrect"] += 1
+        else:
+            row["ties"] += 1
+
+    def sort_key(user_id):
+        row = rows[user_id]
+        return (
+            row["points"],
+            _tiebreak_cascade(
+                league_rules,
+                correct=row["correct"],
+                correct_key=row["correct_key"],
+                tiebreak_abs_diff=row["tiebreak_abs_diff"],
+            ),
+        )
+
+    ordered = sorted(member_ids, key=sort_key, reverse=True)
+    rank_by_user = {}
+    current_rank = 1
+    previous_key = None
+    for index, user_id in enumerate(ordered):
+        key = sort_key(user_id)
+        if previous_key is not None and key != previous_key:
+            current_rank = index + 1
+        rank_by_user[user_id] = current_rank
+        previous_key = key
+
+    mine = rows[user.id]
+    leader_points = rows[ordered[0]]["points"] if ordered else 0
+    behind = leader_points - mine["points"]
+    rank = rank_by_user[user.id]
+
+    return {
+        "week_id": week.id,
+        "week_number": week.number,
+        "week_label": f"Week {week.number}",
+        "rank": rank,
+        "rank_label": _ordinal(rank),
+        "field_size": len(member_ids),
+        "points": mine["points"],
+        "points_behind": behind if behind > 0 else None,
+        "correct": mine["correct"],
+        "incorrect": mine["incorrect"],
+        "ties": mine["ties"],
+        "has_live_games": has_live_games,
+    }

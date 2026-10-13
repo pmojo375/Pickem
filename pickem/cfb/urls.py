@@ -11,6 +11,7 @@ urlpatterns = [
     # Main app URLs
     path('picks/', views.picks_view, name='picks'),
     path('live/', views.live_view, name='live'),
+    path('api/live/standing/', views.live_standing_api, name='api_live_standing'),
     path('standings/', views.standings_view, name='standings'),
     path('standings/what-if/', views.standings_what_if_view, name='standings_what_if'),
     path('settings/', views.settings_view, name='settings'),
