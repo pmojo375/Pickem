@@ -1011,6 +1011,9 @@ def live_week_snapshot(league: League, user, week: Optional[Week] = None) -> Opt
             "incorrect": 0,
             "ties": 0,
             "correct_key": 0,
+            "final_correct": 0,
+            "final_incorrect": 0,
+            "final_ties": 0,
             "tiebreak_abs_diff": None,
             "tb_pick_id": None,
         }
@@ -1055,6 +1058,14 @@ def live_week_snapshot(league: League, user, week: Optional[Week] = None) -> Opt
             league_rules,
             league_game=league_game_by_game.get(game.id),
         )
+        if game.is_final:
+            if result is True:
+                row["final_correct"] += 1
+            elif result is False:
+                row["final_incorrect"] += 1
+            else:
+                row["final_ties"] += 1
+
         if result is True:
             row["correct"] += 1
             row["points"] += calculate_pick_points(pick, True, league_rules)
@@ -1105,5 +1116,8 @@ def live_week_snapshot(league: League, user, week: Optional[Week] = None) -> Opt
         "correct": mine["correct"],
         "incorrect": mine["incorrect"],
         "ties": mine["ties"],
+        "final_correct": mine["final_correct"],
+        "final_incorrect": mine["final_incorrect"],
+        "final_ties": mine["final_ties"],
         "has_live_games": has_live_games,
     }
