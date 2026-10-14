@@ -1271,6 +1271,15 @@ def _apply_standings_prizes(
                 in_progress_week = week
                 break
 
+    # Avoid projecting an unstarted league slate, even when standings are tied.
+    def week_has_started(week):
+        return bool(week and services.payouts.league_week_slate(league, week).filter(
+            Q(kickoff__lte=timezone.now()) | Q(is_final=True)
+        ).exists())
+
+    if in_progress_week and not week_has_started(in_progress_week):
+        in_progress_week = None
+
     # Projected toggle does nothing once the season is final.
     project = bool(show_projected_prizes and not league_is_final)
 
@@ -1283,6 +1292,7 @@ def _apply_standings_prizes(
         include_weeks_won = bool(has_weekly and selected_week_final)
         include_projected_week = bool(
             project and has_weekly and not selected_week_final
+            and week_has_started(preferred_projected_week)
         )
         include_season = False
         completed_weeks = [preferred_projected_week] if include_weeks_won else []
