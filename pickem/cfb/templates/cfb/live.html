@@ -417,6 +417,7 @@
             <span class="text-xl font-bold tabular-nums" data-live-rank>{{ live_standing.rank_label }}</span>
             <span class="text-xs text-base-content/60" data-live-field>of {{ live_standing.field_size }}</span>
         </span>
+        <span class="block text-xs text-base-content/70 tabular-nums">Final picks: <span data-live-record>{{ live_standing.final_correct }}-{{ live_standing.final_incorrect }}{% if live_standing.final_ties %}-{{ live_standing.final_ties }}{% endif %}</span></span>
     </span>
     <span class="text-right shrink-0">
         <span class="block text-xl font-bold tabular-nums leading-tight">
@@ -472,6 +473,11 @@
         setText('[data-live-field]', 'of ' + standing.field_size);
         setText('[data-live-points]', String(standing.points));
         setText('[data-live-behind]', behindLabel(standing));
+        var record = String(standing.final_correct) + '-' + String(standing.final_incorrect);
+        if (standing.final_ties) {
+            record += '-' + standing.final_ties;
+        }
+        setText('[data-live-record]', record);
 
         var behind = bar.querySelector('[data-live-behind]');
         if (behind) {
@@ -496,7 +502,7 @@
         bar.setAttribute(
             'aria-label',
             standing.week_label + ', ' + standing.rank_label + ' of ' +
-            standing.field_size + ', ' + standing.points + ' points'
+            standing.field_size + ', ' + standing.points + ' points, final picks ' + record
         );
         if (changed) {
             bar.classList.add('is-updated');
