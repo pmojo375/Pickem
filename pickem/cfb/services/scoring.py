@@ -12,7 +12,7 @@ from django.db.models import Case, Count, F, IntegerField, Max, Q, Sum, Value, W
 from django.utils import timezone
 from ..models import Game, Pick, League, LeagueRules, MemberWeek, MemberSeason, Week, LeagueGame, LeagueMembership
 from .hooks import apply_forced_hook
-from .schedule import get_display_week, get_week_datetime_range
+from .schedule import get_live_week, get_week_datetime_range
 
 logger = logging.getLogger(__name__)
 
@@ -955,7 +955,7 @@ def live_week_snapshot(league: League, user, week: Optional[Week] = None) -> Opt
     has a score.
     """
     if week is None:
-        week = get_display_week()
+        week = get_live_week(league)
     if week is None:
         return None
 
