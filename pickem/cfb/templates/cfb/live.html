@@ -74,7 +74,8 @@
         z-index: 40;
         left: 0.75rem;
         right: 0.75rem;
-        bottom: calc(4rem + 0.65rem);
+        /* Clear the mobile navigation and the device safe-area inset. */
+        bottom: calc(4rem + env(safe-area-inset-bottom, 0px) + 0.75rem);
         text-decoration: none;
         color: inherit;
     }
@@ -97,6 +98,9 @@
         }
     }
     @media (max-width: 767px) {
+        .live-week-bar {
+            z-index: 60; /* Above the bottom navigation (z-index: 50). */
+        }
         body:has(.live-week-bar) .main-content {
             padding-bottom: 11rem !important;
         }
