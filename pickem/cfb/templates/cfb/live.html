@@ -129,6 +129,11 @@
 {% endblock %}
 
 {% block content %}
+{% if current_league %}
+<div id="live-week-state" hidden
+     data-week-id="{{ live_week.id|default_if_none:'' }}"
+     data-endpoint="{% url 'api_live_standing' %}?league_id={{ current_league.id }}"></div>
+{% endif %}
     <div class="mb-6">
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -136,6 +141,9 @@
                 <i class="fas fa-play-circle text-primary mr-2"></i>
                 Live Games
             </h1>
+            {% if live_week %}
+            <p class="text-sm text-base-content/60 mb-2">Week {{ live_week.number }}</p>
+            {% endif %}
             <div class="flex items-center gap-3">
                 <p class="text-base-content/70">Track your picks in real-time</p>
                 <!-- Live Status Indicator -->
@@ -495,19 +503,19 @@
     }
 
     function refreshLiveStanding() {
-        var bar = document.getElementById('live-week-bar');
-        if (!bar) {
+        var state = document.getElementById('live-week-state');
+        if (!state) {
             return;
         }
-        if (bar.dataset.loading === '1') {
-            bar.dataset.dirty = '1';
+        if (state.dataset.loading === '1') {
+            state.dataset.dirty = '1';
             return;
         }
-        var endpoint = bar.getAttribute('data-endpoint');
+        var endpoint = state.getAttribute('data-endpoint');
         if (!endpoint) {
             return;
         }
-        bar.dataset.loading = '1';
+        state.dataset.loading = '1';
         fetch(endpoint, {
             method: 'GET',
             headers: { 'Accept': 'application/json' },
@@ -518,15 +526,27 @@
             }
             return response.json();
         }).then(function(data) {
+            if (data && Object.prototype.hasOwnProperty.call(data, 'week_id')) {
+                var weekId = data.week_id == null ? '' : String(data.week_id);
+                if (weekId !== state.dataset.weekId) {
+                    window.location.reload();
+                    return;
+                }
+            }
             if (data && data.standing) {
+                if (!document.getElementById('live-week-bar')) {
+                    // The first score can create a standing after kickoff.
+                    window.location.reload();
+                    return;
+                }
                 applyLiveStanding(data.standing);
             }
         }).catch(function() {
             // Keep the last numbers on screen if a poll fails.
         }).finally(function() {
-            bar.dataset.loading = '0';
-            if (bar.dataset.dirty === '1') {
-                bar.dataset.dirty = '0';
+            state.dataset.loading = '0';
+            if (state.dataset.dirty === '1') {
+                state.dataset.dirty = '0';
                 refreshLiveStanding();
             }
         });
@@ -534,13 +554,13 @@
 
     function scheduleLiveStanding() {
         var bar = document.getElementById('live-week-bar');
-        if (!bar) {
+        if (!document.getElementById('live-week-state')) {
             return;
         }
         var delay = 30000;
         if (document.hidden) {
             delay = 60000;
-        } else if (bar.dataset.live === 'true') {
+        } else if (bar && bar.dataset.live === 'true') {
             delay = 5000;
         }
         window.setTimeout(function() {
@@ -549,7 +569,7 @@
         }, delay);
     }
 
-    if (document.getElementById('live-week-bar')) {
+    if (document.getElementById('live-week-state')) {
         scheduleLiveStanding();
         document.addEventListener('visibilitychange', function() {
             if (!document.hidden) {

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Tuple, Optional
 from django.utils import timezone
-from ..models import Season, Week
+from ..models import League, LeagueGame, Season, Week
 
 
 def get_current_week(season: Optional[Season] = None, now: Optional[datetime] = None) -> Optional[Week]:
@@ -39,7 +39,7 @@ def get_current_week(season: Optional[Season] = None, now: Optional[datetime] = 
 
 def get_display_week(season: Optional[Season] = None, now: Optional[datetime] = None) -> Optional[Week]:
     """
-    Week to show in Settings/Picks/Live.
+    Week to show in Settings/Picks.
 
     Same as get_current_week during the season; before week 1, returns the next
     upcoming week so the UI is not empty.
@@ -59,6 +59,41 @@ def get_display_week(season: Optional[Season] = None, now: Optional[datetime] = 
         .order_by("start_date")
         .first()
     )
+
+
+def get_live_week(league: League, now: Optional[datetime] = None) -> Optional[Week]:
+    """Keep the prior week's slate visible until this league's first kickoff.
+
+    Use the same calendar windows as the live page, rather than provider week
+    numbers. Once a current-week game has kicked off, stay on that week even
+    between games or after all games are final. Picks/Settings remain unchanged.
+    """
+    now = now or timezone.now()
+    week = get_display_week(now=now)
+    if week is None or league is None:
+        return week
+
+    games = LeagueGame.objects.filter(
+        league=league, is_active=True, game__season=week.season
+    )
+    start, end = get_week_datetime_range(week)
+    if games.filter(
+        game__kickoff__range=(start, end), game__kickoff__lte=now
+    ).exists():
+        return week
+
+    previous_week = (
+        Week.objects.filter(season=week.season, start_date__lt=week.start_date)
+        .order_by('-start_date', '-pk')
+        .first()
+    )
+    if previous_week:
+        start, end = get_week_datetime_range(previous_week)
+        if games.filter(
+            game__kickoff__range=(start, end), game__kickoff__lte=now
+        ).exists():
+            return previous_week
+    return week
 
 
 def get_week_datetime_range(week: Week) -> Tuple[datetime, datetime]:

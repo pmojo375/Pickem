@@ -31,6 +31,7 @@ from cfb.models import (
     Week,
 )
 from cfb.services import invites
+from cfb.services.schedule import get_display_week, get_live_week
 from cfb.services.payouts import build_payout_summary
 from cfb.services.scoring import (
     is_pick_correct,
@@ -1667,6 +1668,140 @@ class WhatIfStandingsTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Hypothetical")
         self.assertContains(resp, "what-if-panel")
+
+
+@override_settings(
+    STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+)
+class LiveWeekSelectionTests(TestCase):
+    def setUp(self):
+        self.enterContext(patch("cfb.tasks.queue_team_records_update"))
+        self.now = timezone.now()
+        self.user = User.objects.create_user("weekpicker", "week@example.com", "pass")
+        self.league = League.objects.create(name="Week Selection", created_by=self.user)
+        LeagueMembership.objects.create(league=self.league, user=self.user, role="owner")
+        self.season = Season.objects.create(year=2026, is_active=True)
+        LeagueRules.objects.create(league=self.league, season=self.season)
+        self.previous = Week.objects.create(
+            season=self.season, number=6,
+            start_date=self.now.date() - timedelta(days=8),
+            end_date=self.now.date() - timedelta(days=2),
+        )
+        self.current = Week.objects.create(
+            season=self.season, number=7,
+            start_date=self.now.date() - timedelta(days=1),
+            end_date=self.now.date() + timedelta(days=5),
+        )
+        home = Team.objects.create(season=self.season, name="Week Home")
+        away = Team.objects.create(season=self.season, name="Week Away")
+        self.previous_game = Game.objects.create(
+            season=self.season, week=self.previous, home_team=home, away_team=away,
+            kickoff=self.now - timedelta(days=4), is_final=True,
+            home_score=21, away_score=7,
+        )
+        self.current_game = Game.objects.create(
+            season=self.season, week=self.current, home_team=home, away_team=away,
+            kickoff=self.now + timedelta(hours=1),
+        )
+        for game in (self.previous_game, self.current_game):
+            LeagueGame.objects.create(
+                league=self.league, game=game, is_active=True, locked_home_spread=0,
+            )
+            Pick.objects.create(
+                league=self.league, user=self.user, game=game, picked_team=home,
+            )
+        self.client.force_login(self.user)
+
+    def test_prior_results_remain_until_first_kickoff(self):
+        self.assertEqual(get_live_week(self.league, now=self.now), self.previous)
+        # Picks and Settings must still use the upcoming slate.
+        self.assertEqual(get_display_week(now=self.now), self.current)
+        self.assertEqual(
+            get_live_week(self.league, now=self.current_game.kickoff), self.current
+        )
+
+    def test_stays_current_after_first_game_finishes(self):
+        self.current_game.kickoff = self.now - timedelta(hours=3)
+        self.current_game.is_final = True
+        self.current_game.save()
+        self.assertEqual(get_live_week(self.league, now=self.now), self.current)
+
+    def test_other_league_and_inactive_games_do_not_trigger_switch(self):
+        other = League.objects.create(name="Other League", created_by=self.user)
+        game = Game.objects.create(
+            season=self.season, week=self.current,
+            home_team=self.current_game.home_team, away_team=self.current_game.away_team,
+            kickoff=self.now - timedelta(hours=1), quarter=1,
+        )
+        LeagueGame.objects.create(league=other, game=game, is_active=True)
+        LeagueGame.objects.create(league=self.league, game=game, is_active=False)
+        self.assertEqual(get_live_week(self.league, now=self.now), self.previous)
+
+    def test_switch_does_not_depend_on_user_having_a_pick_or_scores(self):
+        Pick.objects.filter(game=self.current_game).delete()
+        self.assertEqual(
+            get_live_week(self.league, now=self.current_game.kickoff), self.current
+        )
+
+    def test_uses_calendar_window_even_without_provider_week(self):
+        Game.objects.update(week=None)
+        self.assertEqual(get_live_week(self.league, now=self.now), self.previous)
+        self.assertEqual(
+            get_live_week(self.league, now=self.current_game.kickoff), self.current
+        )
+
+    def test_no_previous_week_keeps_current_week(self):
+        self.previous.delete()
+        self.assertEqual(get_live_week(self.league, now=self.now), self.current)
+
+    def test_empty_previous_slate_keeps_current_week(self):
+        LeagueGame.objects.filter(game=self.previous_game).update(is_active=False)
+        self.assertEqual(get_live_week(self.league, now=self.now), self.current)
+
+    def test_no_current_slate_keeps_previous_results(self):
+        LeagueGame.objects.filter(game=self.current_game).delete()
+        self.assertEqual(get_live_week(self.league, now=self.now), self.previous)
+
+    def test_no_active_season_returns_none(self):
+        self.season.is_active = False
+        self.season.save()
+        self.assertIsNone(get_live_week(self.league, now=self.now))
+
+    def test_page_and_standing_api_use_previous_week(self):
+        page = self.client.get(reverse("live"), {"league_id": self.league.id})
+        self.assertEqual(page.status_code, 200)
+        self.assertEqual(page.context["live_week"], self.previous)
+        self.assertEqual(
+            [pick.game_id for pick, _ in page.context["picks_with_league_game"]],
+            [self.previous_game.id],
+        )
+        self.assertContains(page, f'data-week-id="{self.previous.id}"')
+        self.assertEqual(page.context["live_standing"]["week_id"], self.previous.id)
+        data = self.client.get(
+            reverse("api_live_standing"), {"league_id": self.league.id}
+        ).json()
+        self.assertEqual(data["week_id"], self.previous.id)
+        self.assertEqual(data["standing"]["week_id"], self.previous.id)
+        self.assertIn(f"week={self.previous.id}", data["standing"]["standings_url"])
+
+    def test_kickoff_switches_page_and_api_before_first_score(self):
+        with patch("django.utils.timezone.now", return_value=self.current_game.kickoff):
+            page = self.client.get(reverse("live"), {"league_id": self.league.id})
+            self.assertEqual(page.context["live_week"], self.current)
+            self.assertEqual(
+                [pick.game_id for pick, _ in page.context["picks_with_league_game"]],
+                [self.current_game.id],
+            )
+            self.assertIsNone(page.context["live_standing"])
+            # Polling remains available without a standings bar or live scores.
+            self.assertContains(page, 'id="live-week-state"')
+            data = self.client.get(
+                reverse("api_live_standing"), {"league_id": self.league.id}
+            ).json()
+        self.assertEqual(data, {"standing": None, "week_id": self.current.id})
 
 
 class LiveWeekSnapshotTests(TestCase):

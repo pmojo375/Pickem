@@ -778,8 +778,8 @@ def live_view(request):
         }
         return render(request, "cfb/live.html", context)
     
-    # Show picks for selected games in the current week window
-    current_week = services.schedule.get_display_week()
+    # Keep last week's results until the first kickoff in this league's slate.
+    current_week = services.schedule.get_live_week(league)
     
     # Get league games that are active
     league_games = []
@@ -900,7 +900,7 @@ def live_view(request):
             for team in teams_with_records
         }
     
-    live_standing = _live_standing_payload(league, request.user)
+    live_standing = _live_standing_payload(league, request.user, week=current_week)
     context = {
         "picks_with_league_game": picks_with_league_game,  # Keep for backward compatibility
         "picks_with_sections": picks_with_sections,  # New organized structure
@@ -910,15 +910,16 @@ def live_view(request):
         "team_rankings": team_rankings,
         "team_records": team_records,
         "live_standing": live_standing,
+        "live_week": current_week,
     }
     return render(request, "cfb/live.html", context)
 
 
-def _live_standing_payload(league, user):
+def _live_standing_payload(league, user, week=None):
     """Week rank and points for the live bar, including in-progress games."""
     if not league:
         return None
-    snapshot = services.scoring.live_week_snapshot(league, user)
+    snapshot = services.scoring.live_week_snapshot(league, user, week=week)
     if not snapshot:
         return None
     snapshot["standings_url"] = (
@@ -932,8 +933,10 @@ def _live_standing_payload(league, user):
 def live_standing_api(request):
     """Current user's week standing, updated while games are in progress."""
     league, _user_leagues = _resolve_user_league(request)
-    snapshot = _live_standing_payload(league, request.user)
-    response = JsonResponse({"standing": snapshot})
+    week = services.schedule.get_live_week(league) if league else None
+    snapshot = _live_standing_payload(league, request.user, week=week)
+    # Week selection must be available even before scores/standings exist.
+    response = JsonResponse({"standing": snapshot, "week_id": week.id if week else None})
     response["Cache-Control"] = "no-store"
     return response
 
