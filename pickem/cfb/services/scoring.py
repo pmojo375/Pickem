@@ -1119,6 +1119,19 @@ def live_week_snapshot(league: League, user, week: Optional[Week] = None) -> Opt
         official_sort_key(uid) > official_sort_key(user.id) for uid in member_ids
     )
     mine = rows[user.id]
+    # Compare official points with the nearest competitor in the official
+    # standings, not with a projected total from games still in progress.
+    official_ordered = sorted(member_ids, key=official_sort_key, reverse=True)
+    official_position = official_ordered.index(user.id)
+    if len(official_ordered) == 1:
+        official_gap = 0
+        official_gap_direction = "tied"
+    elif official_position == 0:
+        official_gap = mine["official_points"] - rows[official_ordered[1]]["official_points"]
+        official_gap_direction = "ahead" if official_gap > 0 else "tied"
+    else:
+        official_gap = rows[official_ordered[official_position - 1]]["official_points"] - mine["official_points"]
+        official_gap_direction = "behind" if official_gap > 0 else "tied"
     leader_points = rows[ordered[0]]["points"] if ordered else 0
     behind = leader_points - mine["points"]
     rank = rank_by_user[user.id]
@@ -1132,6 +1145,9 @@ def live_week_snapshot(league: League, user, week: Optional[Week] = None) -> Opt
         "field_size": len(member_ids),
         "points": mine["points"],
         "official_points": mine["official_points"],
+        "official_record": f'{mine["final_correct"]}-{mine["final_incorrect"]}',
+        "official_gap": official_gap,
+        "official_gap_direction": official_gap_direction,
         "official_rank_label": _ordinal(official_rank),
         "points_behind": behind if behind > 0 else None,
         "correct": mine["correct"],
