@@ -419,13 +419,12 @@
         </span>
         <span class="block text-xs text-base-content/70 tabular-nums">Official: <span data-official-rank>{{ live_standing.official_rank_label }}</span> · <span data-official-points>{{ live_standing.official_points }}</span> pts</span>
     </span>
-    <span class="text-right shrink-0">
-        <span class="block text-xl font-bold tabular-nums leading-tight">
-            <span data-live-points>{{ live_standing.points }}</span>
-            <span class="text-sm font-semibold text-base-content/70">pts</span>
-        </span>
-        <span data-live-behind
-              class="block text-xs font-semibold tabular-nums {% if live_standing.points_behind %}text-base-content/70{% elif live_standing.rank == 1 %}text-success{% else %}text-base-content/60{% endif %}">{% if live_standing.points_behind %}{{ live_standing.points_behind }} behind{% elif live_standing.rank == 1 %}Leading{% else %}Even{% endif %}</span>
+    <span class="text-right min-w-0 text-xs sm:text-sm font-semibold tabular-nums leading-snug">
+        <span data-official-record>{{ live_standing.official_record }}</span>
+        <span aria-hidden="true"> · </span>
+        <span data-official-bar-points>{{ live_standing.official_points }}</span> pts
+        <span aria-hidden="true"> · </span>
+        <span data-official-gap>{% if live_standing.official_gap_direction == "tied" %}Tied{% else %}{{ live_standing.official_gap }} pts {{ live_standing.official_gap_direction }}{% endif %}</span>
     </span>
     <i class="fas fa-chevron-right text-base-content/40 text-xs" aria-hidden="true"></i>
 </a>
@@ -444,14 +443,11 @@
 (function() {
     'use strict';
 
-    function behindLabel(standing) {
-        if (standing.points_behind) {
-            return standing.points_behind + ' behind';
+    function officialGapLabel(standing) {
+        if (standing.official_gap_direction === 'tied') {
+            return 'Tied';
         }
-        if (standing.rank === 1) {
-            return 'Leading';
-        }
-        return 'Even';
+        return standing.official_gap + ' pts ' + standing.official_gap_direction;
     }
 
     function applyLiveStanding(standing) {
@@ -471,22 +467,11 @@
         setText('[data-live-week-label]', standing.week_label);
         setText('[data-live-rank]', standing.rank_label);
         setText('[data-live-field]', 'of ' + standing.field_size);
-        setText('[data-live-points]', String(standing.points));
-        setText('[data-live-behind]', behindLabel(standing));
+        setText('[data-official-record]', standing.official_record);
+        setText('[data-official-bar-points]', String(standing.official_points));
+        setText('[data-official-gap]', officialGapLabel(standing));
         setText('[data-official-rank]', standing.official_rank_label);
         setText('[data-official-points]', String(standing.official_points));
-
-        var behind = bar.querySelector('[data-live-behind]');
-        if (behind) {
-            behind.classList.remove('text-success', 'text-base-content/70', 'text-base-content/60');
-            if (standing.points_behind) {
-                behind.classList.add('text-base-content/70');
-            } else if (standing.rank === 1) {
-                behind.classList.add('text-success');
-            } else {
-                behind.classList.add('text-base-content/60');
-            }
-        }
 
         var note = bar.querySelector('[data-live-note]');
         if (note) {
@@ -499,7 +484,7 @@
         bar.setAttribute(
             'aria-label',
             standing.week_label + ', ' + standing.rank_label + ' of ' +
-            standing.field_size + ', ' + standing.points + ' projected points; official ' + standing.official_rank_label + ', ' + standing.official_points + ' points'
+            standing.field_size + ', ' + standing.points + ' projected points; official ' + standing.official_rank_label + ', ' + standing.official_record + ' record, ' + standing.official_points + ' points, ' + officialGapLabel(standing)
         );
         if (changed) {
             bar.classList.add('is-updated');
