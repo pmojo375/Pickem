@@ -1014,6 +1014,9 @@ def live_week_snapshot(league: League, user, week: Optional[Week] = None) -> Opt
             "final_correct": 0,
             "final_incorrect": 0,
             "final_ties": 0,
+            "official_points": 0,
+            "official_correct_key": 0,
+            "official_tiebreak_abs_diff": None,
             "tiebreak_abs_diff": None,
             "tb_pick_id": None,
         }
@@ -1059,7 +1062,12 @@ def live_week_snapshot(league: League, user, week: Optional[Week] = None) -> Opt
             league_game=league_game_by_game.get(game.id),
         )
         if game.is_final:
+            if league_rules.tiebreaker == 2 and pick.is_total_points_game and pick.points_guess is not None:
+                row["official_tiebreak_abs_diff"] = abs(pick.points_guess - (game.home_score + game.away_score))
             if result is True:
+                row["official_points"] += calculate_pick_points(pick, True, league_rules)
+                if pick.is_key_pick:
+                    row["official_correct_key"] += 1
                 row["final_correct"] += 1
             elif result is False:
                 row["final_incorrect"] += 1
@@ -1099,6 +1107,17 @@ def live_week_snapshot(league: League, user, week: Optional[Week] = None) -> Opt
         rank_by_user[user_id] = current_rank
         previous_key = key
 
+    def official_sort_key(user_id):
+        row = rows[user_id]
+        return (row["official_points"], _tiebreak_cascade(
+            league_rules, correct=row["final_correct"],
+            correct_key=row["official_correct_key"],
+            tiebreak_abs_diff=row["official_tiebreak_abs_diff"],
+        ))
+
+    official_rank = 1 + sum(
+        official_sort_key(uid) > official_sort_key(user.id) for uid in member_ids
+    )
     mine = rows[user.id]
     leader_points = rows[ordered[0]]["points"] if ordered else 0
     behind = leader_points - mine["points"]
@@ -1112,6 +1131,8 @@ def live_week_snapshot(league: League, user, week: Optional[Week] = None) -> Opt
         "rank_label": _ordinal(rank),
         "field_size": len(member_ids),
         "points": mine["points"],
+        "official_points": mine["official_points"],
+        "official_rank_label": _ordinal(official_rank),
         "points_behind": behind if behind > 0 else None,
         "correct": mine["correct"],
         "incorrect": mine["incorrect"],
