@@ -404,20 +404,20 @@
    href="{{ live_standing.standings_url }}"
    data-endpoint="{% url 'api_live_standing' %}?league_id={{ current_league.id }}"
    data-live="{% if live_standing.has_live_games %}true{% else %}false{% endif %}"
-   title="Week place if every started game ended at the current score"
+   title="Projected standings use current scores; official standings use final games only"
    aria-live="polite"
-   aria-label="{{ live_standing.week_label }}, {{ live_standing.rank_label }} of {{ live_standing.field_size }}, {{ live_standing.points }} points">
+   aria-label="{{ live_standing.week_label }}, projected {{ live_standing.rank_label }} of {{ live_standing.field_size }} with {{ live_standing.points }} points; official {{ live_standing.official_rank_label }} with {{ live_standing.official_points }} points">
     <span class="min-w-0">
         <span class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-base-content/60">
             <span data-live-week-label>{{ live_standing.week_label }}</span>
             <span data-live-note
-                  class="text-success normal-case tracking-normal {% if not live_standing.has_live_games %}hidden{% endif %}">Live</span>
+                  class="text-success normal-case tracking-normal {% if not live_standing.has_live_games %}hidden{% endif %}">Projected</span>
         </span>
         <span class="flex items-baseline gap-1 leading-tight">
             <span class="text-xl font-bold tabular-nums" data-live-rank>{{ live_standing.rank_label }}</span>
             <span class="text-xs text-base-content/60" data-live-field>of {{ live_standing.field_size }}</span>
         </span>
-        <span class="block text-xs text-base-content/70 tabular-nums">Final picks: <span data-live-record>{{ live_standing.final_correct }}-{{ live_standing.final_incorrect }}{% if live_standing.final_ties %}-{{ live_standing.final_ties }}{% endif %}</span></span>
+        <span class="block text-xs text-base-content/70 tabular-nums">Official: <span data-official-rank>{{ live_standing.official_rank_label }}</span> · <span data-official-points>{{ live_standing.official_points }}</span> pts</span>
     </span>
     <span class="text-right shrink-0">
         <span class="block text-xl font-bold tabular-nums leading-tight">
@@ -473,11 +473,8 @@
         setText('[data-live-field]', 'of ' + standing.field_size);
         setText('[data-live-points]', String(standing.points));
         setText('[data-live-behind]', behindLabel(standing));
-        var record = String(standing.final_correct) + '-' + String(standing.final_incorrect);
-        if (standing.final_ties) {
-            record += '-' + standing.final_ties;
-        }
-        setText('[data-live-record]', record);
+        setText('[data-official-rank]', standing.official_rank_label);
+        setText('[data-official-points]', String(standing.official_points));
 
         var behind = bar.querySelector('[data-live-behind]');
         if (behind) {
@@ -502,7 +499,7 @@
         bar.setAttribute(
             'aria-label',
             standing.week_label + ', ' + standing.rank_label + ' of ' +
-            standing.field_size + ', ' + standing.points + ' points, final picks ' + record
+            standing.field_size + ', ' + standing.points + ' projected points; official ' + standing.official_rank_label + ', ' + standing.official_points + ' points'
         );
         if (changed) {
             bar.classList.add('is-updated');
