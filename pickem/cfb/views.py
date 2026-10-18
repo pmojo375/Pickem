@@ -839,6 +839,22 @@ def live_view(request):
     
     picks_with_league_game.sort(key=get_game_sort_key)
     
+    # Aggregate league picks once for the visible slate, not once per card.
+    game_ids = [pick.game_id for pick, _ in picks_with_league_game]
+    pick_splits = {}
+    if game_ids:
+        rows = (
+            Pick.objects.filter(
+                league=league,
+                game_id__in=game_ids,
+                user_id__in=_active_member_user_ids(league),
+            )
+            .values("game_id", "picked_team_id")
+            .annotate(total=Count("id"), keys=Count("id", filter=Q(is_key_pick=True)))
+        )
+        for row in rows:
+            pick_splits.setdefault(row["game_id"], {})[row["picked_team_id"]] = row
+
     # Add section markers for template
     picks_with_sections = []
     prev_status = None
@@ -853,11 +869,24 @@ def live_view(request):
             })
             prev_status = current_status
         
+        # Reveal choices only once a game is in progress or final.
+        splits = pick_splits.get(pick.game_id, {})
+        total_picks = sum(row["total"] for row in splits.values())
+        def team_split(team_id):
+            row = splits.get(team_id, {})
+            return {
+                "percent": round(100 * row.get("total", 0) / total_picks) if total_picks else 0,
+                "keys": row.get("keys", 0),
+            }
+
         # Add the actual game
         picks_with_sections.append({
             'is_section': False,
             'pick': pick,
-            'league_game': league_game
+            'league_game': league_game,
+            'away_split': team_split(pick.game.away_team_id),
+            'home_split': team_split(pick.game.home_team_id),
+            'show_splits': current_status != 'scheduled',
         })
     
     # Get league rules for force_hooks setting

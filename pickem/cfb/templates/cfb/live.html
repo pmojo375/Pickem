@@ -248,6 +248,11 @@
                                     </div>
                                 {% endif %}
                             </div>
+                            {% if item.show_splits %}
+                            <div class="text-xs text-base-content/70 mt-1" data-pick-split="away">
+                                {{ item.away_split.percent }}% of league picks{% if item.away_split.keys %} · {{ item.away_split.keys }} key{{ item.away_split.keys|pluralize }}{% endif %}
+                            </div>
+                            {% endif %}
                         </div>
                         <span class="text-2xl md:text-3xl font-bold flex-shrink-0" data-score="away">{{ p.game|display_score:"away" }}</span>
                     </div>
@@ -340,6 +345,11 @@
                                     </div>
                                 {% endif %}
                             </div>
+                            {% if item.show_splits %}
+                            <div class="text-xs text-base-content/70 mt-1" data-pick-split="home">
+                                {{ item.home_split.percent }}% of league picks{% if item.home_split.keys %} · {{ item.home_split.keys }} key{{ item.home_split.keys|pluralize }}{% endif %}
+                            </div>
+                            {% endif %}
                         </div>
                         <span class="text-2xl md:text-3xl font-bold flex-shrink-0" data-score="home">{{ p.game|display_score:"home" }}</span>
                     </div>
