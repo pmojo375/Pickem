@@ -753,6 +753,41 @@ def picks_view(request):
                 for team in teams_with_records
             }
 
+    # Load all completed current-season results for matchup teams in one query.
+    # Results are stored on the already-loaded Game instances for the template.
+    recent_results_by_team = {team_id: [] for team_id in game_teams}
+    if active_season and game_teams:
+        completed_games = Game.objects.filter(
+            season=active_season,
+            is_final=True,
+            home_score__isnull=False,
+            away_score__isnull=False,
+        ).filter(
+            Q(home_team_id__in=game_teams) | Q(away_team_id__in=game_teams)
+        ).select_related("home_team", "away_team").order_by("-kickoff", "-id")
+
+        for completed in completed_games:
+            for team_id, opponent, scored, conceded in (
+                (completed.home_team_id, completed.away_team.name,
+                 completed.home_score, completed.away_score),
+                (completed.away_team_id, completed.home_team.name,
+                 completed.away_score, completed.home_score),
+            ):
+                if team_id in recent_results_by_team:
+                    recent_results_by_team[team_id].append({
+                        "opponent": opponent,
+                        "score": f"{scored}–{conceded}",
+                        "result": "W" if scored > conceded else ("L" if scored < conceded else "T"),
+                    })
+
+    for lg, _ in games_with_picks:
+        lg.game.away_recent_results = recent_results_by_team.get(lg.game.away_team_id, [])
+        lg.game.home_recent_results = recent_results_by_team.get(lg.game.home_team_id, [])
+        lg.game.recent_results_display = [
+            (lg.game.away_team.name, lg.game.away_recent_results),
+            (lg.game.home_team.name, lg.game.home_recent_results),
+        ]
+
     # Get team stats for all teams in the games
     from .models import TeamStat
     team_stats = {}
