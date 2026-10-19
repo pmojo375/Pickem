@@ -745,38 +745,52 @@
         width: 100% !important;
     }
     
-    /* DaisyUI collapse bars inherit their height from the checkbox AND grid.
-       Size the entire closed bar, not merely its label text. */
+    /* Use a block layout for these three accordions. DaisyUI's grid can
+       reserve min-content height for hidden content, making bars inconsistent. */
     .compact-picks-accordion {
+        display: block !important;
+        position: relative;
         min-height: 0 !important;
-        grid-template-rows: 2rem 0fr;
     }
     .compact-picks-accordion > input[type="checkbox"] {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: auto !important;
+        width: 100% !important;
+        height: 2.5rem !important;
         min-height: 0 !important;
-        height: 2rem !important;
-        padding: 0 !important;
         margin: 0 !important;
+        z-index: 2;
+        cursor: pointer;
     }
     .compact-picks-accordion > .collapse-title {
         box-sizing: border-box;
-        min-height: 2rem !important;
-        height: 2rem !important;
-        padding: 0 2.25rem 0 0.75rem !important;
-        margin: 0 !important;
-        line-height: 1 !important;
-        font-size: 0.8125rem;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
         gap: 0.5rem;
+        height: 2.5rem !important;
+        min-height: 2.5rem !important;
+        padding: 0 2.25rem 0 0.75rem !important;
+        margin: 0 !important;
+        line-height: 1.2 !important;
+        font-size: 0.875rem;
     }
     .compact-picks-accordion > .collapse-title::after {
         right: 0.85rem;
         top: 50%;
         margin-top: -0.375rem;
     }
-    .compact-picks-accordion:has(> input[type="checkbox"]:checked) {
-        grid-template-rows: 2rem 1fr;
+    .compact-picks-accordion > .collapse-content {
+        display: none !important;
+        visibility: hidden !important;
+        min-height: 0 !important;
+    }
+    .compact-picks-accordion > input[type="checkbox"]:checked ~ .collapse-content {
+        display: block !important;
+        visibility: visible !important;
     }
 
     /* Compact collapse titles - reduce bar height to just fit text */
