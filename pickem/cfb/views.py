@@ -384,7 +384,9 @@ def picks_view(request):
     
     if request.method == "POST":
         # Process all picks from the form
-        saved_count = 0
+        new_count = 0
+        updated_count = 0
+        unchanged_count = 0
         errors = []
         
         # Get league from form
@@ -507,14 +509,24 @@ def picks_view(request):
                         errors.append(f"Invalid team selection for {game.away_team.name} @ {game.home_team.name}")
                         continue
                     
-                    # Save the pick
-                    Pick.objects.update_or_create(
-                        user=request.user,
-                        league=league,
-                        game=game,
-                        defaults={"picked_team": picked_team, "is_key_pick": is_key_pick},
-                    )
-                    saved_count += 1
+                    # Count changes only; the form also submits unchanged unlocked picks.
+                    existing_pick = Pick.objects.filter(
+                        user=request.user, league=league, game=game
+                    ).first()
+                    if existing_pick is None:
+                        Pick.objects.create(
+                            user=request.user, league=league, game=game,
+                            picked_team=picked_team, is_key_pick=is_key_pick,
+                        )
+                        new_count += 1
+                    elif (existing_pick.picked_team_id != picked_team.id
+                          or existing_pick.is_key_pick != is_key_pick):
+                        existing_pick.picked_team = picked_team
+                        existing_pick.is_key_pick = is_key_pick
+                        existing_pick.save(update_fields=["picked_team", "is_key_pick"])
+                        updated_count += 1
+                    else:
+                        unchanged_count += 1
                 except (LeagueGame.DoesNotExist, Game.DoesNotExist, Team.DoesNotExist):
                     errors.append(f"Invalid game or team selection")
                     continue
@@ -564,11 +576,11 @@ def picks_view(request):
                     errors.append("Invalid total points prediction value.")
         
         # Show results
-        if saved_count > 0:
+        if new_count or updated_count:
             logger.info(
                 "picks_saved league=%s saved=%s errors=%s",
                 league.id,
-                saved_count,
+                new_count + updated_count,
                 len(errors),
             )
             analytics.capture(
@@ -578,7 +590,10 @@ def picks_view(request):
                     "username": request.user.username,
                     "league_id": league.id,
                     "league_name": league.name,
-                    "picks_saved": saved_count,
+                    "picks_saved": new_count + updated_count,
+                    "picks_new": new_count,
+                    "picks_updated": updated_count,
+                    "picks_unchanged": unchanged_count,
                     "key_picks_submitted": new_key_picks_count,
                     "week_number": getattr(current_week, "number", None),
                     "season_year": getattr(active_season, "year", None),
@@ -591,13 +606,19 @@ def picks_view(request):
                     "$set": analytics.person_props(request.user),
                 },
             )
-            messages.success(request, f"Successfully saved {saved_count} pick{'s' if saved_count != 1 else ''}! 🏈")
+            messages.success(
+                request,
+                f"Picks processed: {updated_count} updated, {new_count} new saved, "
+                f"{unchanged_count} unchanged. Started games remain locked."
+            )
         if errors:
             for error in errors:
                 messages.error(request, error)
-        if saved_count == 0 and not errors:
+        if unchanged_count and not (new_count or updated_count) and not errors:
+            messages.info(request, f"No changes needed: {unchanged_count} picks unchanged. Started games remain locked.")
+        elif not (new_count or updated_count or unchanged_count) and not errors:
             messages.warning(request, "No picks were selected. Click on teams to make your picks!")
-        elif saved_count == 0 and errors:
+        elif not (new_count or updated_count) and errors:
             logger.info(
                 "picks_rejected league=%s errors=%s",
                 league.id,
