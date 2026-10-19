@@ -696,7 +696,58 @@
         </form>
 
         {% if league_announcement_list %}
-        <div class="overflow-x-auto">
+        <!-- Mobile cards keep long announcement text readable without squeezing table columns. -->
+        <div class="space-y-4 md:hidden">
+            {% for announcement in league_announcement_list %}
+            <article class="rounded-xl border border-base-300 bg-base-200 p-4 min-w-0">
+                <div class="flex items-start justify-between gap-3">
+                    <h3 class="font-semibold text-lg min-w-0 break-words">{{ announcement.title }}</h3>
+                    {% if announcement.is_active %}
+                    <span class="badge badge-success shrink-0">Active</span>
+                    {% else %}
+                    <span class="badge badge-ghost shrink-0">Inactive</span>
+                    {% endif %}
+                </div>
+                <div class="flex flex-wrap gap-2 mt-2">
+                    <span class="badge {% if announcement.kind == 'persistent' %}badge-secondary{% else %}badge-ghost{% endif %}">
+                        {% if announcement.kind == 'persistent' %}Persistent{% else %}One-time{% endif %}
+                    </span>
+                    <span class="badge badge-outline">{{ announcement.level|capfirst }}</span>
+                </div>
+                <div class="mt-3">
+                    <p id="announcement-body-{{ announcement.id }}" class="text-sm text-base-content/70 whitespace-pre-line break-words overflow-hidden" style="display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3;">{{ announcement.body }}</p>
+                    <button type="button" class="btn btn-link btn-sm px-0 min-h-0 h-auto mt-2" aria-expanded="false" aria-controls="announcement-body-{{ announcement.id }}" onclick="const body = document.getElementById('announcement-body-{{ announcement.id }}'); const expanded = this.getAttribute('aria-expanded') === 'true'; body.style.webkitLineClamp = expanded ? '3' : 'unset'; body.style.display = expanded ? '-webkit-box' : 'block'; this.setAttribute('aria-expanded', String(!expanded)); this.textContent = expanded ? 'Read more' : 'Show less';">Read more</button>
+                </div>
+                <p class="text-xs text-base-content/50 mt-2">
+                    {{ announcement.created_at|date:"M j, Y g:i A" }}
+                    {% if announcement.ends_at %} · ends {{ announcement.ends_at|date:"M j, Y g:i A" }}{% endif %}
+                </p>
+                <div class="border-t border-base-300 mt-3 pt-3 flex flex-wrap items-center justify-between gap-3">
+                    <span class="text-xs text-base-content/60">
+                        {% if announcement.kind == 'one_time' %}{{ announcement.dismissal_count }} dismissal{{ announcement.dismissal_count|pluralize }}{% else %}Persistent message{% endif %}
+                    </span>
+                    <div class="flex flex-wrap gap-2">
+                        <form method="post" action="">
+                            {% csrf_token %}
+                            <input type="hidden" name="do" value="toggle_announcement" />
+                            <input type="hidden" name="league_id" value="{{ current_league.id }}" />
+                            <input type="hidden" name="announcement_id" value="{{ announcement.id }}" />
+                            <button type="submit" class="btn btn-sm btn-outline">{% if announcement.is_active %}Deactivate{% else %}Activate{% endif %}</button>
+                        </form>
+                        <form method="post" action="" onsubmit="return confirm('Delete this announcement?');">
+                            {% csrf_token %}
+                            <input type="hidden" name="do" value="delete_announcement" />
+                            <input type="hidden" name="league_id" value="{{ current_league.id }}" />
+                            <input type="hidden" name="announcement_id" value="{{ announcement.id }}" />
+                            <button type="submit" class="btn btn-sm btn-error btn-outline">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        <!-- Desktop retains the compact management table. -->
+        <div class="hidden md:block overflow-x-auto">
             <table class="table table-zebra">
                 <thead>
                     <tr>
