@@ -745,15 +745,28 @@
         width: 100% !important;
     }
     
-    /* Compact the three matchup dropdown headers without shrinking expanded content. */
+    /* DaisyUI collapse bars inherit their height from the checkbox AND grid.
+       Size the entire closed bar, not merely its label text. */
+    .compact-picks-accordion {
+        min-height: 0 !important;
+        grid-template-rows: 2rem 0fr;
+    }
+    .compact-picks-accordion > input[type="checkbox"] {
+        min-height: 0 !important;
+        height: 2rem !important;
+    }
     .compact-picks-accordion > .collapse-title {
-        min-height: 2rem !important;
-        padding: 0.35rem 2.25rem 0.35rem 0.75rem !important;
+        min-height: 0 !important;
+        height: 2rem !important;
+        padding: 0 2.25rem 0 0.75rem !important;
         line-height: 1.15 !important;
         font-size: 0.8125rem;
     }
     .compact-picks-accordion > .collapse-title::after {
         right: 0.85rem;
+    }
+    .compact-picks-accordion:has(> input[type="checkbox"]:checked) {
+        grid-template-rows: 2rem 1fr;
     }
 
     /* Compact collapse titles - reduce bar height to just fit text */
