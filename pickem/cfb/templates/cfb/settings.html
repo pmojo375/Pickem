@@ -42,16 +42,16 @@
 {% if current_league %}
 
 <!-- League Rules (Accordion) -->
-<div class="collapse collapse-arrow bg-base-100 shadow-xl mb-6 border border-base-300">
+<div class="collapse collapse-arrow w-full min-w-0 max-w-full bg-base-100 shadow-xl mb-6 border border-base-300">
     <input type="checkbox" class="peer" /> 
-    <div class="collapse-title text-xl font-bold">
-        <div class="flex items-center gap-2">
+    <div class="collapse-title min-w-0 pr-10 text-xl font-bold">
+        <div class="flex flex-wrap items-center gap-2 min-w-0">
             <i class="fas fa-gavel text-primary"></i>
             <span>League Rules</span>
             <span class="text-sm font-normal text-base-content/70 ml-2">(Click to expand)</span>
         </div>
     </div>
-    <div class="collapse-content">
+    <div class="collapse-content min-w-0 max-w-full overflow-x-hidden">
         <p class="text-sm text-base-content/70 mb-4">Configure scoring, picking, and other rules for this league. Rules are season-specific.</p>
         
         {% if not active_season %}
@@ -593,8 +593,8 @@
                 </div>
             </div>
             
-            <div class="card-actions justify-end mt-6">
-                <button type="submit" class="btn btn-primary btn-lg gap-2" id="save-rules-btn">
+            <div class="card-actions justify-end mt-6 min-w-0">
+                <button type="submit" class="btn btn-primary btn-lg gap-2 max-w-full whitespace-normal h-auto min-h-12 text-center" id="save-rules-btn">
                     <i class="fas fa-save"></i>
                     Save League Rules
                 </button>
@@ -606,16 +606,16 @@
 
 
 <!-- League Announcements -->
-<div id="announcements" class="collapse collapse-arrow bg-base-100 shadow-xl mb-6 border border-base-300">
+<div id="announcements" class="collapse collapse-arrow w-full min-w-0 max-w-full bg-base-100 shadow-xl mb-6 border border-base-300">
     <input type="checkbox" class="peer" />
-    <div class="collapse-title text-xl font-bold">
+    <div class="collapse-title min-w-0 pr-10 text-xl font-bold">
         <div class="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
             <i class="fas fa-bullhorn text-primary"></i>
             <span>Announcements</span>
-            <span class="text-sm font-normal text-base-content/70 min-w-0 whitespace-normal break-words">Messages for league members</span>
+            <span class="block basis-full sm:basis-auto text-sm font-normal text-base-content/70 min-w-0 whitespace-normal break-words">Messages for league members</span>
         </div>
     </div>
-    <div class="collapse-content">
+    <div class="collapse-content min-w-0 max-w-full overflow-x-hidden">
         <p class="text-sm text-base-content/70 mb-4">
             Post a message that appears at the top of pages for active members of this league.
             One-time messages can be dismissed; persistent ones stay until you deactivate or delete them.
