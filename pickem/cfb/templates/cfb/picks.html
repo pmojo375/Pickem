@@ -423,7 +423,7 @@
                         <input type="checkbox" />
                         <div class="collapse-title text-sm font-medium flex items-center justify-center gap-2 min-h-0">
                             <i class="fas fa-history text-primary"></i>
-                            Recent Results
+                            Previous Games
                         </div>
                         <div class="collapse-content p-2">
                             {% for team_name, results in lg.game.recent_results_display %}
@@ -432,14 +432,14 @@
                                 {% if results %}
                                 <div class="overflow-x-auto">
                                     <table class="table table-xs w-full">
-                                        <thead><tr><th>Opponent</th><th>Score</th><th>Result</th></tr></thead>
+                                        <thead><tr><th>Opponent</th><th>Score</th><th class="text-center w-16">Result</th></tr></thead>
                                         <tbody>
                                         {% for result in results %}
                                             <tr>
                                                 <td class="whitespace-normal break-words">{{ result.opponent }}</td>
                                                 <td class="whitespace-nowrap">{{ result.score }}</td>
-                                                <td>
-                                                    <span class="badge badge-sm {% if result.result == 'W' %}badge-success{% elif result.result == 'L' %}badge-error{% else %}badge-ghost{% endif %}">{{ result.result }}</span>
+                                                <td class="text-center">
+                                                    <span class="badge badge-sm inline-flex w-9 justify-center {% if result.result == 'W' %}badge-success{% elif result.result == 'L' %}badge-error{% else %}badge-ghost{% endif %}">{{ result.result }}</span>
                                                 </td>
                                             </tr>
                                         {% endfor %}
