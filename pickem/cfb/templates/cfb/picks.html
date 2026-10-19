@@ -426,8 +426,10 @@
                             Previous Games
                         </div>
                         <div class="collapse-content p-2">
+                            <!-- Stack on mobile; match the two-column team stats on desktop. -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {% for team_name, results in lg.game.recent_results_display %}
-                            <div class="mb-3 last:mb-0">
+                            <div class="min-w-0">
                                 <div class="text-sm font-semibold mb-2">{{ team_name }}</div>
                                 {% if results %}
                                 <div class="overflow-x-auto">
@@ -451,6 +453,7 @@
                                 {% endif %}
                             </div>
                             {% endfor %}
+                            </div>
                         </div>
                     </div>
 
