@@ -418,6 +418,42 @@
                     {% endif %}
                     {% endwith %}
                     
+                    <!-- Current season completed games, newest first -->
+                    <div class="collapse collapse-arrow bg-base-200 rounded-lg mt-2">
+                        <input type="checkbox" />
+                        <div class="collapse-title text-sm font-medium flex items-center justify-center gap-2 min-h-0">
+                            <i class="fas fa-history text-primary"></i>
+                            Recent Results
+                        </div>
+                        <div class="collapse-content p-2">
+                            {% for team_name, results in lg.game.recent_results_display %}
+                            <div class="mb-3 last:mb-0">
+                                <div class="text-sm font-semibold mb-2">{{ team_name }}</div>
+                                {% if results %}
+                                <div class="overflow-x-auto">
+                                    <table class="table table-xs w-full">
+                                        <thead><tr><th>Opponent</th><th>Score</th><th>Result</th></tr></thead>
+                                        <tbody>
+                                        {% for result in results %}
+                                            <tr>
+                                                <td class="whitespace-normal break-words">{{ result.opponent }}</td>
+                                                <td class="whitespace-nowrap">{{ result.score }}</td>
+                                                <td>
+                                                    <span class="badge badge-sm {% if result.result == 'W' %}badge-success{% elif result.result == 'L' %}badge-error{% else %}badge-ghost{% endif %}">{{ result.result }}</span>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <p class="text-xs text-base-content/60">No completed games this season.</p>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
                     <!-- Line Movement Chart Section -->
                     <div class="divider my-1">Game Info</div>
                     
