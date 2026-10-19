@@ -279,7 +279,7 @@
                     {% if away_stats.mobile_stats or home_stats.mobile_stats %}
                     <div class="divider my-1">Team Stats</div>
                     
-                    <div class="collapse collapse-arrow bg-base-200 rounded-lg">
+                    <div class="collapse collapse-arrow compact-picks-accordion bg-base-200 rounded-lg">
                         <input type="checkbox"
                                class="team-stats-toggle"
                                data-game-id="{{ lg.game.id }}"
@@ -419,7 +419,7 @@
                     {% endwith %}
                     
                     <!-- Current season completed games, newest first -->
-                    <div class="collapse collapse-arrow bg-base-200 rounded-lg mt-2">
+                    <div class="collapse collapse-arrow compact-picks-accordion bg-base-200 rounded-lg mt-2">
                         <input type="checkbox" />
                         <div class="collapse-title text-sm font-medium flex items-center justify-center gap-2 min-h-0">
                             <i class="fas fa-history text-primary"></i>
@@ -457,7 +457,7 @@
                     <!-- Line Movement Chart Section -->
                     <div class="divider my-1">Game Info</div>
                     
-                    <div class="collapse collapse-arrow bg-base-200 rounded-lg">
+                    <div class="collapse collapse-arrow compact-picks-accordion bg-base-200 rounded-lg">
                         <input type="checkbox"
                                class="spread-chart-toggle"
                                data-game-id="{{ lg.game.id }}"
@@ -745,6 +745,17 @@
         width: 100% !important;
     }
     
+    /* Compact the three matchup dropdown headers without shrinking expanded content. */
+    .compact-picks-accordion > .collapse-title {
+        min-height: 2rem !important;
+        padding: 0.35rem 2.25rem 0.35rem 0.75rem !important;
+        line-height: 1.15 !important;
+        font-size: 0.8125rem;
+    }
+    .compact-picks-accordion > .collapse-title::after {
+        right: 0.85rem;
+    }
+
     /* Compact collapse titles - reduce bar height to just fit text */
     .collapse-title {
         padding-top: 0.25rem !important;
