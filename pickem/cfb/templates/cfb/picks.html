@@ -271,25 +271,42 @@
                     </div>
                     {% endif %}
                     
-                    <!-- Team Stats Section -->
+                    <!-- Matchup research stays separate from pick and key-pick controls. -->
                     {% get_team_stats_organized team_stats lg.game.away_team.id as away_stats %}
                     {% get_team_stats_organized team_stats lg.game.home_team.id as home_stats %}
                     {% mark_better_team_stats away_stats home_stats as compared_stats %}
                     {% with away_stats=compared_stats.away home_stats=compared_stats.home %}
-                    {% if away_stats.mobile_stats or home_stats.mobile_stats %}
-                    <div class="divider my-1">Team Stats</div>
-                    
-                    <div class="collapse collapse-arrow compact-picks-accordion bg-base-200 rounded-lg">
-                        <input type="checkbox"
-                               class="team-stats-toggle"
-                               data-game-id="{{ lg.game.id }}"
-                               data-away-team="{{ lg.game.away_team.name|escape }}"
-                               data-home-team="{{ lg.game.home_team.name|escape }}" />
-                        <div class="collapse-title text-sm font-medium flex items-center justify-center gap-2 min-h-0">
-                            <i class="fas fa-chart-bar text-primary"></i>
-                            View Team Stats
+                    <details class="matchup-details bg-base-200 rounded-lg"
+                             data-game-id="{{ lg.game.id }}"
+                             data-away-team="{{ lg.game.away_team.name|escape }}"
+                             data-home-team="{{ lg.game.home_team.name|escape }}">
+                        <summary class="matchup-details-summary">
+                            <span>Matchup details</span>
+                            <i class="fas fa-chevron-down text-primary" aria-hidden="true"></i>
+                        </summary>
+                        <div class="matchup-tab-list" role="tablist"
+                             aria-label="{{ lg.game.away_team.name }} at {{ lg.game.home_team.name }} matchup details">
+                            <button type="button" class="matchup-tab" role="tab"
+                                    id="matchup-tab-stats-{{ lg.game.id }}"
+                                    aria-controls="matchup-panel-stats-{{ lg.game.id }}"
+                                    aria-selected="true" tabindex="0"
+                                    data-matchup-tab="stats">Stats</button>
+                            <button type="button" class="matchup-tab" role="tab"
+                                    id="matchup-tab-previous-{{ lg.game.id }}"
+                                    aria-controls="matchup-panel-previous-{{ lg.game.id }}"
+                                    aria-selected="false" tabindex="-1"
+                                    data-matchup-tab="previous">Previous Games</button>
+                            <button type="button" class="matchup-tab" role="tab"
+                                    id="matchup-tab-lines-{{ lg.game.id }}"
+                                    aria-controls="matchup-panel-lines-{{ lg.game.id }}"
+                                    aria-selected="false" tabindex="-1"
+                                    data-matchup-tab="lines">Lines</button>
                         </div>
-                        <div class="collapse-content p-2">
+                        <div class="matchup-panel" role="tabpanel" tabindex="0"
+                             id="matchup-panel-stats-{{ lg.game.id }}"
+                             aria-labelledby="matchup-tab-stats-{{ lg.game.id }}">
+                            {% if away_stats.mobile_stats or home_stats.mobile_stats %}
+
                             <!-- Mobile Stats (stacked) -->
                             <div class="md:hidden">
                                 {% if away_stats.mobile_stats %}
@@ -413,19 +430,14 @@
                                     {% endif %}
                                 </div>
                             </div>
+                            {% else %}
+                            <p class="text-xs text-base-content/60 py-2">Team stats are not available yet.</p>
+                            {% endif %}
                         </div>
-                    </div>
-                    {% endif %}
-                    {% endwith %}
-                    
-                    <!-- Current season completed games, newest first -->
-                    <div class="collapse collapse-arrow compact-picks-accordion bg-base-200 rounded-lg mt-2">
-                        <input type="checkbox" />
-                        <div class="collapse-title text-sm font-medium flex items-center justify-center gap-2 min-h-0">
-                            <i class="fas fa-history text-primary"></i>
-                            Previous Games
-                        </div>
-                        <div class="collapse-content p-2">
+                        <div class="matchup-panel" role="tabpanel" tabindex="0" hidden
+                             id="matchup-panel-previous-{{ lg.game.id }}"
+                             aria-labelledby="matchup-tab-previous-{{ lg.game.id }}">
+
                             <!-- Stack on mobile; match the two-column team stats on desktop. -->
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {% for team_name, results in lg.game.recent_results_display %}
@@ -455,22 +467,10 @@
                             {% endfor %}
                             </div>
                         </div>
-                    </div>
+                        <div class="matchup-panel" role="tabpanel" tabindex="0" hidden
+                             id="matchup-panel-lines-{{ lg.game.id }}"
+                             aria-labelledby="matchup-tab-lines-{{ lg.game.id }}">
 
-                    <!-- Line Movement Chart Section -->
-                    <div class="divider my-1">Game Info</div>
-                    
-                    <div class="collapse collapse-arrow compact-picks-accordion bg-base-200 rounded-lg">
-                        <input type="checkbox"
-                               class="spread-chart-toggle"
-                               data-game-id="{{ lg.game.id }}"
-                               data-away-team="{{ lg.game.away_team.name|escape }}"
-                               data-home-team="{{ lg.game.home_team.name|escape }}" />
-                        <div class="collapse-title text-sm font-medium flex items-center justify-center gap-2 min-h-0">
-                            <i class="fas fa-chart-line text-primary"></i>
-                            View Line Movement
-                        </div>
-                        <div class="collapse-content">
                             <div class="pt-2">
                                 <div class="text-center text-xs text-base-content/70 mb-3">
                                     <div class="flex justify-center gap-4">
@@ -498,7 +498,8 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </details>
+                    {% endwith %}
                 </div>
             </div>
             {% endwith %}
@@ -723,78 +724,50 @@
         transition: all 0.3s ease;
     }
     
-    /* Spread chart styling */
-    .spread-chart-toggle:checked + .collapse-title {
-        background-color: hsl(var(--b2));
-    }
-    
-    .spread-chart-toggle:checked + .collapse-title .fas {
-        transform: rotate(180deg);
-        transition: transform 0.3s ease;
-    }
-    
-    .collapse-content {
-        transition: all 0.3s ease;
-    }
-    
-    /* Chart container styling */
-    #spread-chart-loading-* {
-        border-radius: 0.5rem;
-    }
-    
-    /* Charts have consistent height and mobile-friendly sizing */
-    .collapse-content canvas {
-        height: 300px !important;
-        width: 100% !important;
-    }
-    
-    /* Use a block layout for these three accordions. DaisyUI's grid can
-       reserve min-content height for hidden content, making bars inconsistent. */
-    .compact-picks-accordion {
-        display: block !important;
-        position: relative;
-        min-height: 0 !important;
-    }
-    .compact-picks-accordion > input[type="checkbox"] {
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: auto !important;
-        width: 100% !important;
-        height: 2.5rem !important;
-        min-height: 0 !important;
-        margin: 0 !important;
-        z-index: 2;
-        cursor: pointer;
-    }
-    .compact-picks-accordion > .collapse-title {
-        box-sizing: border-box;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
+    /* Native details avoids invisible checkbox overlays on the research controls. */
+    .matchup-details { min-width: 0; margin-top: 0.5rem; }
+    .matchup-details-summary {
+        display: flex;
+        align-items: center;
+        justify-content: center;
         gap: 0.5rem;
-        height: 2.5rem !important;
-        min-height: 2.5rem !important;
-        padding: 0 2.25rem 0 0.75rem !important;
-        margin: 0 !important;
-        line-height: 1.2 !important;
+        min-height: 2.5rem;
+        padding: 0.5rem 0.75rem;
         font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        list-style: none;
     }
-    .compact-picks-accordion > .collapse-title::after {
-        right: 0.85rem;
-        top: 50%;
-        margin-top: -0.375rem;
+    .matchup-details-summary::-webkit-details-marker { display: none; }
+    .matchup-details[open] > summary .fa-chevron-down { transform: rotate(180deg); }
+    .matchup-tab-list {
+        display: flex;
+        border-bottom: 1px solid hsl(var(--b3));
+        margin: 0 0.5rem;
     }
-    .compact-picks-accordion > .collapse-content {
-        display: none !important;
-        visibility: hidden !important;
-        min-height: 0 !important;
+    .matchup-tab {
+        flex: 1;
+        min-width: 0;
+        min-height: 2.75rem;
+        padding: 0.5rem 0.25rem;
+        border-bottom: 2px solid transparent;
+        font-size: 0.8125rem;
+        line-height: 1.25;
+        text-align: center;
     }
-    .compact-picks-accordion > input[type="checkbox"]:checked ~ .collapse-content {
-        display: block !important;
-        visibility: visible !important;
+    .matchup-tab[aria-selected="true"] {
+        color: hsl(var(--p));
+        border-bottom-color: currentColor;
+        font-weight: 600;
     }
+    .matchup-tab:focus-visible,
+    .matchup-details-summary:focus-visible,
+    .matchup-panel:focus-visible {
+        outline: 2px solid hsl(var(--p));
+        outline-offset: -2px;
+    }
+    .matchup-panel { min-width: 0; padding: 0.75rem 0.5rem; }
+    .matchup-panel[hidden] { display: none !important; }
 
     /* Compact collapse titles - reduce bar height to just fit text */
     .collapse-title {
@@ -1037,42 +1010,64 @@
             });
         }
 
-        // Team stats collapse opens
-        document.querySelectorAll('.team-stats-toggle').forEach(toggle => {
-            toggle.addEventListener('change', function() {
-                if (this.checked) {
-                    trackPicksInsight('team_stats_viewed', this);
-                }
-            });
-        });
-        
-        // Handle spread chart toggles
-        document.querySelectorAll('.spread-chart-toggle').forEach(toggle => {
-            toggle.addEventListener('change', function() {
-                const gameId = this.dataset.gameId;
-                const chartCanvas = document.getElementById(`spread-chart-${gameId}`);
-                const loadingDiv = document.getElementById(`spread-chart-loading-${gameId}`);
+        // Keep selection, keyboard navigation and chart loading scoped to each game.
+        const chartRequests = new Set();
+        document.querySelectorAll('.matchup-details').forEach(details => {
+            const tabs = Array.from(details.querySelectorAll('[role="tab"]'));
+            const panels = Array.from(details.querySelectorAll('[role="tabpanel"]'));
 
-                if (this.checked) {
-                    trackPicksInsight('spread_chart_viewed', this);
+            function showActiveInsight() {
+                if (!details.open) return;
+                const activeTab = tabs.find(tab => tab.getAttribute('aria-selected') === 'true');
+                const section = activeTab.dataset.matchupTab;
+                if (section === 'stats') {
+                    trackPicksInsight('team_stats_viewed', details);
+                } else if (section === 'lines') {
+                    trackPicksInsight('spread_chart_viewed', details);
+                    const gameId = details.dataset.gameId;
+                    if (chartCache.has(gameId)) {
+                        chartCache.get(gameId).resize();
+                    } else if (!chartRequests.has(gameId)) {
+                        const canvas = document.getElementById(`spread-chart-${gameId}`);
+                        const loading = document.getElementById(`spread-chart-loading-${gameId}`);
+                        loading.innerHTML = '<span class="loading loading-spinner loading-md text-primary"></span>';
+                        loading.style.display = 'flex';
+                        chartRequests.add(gameId);
+                        fetchSpreadData(gameId, canvas, loading)
+                            .finally(() => chartRequests.delete(gameId));
+                    }
                 }
-                
-                if (this.checked && !chartCache.has(gameId)) {
-                    // Show loading spinner
-                    loadingDiv.style.display = 'flex';
-                    
-                    // Fetch spread data
-                    fetchSpreadData(gameId, chartCanvas, loadingDiv);
-                } else if (this.checked && chartCache.has(gameId)) {
-                    // Chart already loaded, just show it
-                    chartCanvas.style.display = 'block';
-                } else {
-                    // Hide chart
-                    chartCanvas.style.display = 'none';
-                }
+            }
+
+            function selectTab(selected, focus = false) {
+                tabs.forEach(tab => {
+                    const active = tab === selected;
+                    tab.setAttribute('aria-selected', String(active));
+                    tab.tabIndex = active ? 0 : -1;
+                });
+                panels.forEach(panel => {
+                    panel.hidden = panel.id !== selected.getAttribute('aria-controls');
+                });
+                if (focus) selected.focus();
+                showActiveInsight();
+            }
+
+            tabs.forEach((tab, index) => {
+                tab.addEventListener('click', () => selectTab(tab));
+                tab.addEventListener('keydown', event => {
+                    let next;
+                    if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
+                    else if (event.key === 'ArrowLeft') next = (index + tabs.length - 1) % tabs.length;
+                    else if (event.key === 'Home') next = 0;
+                    else if (event.key === 'End') next = tabs.length - 1;
+                    else return;
+                    event.preventDefault();
+                    selectTab(tabs[next], true);
+                });
             });
+            details.addEventListener('toggle', showActiveInsight);
         });
-        
+
         async function fetchSpreadData(gameId, canvas, loadingDiv) {
             try {
                 const url = `/api/games/${gameId}/spread-history/${currentLeagueId ? `?league_id=${currentLeagueId}` : ''}`;
@@ -1100,6 +1095,7 @@
                 
                 // Check if we have data to display
                 if (!data.spread_history || data.spread_history.length === 0) {
+                    loadingDiv.style.display = 'flex';
                     loadingDiv.innerHTML = '<div class="text-center text-base-content/70 py-8"><i class="fas fa-chart-line text-4xl mb-2"></i><p>No spread history available</p><p class="text-sm">Spread data will appear here once available</p></div>';
                     return;
                 }
@@ -1129,7 +1125,7 @@
                 const favoriteTeam = isHomeFavorite ? data.game.home_team : data.game.away_team;
                 
                 // Update the legend in the template
-                const legendElement = document.querySelector(`[data-game-id="${gameId}"]`).closest('.collapse').querySelector('.flex.justify-center.gap-4 span:first-child');
+                const legendElement = canvas.closest('.matchup-panel').querySelector('.flex.justify-center.gap-4 span:first-child');
                 if (legendElement) {
                     legendElement.innerHTML = `
                         <div class="w-3 h-0.5 bg-primary"></div>
@@ -1143,6 +1139,7 @@
                 
             } catch (error) {
                 console.error('Error fetching spread data:', error);
+                loadingDiv.style.display = 'flex';
                 loadingDiv.innerHTML = '<span class="text-error text-sm">Error loading chart</span>';
             }
         }
