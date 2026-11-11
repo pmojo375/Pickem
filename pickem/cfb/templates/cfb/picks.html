@@ -287,23 +287,23 @@
                         <div class="matchup-tab-list" role="tablist"
                              aria-label="{{ lg.game.away_team.name }} at {{ lg.game.home_team.name }} matchup details">
                             <button type="button" class="matchup-tab" role="tab"
-                                    id="matchup-tab-stats-{{ lg.game.id }}"
-                                    aria-controls="matchup-panel-stats-{{ lg.game.id }}"
+                                    id="matchup-tab-lines-{{ lg.game.id }}"
+                                    aria-controls="matchup-panel-lines-{{ lg.game.id }}"
                                     aria-selected="true" tabindex="0"
-                                    data-matchup-tab="stats">Stats</button>
+                                    data-matchup-tab="lines">Lines</button>
                             <button type="button" class="matchup-tab" role="tab"
                                     id="matchup-tab-previous-{{ lg.game.id }}"
                                     aria-controls="matchup-panel-previous-{{ lg.game.id }}"
                                     aria-selected="false" tabindex="-1"
                                     data-matchup-tab="previous">Previous Games</button>
                             <button type="button" class="matchup-tab" role="tab"
-                                    id="matchup-tab-lines-{{ lg.game.id }}"
-                                    aria-controls="matchup-panel-lines-{{ lg.game.id }}"
+                                    id="matchup-tab-stats-{{ lg.game.id }}"
+                                    aria-controls="matchup-panel-stats-{{ lg.game.id }}"
                                     aria-selected="false" tabindex="-1"
-                                    data-matchup-tab="lines">Lines</button>
+                                    data-matchup-tab="stats">Stats</button>
                         </div>
                         <div class="matchup-panel" role="tabpanel" tabindex="0"
-                             id="matchup-panel-stats-{{ lg.game.id }}"
+                             id="matchup-panel-stats-{{ lg.game.id }}" hidden
                              aria-labelledby="matchup-tab-stats-{{ lg.game.id }}">
                             {% if away_stats.mobile_stats or home_stats.mobile_stats %}
 
