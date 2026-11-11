@@ -132,8 +132,7 @@ def attach_prize_amounts(
 
     Season last place (when configured) goes to the eligible row(s) with the
     most incorrect picks — not the worst points rank. Missed games are not
-    incorrect, so skipping does not farm last place. Callers should pass
-    drop-adjusted incorrect when drop weeks are in effect.
+    incorrect, so skipping does not farm last place. Callers should pass season-long incorrect counts, including dropped weeks.
     """
     for row in standings:
         row["prize_amount"] = None
