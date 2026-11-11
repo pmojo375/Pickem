@@ -2022,7 +2022,7 @@ class LiveWeekSnapshotTests(TestCase):
 
 
 class LastPlaceDroppedWeekPayoutTests(TestCase):
-    def test_dropped_week_incorrect_picks_never_count_even_in_full_view(self):
+    def test_dropped_week_incorrect_picks_count_for_last_place_in_both_views(self):
         from cfb.views import _season_incorrect_by_user
         from cfb.services.payouts import attach_prize_amounts
 
@@ -2036,7 +2036,7 @@ class LastPlaceDroppedWeekPayoutTests(TestCase):
         season = Season.objects.create(year=2027, is_active=True)
         rules = LeagueRules.objects.create(league=league, season=season, drop_weeks=1)
 
-        # Player 0 has the most raw losses but most are in the dropped week.
+        # Player 0 has the most losses overall, even though most are in a dropped week.
         for user, raw, dropped in zip(users, [12, 9, 4], [8, 1, 0]):
             MemberSeason.objects.create(
                 league=league,
@@ -2046,7 +2046,7 @@ class LastPlaceDroppedWeekPayoutTests(TestCase):
                 incorrect_dropped=dropped,
             )
 
-        expected = {users[0].id: 4, users[1].id: 8, users[2].id: 4}
+        expected = {users[0].id: 12, users[1].id: 9, users[2].id: 4}
         for full_view in (False, True):
             counts = _season_incorrect_by_user(
                 league, season, rules, show_full_standings=full_view
@@ -2060,4 +2060,4 @@ class LastPlaceDroppedWeekPayoutTests(TestCase):
                 rows, [], {"label": "Last place", "amount": Decimal("30.00")}
             )
             winners = [row["user_id"] for row in rows if row["prize_amount"] is not None]
-            self.assertEqual(winners, [users[1].id])
+            self.assertEqual(winners, [users[0].id])
