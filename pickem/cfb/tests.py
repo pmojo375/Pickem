@@ -406,6 +406,8 @@ class PersonalInviteFlowTests(TestCase):
         session.save()
         request = self.factory.get(self.invite_path)
         request.session = session
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        request._messages = FallbackStorage(request)
         return request
 
     def test_google_sign_in_with_wrong_email_is_blocked(self):
