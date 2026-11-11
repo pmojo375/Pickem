@@ -1255,18 +1255,14 @@ def _season_rank_by_user(league, season, league_rules, show_full_standings=False
 
 
 def _season_incorrect_by_user(league, season, league_rules, show_full_standings=False):
-    """Map user_id -> incorrect picks for season last-place prizes (drop-aware)."""
+    """Count incorrect picks for last-place payouts, always excluding dropped weeks."""
     incorrect = {}
     member_seasons = MemberSeason.objects.filter(
         league=league,
         season=season,
         user_id__in=_active_member_user_ids(league),
     )
-    use_drops = (
-        not show_full_standings
-        and league_rules
-        and league_rules.drop_weeks > 0
-    )
+    use_drops = bool(league_rules and league_rules.drop_weeks > 0)
     for member_season in member_seasons:
         if use_drops:
             incorrect[member_season.user_id] = max(
