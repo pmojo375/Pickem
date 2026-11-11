@@ -2017,3 +2017,45 @@ class LiveWeekSnapshotTests(TestCase):
         self.assertEqual(standing["field_size"], 3)
         self.assertIn(f"week={self.week.id}", standing["standings_url"])
 
+
+
+class LastPlaceDroppedWeekPayoutTests(TestCase):
+    def test_dropped_week_incorrect_picks_never_count_even_in_full_view(self):
+        from cfb.views import _season_incorrect_by_user
+        from cfb.services.payouts import attach_prize_amounts
+
+        users = [
+            User.objects.create_user(f"drop_payer_{i}", f"drop_payer_{i}@example.com", "pass")
+            for i in range(3)
+        ]
+        league = League.objects.create(name="Dropped Week Payout League", created_by=users[0])
+        for user in users:
+            LeagueMembership.objects.create(league=league, user=user, role="member")
+        season = Season.objects.create(year=2027, is_active=True)
+        rules = LeagueRules.objects.create(league=league, season=season, drop_weeks=1)
+
+        # Player 0 has the most raw losses but most are in the dropped week.
+        for user, raw, dropped in zip(users, [12, 9, 4], [8, 1, 0]):
+            MemberSeason.objects.create(
+                league=league,
+                season=season,
+                user=user,
+                incorrect=raw,
+                incorrect_dropped=dropped,
+            )
+
+        expected = {users[0].id: 4, users[1].id: 8, users[2].id: 4}
+        for full_view in (False, True):
+            counts = _season_incorrect_by_user(
+                league, season, rules, show_full_standings=full_view
+            )
+            self.assertEqual(counts, expected)
+            rows = [
+                {"user_id": user.id, "display_rank": i + 1, "incorrect": counts[user.id]}
+                for i, user in enumerate(users)
+            ]
+            attach_prize_amounts(
+                rows, [], {"label": "Last place", "amount": Decimal("30.00")}
+            )
+            winners = [row["user_id"] for row in rows if row["prize_amount"] is not None]
+            self.assertEqual(winners, [users[1].id])
