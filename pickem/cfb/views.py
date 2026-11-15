@@ -1541,11 +1541,12 @@ def standings_view(request):
                         is_final=False, kickoff__lte=now
                     )
                     all_final = not week_games.exclude(is_final=True).exists()
-                    has_live_or_final = live_games.exists() or all_final
-                    # What If also needs weeks with started unfinished games (even without scores)
-                    include_week = has_live_or_final or (
-                        show_what_if and started_unfinished.exists()
-                    )
+                    # Keep any week with a started/finished game available even
+                    # when another selected game is delayed and has no score.
+                    # Do not require What If mode or an active live score.
+                    include_week = live_games.exists() or week_games.filter(
+                        Q(kickoff__lte=now) | Q(is_final=True)
+                    ).exists()
                     
                     if include_week:
                         available_weeks.append({
