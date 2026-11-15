@@ -1806,6 +1806,70 @@ class LiveWeekSelectionTests(TestCase):
         self.assertEqual(data, {"standing": None, "week_id": self.current.id})
 
 
+    def test_standings_latest_keeps_previous_week_before_kickoff(self):
+        response = self.client.get(
+            reverse("standings"), {"league_id": self.league.id, "week": "latest"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["selected_week"], self.previous)
+        self.assertNotIn(
+            self.current.id,
+            [item["week"].id for item in response.context["available_weeks"]],
+        )
+
+    def test_standings_latest_shows_started_week_before_first_score(self):
+        # A game may be underway without the score feed reporting any points.
+        with patch("django.utils.timezone.now", return_value=self.current_game.kickoff):
+            response = self.client.get(
+                reverse("standings"), {"league_id": self.league.id, "week": "latest"}
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["selected_week"], self.current)
+        self.assertTrue(response.context["show_week_standings"])
+
+    def test_standings_latest_keeps_partially_final_week_with_delayed_game(self):
+        # A postponed game may still have yesterday's stale kickoff and no score,
+        # or its kickoff might be corrected to a future date.
+        self.current_game.kickoff = self.now - timedelta(hours=5)
+        self.current_game.is_final = True
+        self.current_game.home_score = 28
+        self.current_game.away_score = 14
+        self.current_game.save(
+            update_fields=["kickoff", "is_final", "home_score", "away_score"]
+        )
+        delayed = Game.objects.create(
+            season=self.season,
+            week=self.current,
+            home_team=self.current_game.home_team,
+            away_team=self.current_game.away_team,
+            kickoff=self.now - timedelta(hours=1),
+            is_final=False,
+        )
+        LeagueGame.objects.create(
+            league=self.league, game=delayed, is_active=True,
+            locked_home_spread=0,
+        )
+        for delayed_kickoff in (
+            self.now - timedelta(hours=1),
+            self.now + timedelta(days=1),
+        ):
+            with self.subTest(delayed_kickoff=delayed_kickoff):
+                delayed.kickoff = delayed_kickoff
+                delayed.save(update_fields=["kickoff"])
+                response = self.client.get(
+                    reverse("standings"),
+                    {"league_id": self.league.id, "week": "latest"},
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.context["selected_week"], self.current)
+                self.assertFalse(response.context["week_is_final"])
+                week_data = next(
+                    item for item in response.context["available_weeks"]
+                    if item["week"] == self.current
+                )
+                self.assertFalse(week_data["all_games_final"])
+
+
 class LiveWeekSnapshotTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user("livebar", "livebar@example.com", "pass")
