@@ -476,7 +476,7 @@
                                     <div class="flex justify-center gap-4">
                                         <span class="flex items-center gap-1">
                                             <div class="w-3 h-0.5 bg-primary"></div>
-                                            {{ lg.game.home_team.abbreviation|default:lg.game.home_team.name }} (Favorite)
+                                            <span class="spread-chart-team-label">Spread</span>
                                         </span>
                                         {% if lg.locked_home_spread is not None %}
                                         <span class="flex items-center gap-1">
@@ -1119,18 +1119,14 @@
                     chartInfo.querySelector('.chart-data-type').textContent = dataTypeText;
                 }
                 
-                // Update the legend to show the correct favorite team
+                // Track the same team throughout the chart, even if the favorite changes.
                 const firstSpread = data.spread_history[0];
-                const isHomeFavorite = firstSpread && firstSpread.home_spread < 0;
-                const favoriteTeam = isHomeFavorite ? data.game.home_team : data.game.away_team;
+                const useHomeSpread = firstSpread.home_spread < 0;
+                const referenceTeam = useHomeSpread ? data.game.home_team : data.game.away_team;
                 
-                // Update the legend in the template
-                const legendElement = canvas.closest('.matchup-panel').querySelector('.flex.justify-center.gap-4 span:first-child');
+                const legendElement = canvas.closest('.matchup-panel').querySelector('.spread-chart-team-label');
                 if (legendElement) {
-                    legendElement.innerHTML = `
-                        <div class="w-3 h-0.5 bg-primary"></div>
-                        ${favoriteTeam.abbreviation || favoriteTeam.name} (Favorite)
-                    `;
+                    legendElement.textContent = `${referenceTeam.abbreviation || referenceTeam.name} Spread`;
                 }
                 
                 // Create chart
@@ -1156,21 +1152,21 @@
             const homeSpreads = data.spread_history.map(item => item.home_spread);
             const awaySpreads = data.spread_history.map(item => item.away_spread);
             
-            // Determine which team is the favorite (negative spread)
+            // Keep one team's spread on the y-axis; positive values mean underdog.
             const firstSpread = data.spread_history[0];
-            const isHomeFavorite = firstSpread && firstSpread.home_spread < 0;
-            const favoriteTeam = isHomeFavorite ? data.game.home_team : data.game.away_team;
-            const favoriteSpreads = isHomeFavorite ? homeSpreads : awaySpreads;
+            const useHomeSpread = firstSpread.home_spread < 0;
+            const referenceTeam = useHomeSpread ? data.game.home_team : data.game.away_team;
+            const teamSpreads = useHomeSpread ? homeSpreads : awaySpreads;
             
             // Find all locked spread points
             let lockedSpreadValue = null;
             let lockedIndices = [];
             
             if (data.locked_spread) {
-                lockedSpreadValue = isHomeFavorite ? data.locked_spread.home_spread : data.locked_spread.away_spread;
+                lockedSpreadValue = useHomeSpread ? data.locked_spread.home_spread : data.locked_spread.away_spread;
                 
                 // Find ALL data points that match the locked spread
-                favoriteSpreads.forEach((spread, index) => {
+                teamSpreads.forEach((spread, index) => {
                     if (Math.abs(spread - lockedSpreadValue) < 0.01) {
                         lockedIndices.push(index);
                     }
@@ -1179,23 +1175,23 @@
             
             // Prepare datasets
             const datasets = [{
-                label: `${favoriteTeam.abbreviation} (Favorite)`,
-                data: favoriteSpreads,
+                label: `${referenceTeam.abbreviation || referenceTeam.name} Spread`,
+                data: teamSpreads,
                 borderColor: '#60a5fa', // Light blue
                 backgroundColor: 'rgba(96, 165, 250, 0.1)',
                 borderWidth: 3,
                 fill: false,
                 tension: 0.1,
-                pointBackgroundColor: favoriteSpreads.map((_, index) => 
+                pointBackgroundColor: teamSpreads.map((_, index) => 
                     lockedIndices.includes(index) ? '#fbbf24' : '#60a5fa'
                 ),
-                pointBorderColor: favoriteSpreads.map((_, index) => 
+                pointBorderColor: teamSpreads.map((_, index) => 
                     lockedIndices.includes(index) ? '#ffffff' : '#ffffff'
                 ),
-                pointBorderWidth: favoriteSpreads.map((_, index) => 
+                pointBorderWidth: teamSpreads.map((_, index) => 
                     lockedIndices.includes(index) ? 4 : 2
                 ),
-                pointRadius: favoriteSpreads.map((_, index) => 
+                pointRadius: teamSpreads.map((_, index) => 
                     lockedIndices.includes(index) ? 8 : 5
                 )
             }];
@@ -1235,11 +1231,12 @@
                                     return context[0].label;
                                 },
                                 label: function(context) {
-                                    const team = context.dataset.label;
                                     const spread = context.parsed.y;
+                                    const status = spread < 0 ? 'Favorite' : spread > 0 ? 'Underdog' : 'Even';
+                                    const team = referenceTeam.abbreviation || referenceTeam.name;
                                     const isLocked = lockedIndices.includes(context.dataIndex);
                                     const lockIcon = isLocked ? '🔒 ' : '';
-                                    return `${lockIcon}${team}: ${spread > 0 ? '+' : ''}${spread}${isLocked ? ' (Locked)' : ''}`;
+                                    return `${lockIcon}${team} (${status}): ${spread > 0 ? '+' : ''}${spread}${isLocked ? ' (Locked)' : ''}`;
                                 }
                             }
                         }
@@ -1281,7 +1278,8 @@
                                 }
                             },
                             grid: {
-                                color: '#374151' // Darker gray
+                                color: context => context.tick.value === 0 ? '#9ca3af' : '#374151',
+                                lineWidth: context => context.tick.value === 0 ? 2 : 1
                             }
                         }
                     },
