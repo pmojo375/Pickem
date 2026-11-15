@@ -1,3 +1,4 @@
+from pathlib import Path
 from decimal import Decimal
 from unittest.mock import Mock, patch
 
@@ -84,6 +85,37 @@ class ForcedHookTests(SimpleTestCase):
         league_game = Mock(locked_home_spread=Decimal("3"))
 
         self.assertTrue(is_pick_correct(pick, game, rules, league_game))
+
+
+class SpreadChartFavoriteSwitchTests(SimpleTestCase):
+    """Guard against calling a team the favorite after its spread turns positive."""
+
+    def _chart_source(self):
+        return (
+            Path(__file__).resolve().parent / "templates" / "cfb" / "picks.html"
+        ).read_text(encoding="utf-8")
+
+    def test_legend_and_dataset_use_stable_team_spread_label(self):
+        source = self._chart_source()
+        self.assertIn('class="spread-chart-team-label"', source)
+        self.assertIn(
+            'legendElement.textContent = `${referenceTeam.abbreviation || referenceTeam.name} Spread`;',
+            source,
+        )
+        self.assertIn(
+            'label: `${referenceTeam.abbreviation || referenceTeam.name} Spread`',
+            source,
+        )
+        self.assertNotIn('(Favorite)`', source)
+
+    def test_tooltip_role_tracks_each_point_and_highlights_even_line(self):
+        source = self._chart_source()
+        self.assertIn(
+            "spread < 0 ? 'Favorite' : spread > 0 ? 'Underdog' : 'Even'",
+            source,
+        )
+        self.assertIn('${team} (${status})', source)
+        self.assertIn("context.tick.value === 0", source)
 
 
 class GamesListApiTests(TestCase):
