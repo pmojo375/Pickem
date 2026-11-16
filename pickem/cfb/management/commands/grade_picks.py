@@ -6,8 +6,8 @@ This is useful for ensuring all finished games have their picks properly scored.
 """
 import logging
 from django.core.management.base import BaseCommand, CommandError
-from cfb.models import Game, Season, Week
-from cfb.services.scoring import update_member_week_for_game
+from cfb.models import Game, Season, SchedulePeriod
+from cfb.services.scoring import update_member_period_for_game
 
 logger = logging.getLogger(__name__)
 
@@ -22,9 +22,9 @@ class Command(BaseCommand):
             help='Season year to grade picks for (optional - grades all if not specified)',
         )
         parser.add_argument(
-            '--week',
+            '--period', '--week', dest='schedule_period',
             type=int,
-            help='Specific week number to grade (requires --season)',
+            help='Specific schedule_period number to grade (requires --season)',
         )
         parser.add_argument(
             '--force',
@@ -39,7 +39,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         season_year = options.get('season')
-        week_num = options.get('week')
+        period_num = options.get('schedule_period')
         force = options['force']
         dry_run = options['dry_run']
 
@@ -54,24 +54,24 @@ class Command(BaseCommand):
             except Season.DoesNotExist:
                 raise CommandError(f'Season {season_year} does not exist')
 
-            if week_num:
+            if period_num:
                 try:
-                    week = Week.objects.get(
+                    schedule_period = SchedulePeriod.objects.get(
                         season=season,
-                        number=week_num,
+                        number=period_num,
                         season_type='regular',
                     )
-                    games_query = games_query.filter(week=week)
-                    self.stdout.write(self.style.SUCCESS(f'Grading picks for week {week_num}'))
-                except Week.DoesNotExist:
-                    raise CommandError(f'Week {week_num} does not exist for season {season_year}')
+                    games_query = games_query.filter(schedule_period=schedule_period)
+                    self.stdout.write(self.style.SUCCESS(f'Grading picks for schedule_period {period_num}'))
+                except SchedulePeriod.DoesNotExist:
+                    raise CommandError(f'SchedulePeriod {period_num} does not exist for season {season_year}')
         else:
             self.stdout.write(self.style.SUCCESS('Grading picks for all final games'))
 
         if force:
             self.stdout.write(self.style.WARNING('Force mode: regrading already-graded picks'))
 
-        final_games = games_query.select_related('home_team', 'away_team', 'week')
+        final_games = games_query.select_related('home_team', 'away_team', 'schedule_period')
         game_count = final_games.count()
 
         if not game_count:
@@ -112,7 +112,7 @@ class Command(BaseCommand):
                     graded_count += 1
                     continue
 
-                result = update_member_week_for_game(game)
+                result = update_member_period_for_game(game)
                 graded_count += result
                 self.stdout.write(
                     self.style.SUCCESS(f'Graded {result} pick updates for {game_str}')

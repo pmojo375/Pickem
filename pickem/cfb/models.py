@@ -25,6 +25,7 @@ class Sport(models.Model):
 
     slug = models.SlugField(primary_key=True, max_length=64)
     name = models.CharField(max_length=100)
+    data_provider = models.CharField(max_length=32, blank=True, help_text="Registered adapter, e.g. cfbd or cbbd")
     espn_sport = models.SlugField(max_length=64, blank=True)
     espn_league = models.SlugField(max_length=64, blank=True)
     period_label = models.CharField(max_length=16, default="Period")
@@ -65,7 +66,93 @@ def sport_field():
     )
 
 
-class League(models.Model):
+class IntegrityQuerySet(models.QuerySet):
+    def bulk_create(self, objs, **kwargs):
+        objs = list(objs)
+        for obj in objs:
+            obj.clean()
+        return super().bulk_create(objs, **kwargs)
+
+    def bulk_update(self, objs, fields, **kwargs):
+        objs = list(objs)
+        for obj in objs:
+            obj.clean()
+        related = {f.name for f in self.model._meta.fields if f.is_relation}
+        related |= {f.attname for f in self.model._meta.fields if f.is_relation}
+        if related.intersection(fields):
+            # Core bulk_update uses CASE expressions. Validate the objects above,
+            # then write relationship batches without treating those CASEs as user input.
+            from django.db import transaction
+            with transaction.atomic(using=self.db):
+                return sum(models.QuerySet.update(self.filter(pk=obj.pk), **{field: getattr(obj, field) for field in fields}) for obj in objs)
+        return super().bulk_update(objs, fields, **kwargs)
+
+    def update(self, **kwargs):
+        # Validate relationship changes too; numerical scoring updates remain SQL-only.
+        related = {f.name for f in self.model._meta.fields if f.is_relation}
+        related |= {f.attname for f in self.model._meta.fields if f.is_relation}
+        if related.intersection(kwargs):
+            for obj in self:
+                for name, value in kwargs.items():
+                    if hasattr(value, "resolve_expression"):
+                        raise ValidationError("Use validated model saves for relationship expressions.")
+                    setattr(obj, name, value)
+                obj.clean()
+        return super().update(**kwargs)
+
+
+class ValidatedModel(models.Model):
+    objects = IntegrityQuerySet.as_manager()
+
+    class Meta:
+        abstract = True
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        return super().save(*args, **kwargs)
+
+
+class SportRelatedModel(ValidatedModel):
+    """One canonical sport through a season, period, game, or league."""
+    sport_source = "season"
+
+    class Meta:
+        abstract = True
+
+    @property
+    def sport(self):
+        return getattr(self, self.sport_source).sport
+
+    @property
+    def sport_id(self):
+        return getattr(self, self.sport_source).sport_id
+
+    def clean(self):
+        super().clean()
+        season_id = getattr(self, "season_id", None)
+        game = getattr(self, "game", None)
+        schedule_period = getattr(self, "schedule_period", None)
+        if season_id is None:
+            season_id = game.season_id if game else (schedule_period.season_id if schedule_period else None)
+        errors = {}
+        if self.pk and getattr(self, "season_id", None) and type(self).objects.filter(pk=self.pk).exclude(season_id=self.season_id).exists():
+            errors["season"] = "Create a separate record for a different season."
+        for field in ("team", "home_team", "away_team", "schedule_period", "season_end_period"):
+            obj = getattr(self, field, None)
+            if obj and season_id and obj.season_id != season_id:
+                errors[field] = "Must belong to the same season."
+        league = getattr(self, "league", None)
+        if league and season_id:
+            season = Season.objects.only("sport_id").get(pk=season_id)
+            if season.sport_id != league.sport_id:
+                errors["league"] = "League and season must belong to the same sport."
+        if game and hasattr(self, "picked_team_id") and self.picked_team_id not in (game.home_team_id, game.away_team_id):
+            errors["picked_team"] = "Select a team playing in this game."
+        if errors:
+            raise ValidationError(errors)
+
+
+class League(ValidatedModel):
     sport = sport_field()
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
@@ -223,7 +310,7 @@ class LeagueInvite(models.Model):
         )
 
 
-class LeagueRules(models.Model):
+class LeagueRules(SportRelatedModel):
     """
     Season-specific rules for a league.
     Each league can have different rules for different seasons.
@@ -251,7 +338,7 @@ class LeagueRules(models.Model):
     # Scoring Rules
     points_per_correct_pick = models.IntegerField(default=1, help_text="Points awarded for each correct pick")
     key_pick_extra_points = models.IntegerField(default=1, help_text="Extra points for correct key picks")
-    drop_weeks = models.IntegerField(default=0, help_text="Number of weeks to drop from the season")
+    drop_periods = models.IntegerField(default=0, help_text="Number of schedule_periods to drop from the season")
     
     # Game Mode
     against_the_spread_enabled = models.BooleanField(
@@ -274,15 +361,15 @@ class LeagueRules(models.Model):
     spread_lock_weekday = models.IntegerField(
         choices=WEEKDAY_CHOICES, 
         default=2,  # Wednesday
-        help_text="Day of the week when spreads lock in place if against the spread is enabled"
+        help_text="Day of the schedule_period when spreads lock in place if against the spread is enabled"
     )
-    pickable_games_per_week = models.IntegerField(
+    pickable_games_per_period = models.IntegerField(
         default=10, 
-        help_text="Maximum number of games available for picking each week"
+        help_text="Maximum number of games available for picking each schedule_period"
     )
-    picks_per_week = models.IntegerField(
+    picks_per_period = models.IntegerField(
         default=0,
-        help_text="Number of picks required per week (0 = must pick all available games)"
+        help_text="Number of picks required per schedule_period (0 = must pick all available games)"
     )
     
     # Key Pick Rules
@@ -292,13 +379,13 @@ class LeagueRules(models.Model):
     )
     number_of_key_picks = models.IntegerField(
         default=1,
-        help_text="Number of key picks allowed per week"
+        help_text="Number of key picks allowed per schedule_period"
     )
 
     # Notifications
     pick_reminder_emails_enabled = models.BooleanField(
         default=False,
-        help_text="Email members who have not finished their picks before the week's first kickoff",
+        help_text="Email members who have not finished their picks before the period's first game starts",
     )
     
     # Payout Structure
@@ -310,13 +397,13 @@ class LeagueRules(models.Model):
         blank=True,
         help_text="Entry fee for the league"
     )
-    weekly_payout_percent = models.DecimalField(
+    period_payout_percent = models.DecimalField(
         max_digits=5,
         decimal_places=2,
         default=0.00,
         null=True,
         blank=True,
-        help_text="Percentage of total pool allocated to weekly winners"
+        help_text="Percentage of total pool allocated to period winners"
     )
     season_payout_percent = models.DecimalField(
         max_digits=5,
@@ -326,10 +413,10 @@ class LeagueRules(models.Model):
         blank=True,
         help_text="Percentage of total pool allocated to season winners"
     )
-    weekly_payout_structure = models.JSONField(
+    period_payout_structure = models.JSONField(
         default=dict,
         blank=True,
-        help_text="JSON structure defining percentage payout for each weekly position (e.g., {'1': 50, '2': 30, '3': 20})"
+        help_text="JSON structure defining percentage payout for each period position (e.g., {'1': 50, '2': 30, '3': 20})"
     )
     season_payout_structure = models.JSONField(
         default=dict,
@@ -344,16 +431,16 @@ class LeagueRules(models.Model):
         blank=True,
         help_text=(
             "Optional: Percentage of season payout for most incorrect picks "
-            "(drop weeks applied; missed games do not count as incorrect)"
+            "(drop schedule_periods applied; missed games do not count as incorrect)"
         ),
     )
-    season_end_week = models.ForeignKey(
-        'Week',
+    season_end_period = models.ForeignKey(
+        'SchedulePeriod',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='+',
-        help_text="When this week's slate is final (or its end date has passed), the league season is final and prize money can show on standings",
+        help_text="When this schedule_period's slate is final (or its end date has passed), the league season is final and prize money can show on standings",
     )
     
     created_at = models.DateTimeField(auto_now_add=True)
@@ -369,8 +456,8 @@ class LeagueRules(models.Model):
         super().clean()
         if self.league_id and self.season_id and self.league.sport_id != self.season.sport_id:
             raise ValidationError({"season": "Season and league must belong to the same sport."})
-        if self.season_end_week_id and self.season_end_week.season_id != self.season_id:
-            raise ValidationError({"season_end_week": "Must belong to the selected season."})
+        if self.season_end_period_id and self.season_end_period.season_id != self.season_id:
+            raise ValidationError({"season_end_period": "Must belong to the selected season."})
 
     def __str__(self) -> str:
         return f"{self.league.name} - {self.season.year} Rules"
@@ -425,7 +512,7 @@ class LeagueMembership(models.Model):
         ).first()
 
 
-class Season(models.Model):
+class Season(ValidatedModel):
     sport = sport_field()
     year = models.PositiveIntegerField()
     name = models.CharField(max_length=64, blank=True)
@@ -439,6 +526,7 @@ class Season(models.Model):
         ordering = ["-year", "sport_id"]
         constraints = [
             models.UniqueConstraint(fields=["sport", "year"], name="season_sport_year_unique"),
+            models.UniqueConstraint(fields=["sport"], condition=models.Q(is_active=True), name="one_active_season_per_sport"),
         ]
 
     def clean(self):
@@ -473,7 +561,12 @@ class Location(models.Model):
         return self.name or f"{self.city}, {self.state}"
 
 
-class Team(models.Model):
+class Team(SportRelatedModel):
+    def clean(self):
+        super().clean()
+        if self.pk and Team.objects.filter(pk=self.pk).exclude(season_id=self.season_id).exists():
+            raise ValidationError({"season": "Create a separate team record for another season."})
+
     season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="teams")
     # Store school name in `name` (e.g., "Michigan State")
     name = models.CharField(max_length=128)
@@ -515,14 +608,28 @@ class Team(models.Model):
         return f"{self.name} ({self.season.year})"
 
 
-class Week(models.Model):
+class SchedulePeriod(SportRelatedModel):
+    class Kind(models.TextChoices):
+        WEEK = "week", "Week"
+        ROUND = "round", "Round"
+        MATCHDAY = "matchday", "Matchday"
+        DAY = "day", "Day"
+        SLATE = "slate", "Slate"
+
+    kind = models.CharField(max_length=16, choices=Kind.choices, default=Kind.WEEK)
+
+    def clean(self):
+        super().clean()
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValidationError({"end_date": "End must be on or after start."})
+
     name = models.CharField(max_length=64, blank=True, help_text="Optional round or slate name, e.g. Sweet 16")
 
     @property
     def display_name(self):
-        return self.name or f"Week {self.number}"
+        return self.name or f"{self.get_kind_display()} {self.number}"
 
-    season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="weeks")
+    season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="schedule_periods")
     number = models.PositiveIntegerField()
     season_type = models.CharField(max_length=32, default="regular", help_text="regular, postseason, etc.")
     start_date = models.DateField()
@@ -539,20 +646,23 @@ class Week(models.Model):
         return f"{self.display_name} - {self.season.year}"
 
 
-class Game(models.Model):
+class Game(SportRelatedModel):
     provider_ids = models.JSONField(default=dict, blank=True, help_text="External IDs keyed by provider")
 
     @property
     def period_display(self):
-        return self.season.sport.format_period(self.quarter)
+        return self.season.sport.format_period(self.period)
 
     season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="games")
+    tournament = models.CharField(max_length=64, blank=True)
+    home_seed = models.PositiveSmallIntegerField(null=True, blank=True)
+    away_seed = models.PositiveSmallIntegerField(null=True, blank=True)
     external_id = models.CharField(max_length=64, null=True, blank=True, db_index=True)
-    week = models.ForeignKey(Week, on_delete=models.CASCADE, related_name="games", null=True, blank=True)
+    schedule_period = models.ForeignKey(SchedulePeriod, on_delete=models.CASCADE, related_name="games", null=True, blank=True)
     season_type = models.CharField(max_length=32, blank=True, default="regular", help_text="regular, postseason, etc.")
     home_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="home_games")
     away_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="away_games")
-    kickoff = models.DateTimeField()
+    start_time = models.DateTimeField()
     
     # Game metadata
     neutral_site = models.BooleanField(default=False)
@@ -572,7 +682,7 @@ class Game(models.Model):
     # Live status fields
     home_score = models.PositiveIntegerField(null=True, blank=True)
     away_score = models.PositiveIntegerField(null=True, blank=True)
-    quarter = models.PositiveIntegerField(null=True, blank=True)
+    period = models.PositiveIntegerField(null=True, blank=True)
     clock = models.CharField(max_length=16, blank=True)
     # 'home', 'away', or blank when unknown / not in progress
     possession = models.CharField(max_length=4, blank=True, default="")
@@ -582,19 +692,19 @@ class Game(models.Model):
     is_final = models.BooleanField(default=False)
 
     class Meta:
-        ordering = ["kickoff"]
+        ordering = ["start_time"]
         indexes = [
-            models.Index(fields=["season", "week"]),
+            models.Index(fields=["season", "schedule_period"]),
         ]
 
     def __str__(self) -> str:
-        week_str = f"{self.week.display_name} - " if self.week else ""
-        return f"{week_str}{self.away_team} at {self.home_team}"
+        period_str = f"{self.schedule_period.display_name} - " if self.schedule_period else ""
+        return f"{period_str}{self.away_team} at {self.home_team}"
     
     def clean(self):
         super().clean()
         errors = {}
-        for field in ("home_team", "away_team", "week"):
+        for field in ("home_team", "away_team", "schedule_period"):
             obj = getattr(self, field, None)
             if obj and obj.season_id != self.season_id:
                 errors[field] = "Must belong to the game's season."
@@ -604,15 +714,16 @@ class Game(models.Model):
             raise ValidationError(errors)
 
     def has_started(self):
-        """Check if the game has started (kickoff time has passed)"""
+        """Check if the game has started (start_time time has passed)"""
         from django.utils import timezone
-        return timezone.now() >= self.kickoff
+        return timezone.now() >= self.start_time
 
 
-class GameSpread(models.Model):
+class GameSpread(SportRelatedModel):
+    sport_source = "game"
     """Historical spread data for a game, allows tracking spread changes over time"""
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="spreads")
-    week = models.ForeignKey(Week, on_delete=models.CASCADE, related_name="spreads", null=True, blank=True)
+    schedule_period = models.ForeignKey(SchedulePeriod, on_delete=models.CASCADE, related_name="spreads", null=True, blank=True)
     home_spread = models.DecimalField(max_digits=5, decimal_places=2)
     away_spread = models.DecimalField(max_digits=5, decimal_places=2)
     timestamp = models.DateTimeField(auto_now_add=True)
@@ -630,10 +741,10 @@ class GameSpread(models.Model):
         return f"{self.game} - {self.home_spread}/{self.away_spread} at {self.timestamp}"
 
 
-class Ranking(models.Model):
-    """Poll rankings for teams by week"""
+class Ranking(SportRelatedModel):
+    """Poll rankings for teams by schedule_period"""
     season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="rankings")
-    week = models.ForeignKey(Week, on_delete=models.CASCADE, related_name="rankings", null=True, blank=True)
+    schedule_period = models.ForeignKey(SchedulePeriod, on_delete=models.CASCADE, related_name="rankings", null=True, blank=True)
     season_type = models.CharField(max_length=32, default="regular", help_text="regular, postseason, etc.")
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="rankings")
     poll = models.CharField(max_length=64, help_text="Poll name (e.g., AP Top 25, Coaches Poll)")
@@ -642,18 +753,19 @@ class Ranking(models.Model):
     points = models.PositiveIntegerField(default=0)
     
     class Meta:
-        ordering = ["season", "week", "poll", "rank"]
-        unique_together = ("season", "week", "season_type", "team", "poll")
+        ordering = ["season", "schedule_period", "poll", "rank"]
+        unique_together = ("season", "schedule_period", "season_type", "team", "poll")
         indexes = [
-            models.Index(fields=["season", "week", "poll"]),
+            models.Index(fields=["season", "schedule_period", "poll"]),
             models.Index(fields=["team", "season"]),
         ]
     
     def __str__(self) -> str:
-        return f"{self.team.name} - #{self.rank} {self.poll} (Week {self.week.number}, {self.season.year})"
+        return f"{self.team.name} - #{self.rank} {self.poll} ({self.schedule_period or self.season})"
 
 
-class LeagueGame(models.Model):
+class LeagueGame(SportRelatedModel):
+    sport_source = "game"
     """
     Represents a game selected for a specific league's pick'em.
     Each league can select different games and lock spreads at different times.
@@ -676,7 +788,7 @@ class LeagueGame(models.Model):
     
     class Meta:
         unique_together = ("league", "game")
-        ordering = ["game__kickoff"]
+        ordering = ["game__start_time"]
         indexes = [
             models.Index(fields=["league", "game"]),
         ]
@@ -703,7 +815,8 @@ class LeagueGame(models.Model):
         return False
 
 
-class Pick(models.Model):
+class Pick(SportRelatedModel):
+    sport_source = "game"
     league = models.ForeignKey(League, on_delete=models.CASCADE, related_name="picks")
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="picks")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="picks")
@@ -726,10 +839,11 @@ class Pick(models.Model):
         return f"{self.user} -> {self.picked_team} in {self.league.name} ({self.game})"
 
 
-class MemberWeek(models.Model):
-    league = models.ForeignKey(League, on_delete=models.CASCADE, related_name="member_weeks")
-    week = models.ForeignKey(Week, on_delete=models.CASCADE, related_name="member_weeks")
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="member_weeks")
+class MemberPeriod(SportRelatedModel):
+    sport_source = "schedule_period"
+    league = models.ForeignKey(League, on_delete=models.CASCADE, related_name="member_periods")
+    schedule_period = models.ForeignKey(SchedulePeriod, on_delete=models.CASCADE, related_name="member_periods")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="member_periods")
 
     picks_made = models.PositiveIntegerField(default=0)
     correct = models.PositiveIntegerField(default=0)
@@ -743,20 +857,20 @@ class MemberWeek(models.Model):
     points_actual = models.IntegerField(null=True, blank=True)
     tiebreak_abs_diff = models.IntegerField(null=True, blank=True)
 
-    rank = models.PositiveIntegerField(null=True, blank=True)  # snapshot rank for the week
+    rank = models.PositiveIntegerField(null=True, blank=True)  # snapshot rank for the schedule_period
     scored_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ("league", "week", "user")
-        indexes = [models.Index(fields=["league", "week"]), models.Index(fields=["league", "points"])]
+        unique_together = ("league", "schedule_period", "user")
+        indexes = [models.Index(fields=["league", "schedule_period"]), models.Index(fields=["league", "points"])]
         
 
-class MemberSeason(models.Model):
+class MemberSeason(SportRelatedModel):
     league = models.ForeignKey(League, on_delete=models.CASCADE, related_name="season_standings")
     season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="season_standings")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="season_standings")
 
-    through_week = models.PositiveIntegerField(default=0)
+    through_period = models.PositiveIntegerField(default=0)
     picks_made = models.PositiveIntegerField(default=0)
     correct = models.PositiveIntegerField(default=0)
     incorrect = models.PositiveIntegerField(default=0)
@@ -780,7 +894,7 @@ class MemberSeason(models.Model):
         indexes = [models.Index(fields=["league", "season"]), models.Index(fields=["league", "points"])]
 
 
-class MemberSeasonPayment(models.Model):
+class MemberSeasonPayment(SportRelatedModel):
     league = models.ForeignKey(League, on_delete=models.CASCADE, related_name="season_payments")
     season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="member_payments")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="season_payments")
@@ -803,7 +917,7 @@ class MemberSeasonPayment(models.Model):
         return f"{self.user.username} in {self.league.name} {self.season.year} ({status})"
 
 
-class TeamStat(models.Model):
+class TeamStat(SportRelatedModel):
     season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="team_stats")
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="team_stats")
     stat = models.CharField(max_length=128)

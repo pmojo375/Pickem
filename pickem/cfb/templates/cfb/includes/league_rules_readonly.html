@@ -22,10 +22,10 @@
             <div class="stat bg-base-200 rounded-lg">
                 <div class="stat-title">Season split</div>
                 <div class="stat-value text-lg">
-                    {% if payout_summary.has_weekly %}{{ payout_summary.weekly_percent|floatformat:0 }}% weekly{% endif %}
-                    {% if payout_summary.has_weekly and payout_summary.has_season %} · {% endif %}
+                    {% if payout_summary.has_period %}{{ payout_summary.period_percent|floatformat:0 }}% period{% endif %}
+                    {% if payout_summary.has_period and payout_summary.has_season %} · {% endif %}
                     {% if payout_summary.has_season %}{{ payout_summary.season_percent|floatformat:0 }}% season{% endif %}
-                    {% if not payout_summary.has_weekly and not payout_summary.has_season %}—{% endif %}
+                    {% if not payout_summary.has_period and not payout_summary.has_season %}—{% endif %}
                 </div>
                 <div class="stat-desc">How the pool is divided</div>
             </div>
@@ -34,20 +34,20 @@
             Dollar amounts use the current roster and update as people join or leave.
         </p>
 
-        <div class="grid grid-cols-1 {% if payout_summary.has_weekly and payout_summary.has_season %}md:grid-cols-2{% endif %} gap-4">
-            {% if payout_summary.has_weekly %}
+        <div class="grid grid-cols-1 {% if payout_summary.has_period and payout_summary.has_season %}md:grid-cols-2{% endif %} gap-4">
+            {% if payout_summary.has_period %}
             <div class="rounded-lg border border-info/30 bg-base-200 p-4">
                 <h4 class="font-bold mb-1 flex items-center gap-2">
                     <i class="fas fa-calendar-week text-info"></i>
-                    Each week
+                    Each period
                 </h4>
                 <p class="text-sm text-base-content/70 mb-3">
-                    ${{ payout_summary.weekly_pool|floatformat:2 }} per week
-                    ({{ payout_summary.weekly_percent|floatformat:2 }}% of the pool ÷ {{ payout_summary.weeks_in_season }} weeks)
+                    ${{ payout_summary.period_pool|floatformat:2 }} per period
+                    ({{ payout_summary.period_percent|floatformat:2 }}% of the pool ÷ {{ payout_summary.periods_in_season }} periods)
                 </p>
-                {% if payout_summary.weekly_places %}
+                {% if payout_summary.period_places %}
                 <ul class="space-y-2">
-                    {% for place in payout_summary.weekly_places %}
+                    {% for place in payout_summary.period_places %}
                     <li class="flex justify-between items-center py-1 border-b border-base-300 last:border-0">
                         <span>{{ place.label }}</span>
                         <span class="font-semibold text-info">${{ place.amount|floatformat:2 }}</span>
@@ -55,7 +55,7 @@
                     {% endfor %}
                 </ul>
                 {% else %}
-                <p class="text-sm text-base-content/60">Weekly payout spots have not been set yet.</p>
+                <p class="text-sm text-base-content/60">Period payout spots have not been set yet.</p>
                 {% endif %}
             </div>
             {% endif %}
@@ -109,16 +109,16 @@
                 <div class="font-semibold">{% if league_rules.against_the_spread_enabled %}Against the spread{% else %}Straight up{% endif %}</div>
             </div>
             <div class="rounded-lg bg-base-200 p-4">
-                <div class="text-xs uppercase tracking-wide text-base-content/60">Picks per week</div>
+                <div class="text-xs uppercase tracking-wide text-base-content/60">Picks per period</div>
                 <div class="font-semibold">
-                    {% if league_rules.picks_per_week == 0 %}All {{ league_rules.pickable_games_per_week }} games{% else %}{{ league_rules.picks_per_week }} of {{ league_rules.pickable_games_per_week }}{% endif %}
+                    {% if league_rules.picks_per_period == 0 %}All {{ league_rules.pickable_games_per_period }} games{% else %}{{ league_rules.picks_per_period }} of {{ league_rules.pickable_games_per_period }}{% endif %}
                 </div>
             </div>
             <div class="rounded-lg bg-base-200 p-4">
                 <div class="text-xs uppercase tracking-wide text-base-content/60">Key picks</div>
                 <div class="font-semibold">
                     {% if league_rules.key_picks_enabled %}
-                        {{ league_rules.number_of_key_picks }} per week, +{{ league_rules.key_pick_extra_points }} bonus
+                        {{ league_rules.number_of_key_picks }} per period, +{{ league_rules.key_pick_extra_points }} bonus
                     {% else %}
                         Off
                     {% endif %}
@@ -129,9 +129,9 @@
                 <div class="font-semibold">{% if league_rules.pick_reminder_emails_enabled %}On{% else %}Off{% endif %}</div>
             </div>
             <div class="rounded-lg bg-base-200 p-4">
-                <div class="text-xs uppercase tracking-wide text-base-content/60">Drop weeks</div>
+                <div class="text-xs uppercase tracking-wide text-base-content/60">Drop periods</div>
                 <div class="font-semibold">
-                    {% if league_rules.drop_weeks %}{{ league_rules.drop_weeks }} worst week{{ league_rules.drop_weeks|pluralize }}{% else %}None{% endif %}
+                    {% if league_rules.drop_periods %}{{ league_rules.drop_periods }} worst period{{ league_rules.drop_periods|pluralize }}{% else %}None{% endif %}
                 </div>
             </div>
             <div class="rounded-lg bg-base-200 p-4">

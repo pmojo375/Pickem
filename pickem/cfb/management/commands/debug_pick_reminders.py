@@ -5,13 +5,13 @@ from django.utils import timezone
 
 from cfb.models import League, LeagueRules
 from cfb.services.reminders import process_league_reminders
-from cfb.services.schedule import get_current_week, get_display_week
+from cfb.services.schedule import get_current_period, get_display_period
 
 
 class Command(BaseCommand):
     help = (
         "Show who would get pick reminder emails, or force-send them. "
-        "Use --dry-run first; --force bypasses the pre-kickoff time window."
+        "Use --dry-run first; --force bypasses the pre-start_time time window."
     )
 
     def add_arguments(self, parser):
@@ -28,7 +28,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--force",
             action="store_true",
-            help="Ignore the hours-before-kickoff window.",
+            help="Ignore the hours-before-start_time window.",
         )
         parser.add_argument(
             "--clear-sent",
@@ -42,9 +42,9 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        week = get_current_week() or get_display_week()
-        if not week:
-            raise CommandError("No current/display week found.")
+        schedule_period = get_current_period() or get_display_period()
+        if not schedule_period:
+            raise CommandError("No current/display schedule_period found.")
 
         dry_run = options["dry_run"]
         force = options["force"]
@@ -58,7 +58,7 @@ class Command(BaseCommand):
                 )
             )
 
-        rules_qs = LeagueRules.objects.filter(season=week.season).select_related(
+        rules_qs = LeagueRules.objects.filter(season=schedule_period.season).select_related(
             "league"
         )
         if options["league_id"]:
@@ -66,7 +66,7 @@ class Command(BaseCommand):
             if not rules_qs.exists():
                 raise CommandError(
                     f"No league rules for league_id={options['league_id']} "
-                    f"in season {week.season.year}."
+                    f"in season {schedule_period.season.year}."
                 )
         if not options["include_disabled"]:
             rules_qs = rules_qs.filter(pick_reminder_emails_enabled=True)
@@ -78,8 +78,8 @@ class Command(BaseCommand):
             )
 
         self.stdout.write(
-            f"Week {week.number} ({week.season_type}) {week.season.year} | "
-            f"before_kickoff={settings.PICK_REMINDER_BEFORE_KICKOFF} "
+            f"SchedulePeriod {schedule_period.number} ({schedule_period.season_type}) {schedule_period.season.year} | "
+            f"before_start_time={settings.PICK_REMINDER_BEFORE_KICKOFF} "
             f"({settings.PICK_REMINDER_HOURS_BEFORE_KICKOFF}h) | "
             f"now={timezone.localtime()} | "
             f"dry_run={dry_run} force={force}"
@@ -89,12 +89,12 @@ class Command(BaseCommand):
             league = rules.league
             result = process_league_reminders(
                 rules,
-                week,
+                schedule_period,
                 force=force,
                 dry_run=dry_run,
                 clear_sent=clear_sent,
             )
-            kickoff = result.get("first_kickoff")
+            start_time = result.get("first_start_time")
             reminder_at = result.get("reminder_at")
             self.stdout.write("")
             self.stdout.write(
@@ -104,8 +104,8 @@ class Command(BaseCommand):
                 )
             )
             self.stdout.write(f"  status: {result['status']}")
-            if kickoff:
-                self.stdout.write(f"  first_kickoff: {timezone.localtime(kickoff)}")
+            if start_time:
+                self.stdout.write(f"  first_start_time: {timezone.localtime(start_time)}")
             if reminder_at:
                 self.stdout.write(f"  reminder_at:   {timezone.localtime(reminder_at)}")
             self.stdout.write(

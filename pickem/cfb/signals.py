@@ -16,7 +16,7 @@ from pickem.log import get_request_id, set_request_context, user_label_for
 
 from . import analytics
 from .models import DEFAULT_SPORT, Game, LeagueGame
-from .services.scoring import update_member_week_for_game
+from .services.scoring import update_member_period_for_game
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +103,7 @@ def game_finalized(sender, instance, created, update_fields, **kwargs):
     if became_final:
         try:
             logger.info(f"Game {instance.id} marked as final, updating member statistics")
-            update_member_week_for_game(instance)
+            update_member_period_for_game(instance)
         except Exception as e:
             logger.error(f"Error updating member statistics for game {instance.id}: {e}", exc_info=True)
 
@@ -163,7 +163,7 @@ def regrade_on_locked_spread_change(sender, instance, created, **kwargs):
             instance.league_id,
             game.id,
         )
-        update_member_week_for_game(game)
+        update_member_period_for_game(game)
     except Exception as e:
         logger.error(
             "Error regrading after locked spread change for league_game %s: %s",

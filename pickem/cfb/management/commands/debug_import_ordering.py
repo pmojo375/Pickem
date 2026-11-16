@@ -3,18 +3,18 @@ Debug script to check col_index ordering between spreads file and database games
 """
 import json
 from django.core.management.base import BaseCommand
-from cfb.models import Week, Season, Team
+from cfb.models import SchedulePeriod, Season, Team
 
 
 class Command(BaseCommand):
-    help = 'Debug col_index ordering for Week X'
+    help = 'Debug col_index ordering for SchedulePeriod X'
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--week',
+            '--period', '--week', dest='schedule_period',
             type=int,
             default=1,
-            help='Week number to debug (default: 1)',
+            help='SchedulePeriod number to debug (default: 1)',
         )
         parser.add_argument(
             '--spreads-file',
@@ -29,7 +29,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        week_num = options['week']
+        period_num = options['schedule_period']
         spreads_file = options['spreads_file']
         season_year = options['season']
 
@@ -40,17 +40,17 @@ class Command(BaseCommand):
             return
 
         try:
-            week = Week.objects.get(season=season, number=week_num, season_type='regular')
-        except Week.DoesNotExist:
-            self.stdout.write(self.style.ERROR(f'Week {week_num} not found'))
+            schedule_period = SchedulePeriod.objects.get(season=season, number=period_num, season_type='regular')
+        except SchedulePeriod.DoesNotExist:
+            self.stdout.write(self.style.ERROR(f'SchedulePeriod {period_num} not found'))
             return
 
-        # Get games ordered by kickoff
-        games = list(week.games.select_related('home_team', 'away_team').order_by('kickoff'))
+        # Get games ordered by start_time
+        games = list(schedule_period.games.select_related('home_team', 'away_team').order_by('start_time'))
 
-        self.stdout.write(self.style.SUCCESS(f'\n=== Database Games (ordered by kickoff) ==='))
+        self.stdout.write(self.style.SUCCESS(f'\n=== Database Games (ordered by start_time) ==='))
         for i, game in enumerate(games):
-            self.stdout.write(f'{i}: {game.away_team.name} @ {game.home_team.name} (kickoff: {game.kickoff})')
+            self.stdout.write(f'{i}: {game.away_team.name} @ {game.home_team.name} (start_time: {game.start_time})')
 
         if spreads_file:
             self.stdout.write(self.style.SUCCESS(f'\n=== Spreads File Data ==='))

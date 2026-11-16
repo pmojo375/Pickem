@@ -26,19 +26,19 @@ class Command(BaseCommand):
         self.stdout.write(f"Checking {total} games...")
         
         for game in games:
-            if not timezone.is_aware(game.kickoff):
+            if not timezone.is_aware(game.start_time):
                 fixed_count += 1
-                old_time = game.kickoff
+                old_time = game.start_time
                 # Assume naive times are UTC
-                new_time = timezone.make_aware(game.kickoff, pytz.UTC)
+                new_time = timezone.make_aware(game.start_time, pytz.UTC)
                 
                 self.stdout.write(
                     f"Game {game.id}: {old_time} → {new_time}"
                 )
                 
                 if not dry_run:
-                    game.kickoff = new_time
-                    game.save(update_fields=['kickoff'])
+                    game.start_time = new_time
+                    game.save(update_fields=['start_time'])
         
         if fixed_count > 0:
             if dry_run:

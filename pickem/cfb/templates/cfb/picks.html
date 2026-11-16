@@ -69,7 +69,7 @@
 
         <section class="print-picks" aria-hidden="true">
             <header class="print-picks__header">
-                <h1>BigPicks — Week {{ current_week }}</h1>
+                <h1>BigPicks — {{ current_period.display_name }}</h1>
                 <div class="print-picks__meta">
                     <strong>{{ current_league.name }}</strong><br>
                     {{ request.user.get_full_name|default:request.user.username }}
@@ -88,15 +88,15 @@
                     <tr>
                         <td>
                             <span class="print-picks__team">
-                                {% if lg.game.away_team|team_logo_url %}<img class="print-picks__logo" src="{% static lg.game.away_team|team_logo_url %}" alt="">{% endif %}
+                                {% if lg.game.away_team|team_logo_url %}<img class="print-picks__logo" src="{{ lg.game.away_team|team_logo_url }}" alt="">{% endif %}
                                 {{ lg.game.away_team.name }}
                             </span>
                             <strong>@</strong>
                             <span class="print-picks__team">
-                                {% if lg.game.home_team|team_logo_url %}<img class="print-picks__logo" src="{% static lg.game.home_team|team_logo_url %}" alt="">{% endif %}
+                                {% if lg.game.home_team|team_logo_url %}<img class="print-picks__logo" src="{{ lg.game.home_team|team_logo_url }}" alt="">{% endif %}
                                 {{ lg.game.home_team.name }}
                             </span>
-                            <span class="print-picks__kickoff"> · {{ lg.game.kickoff|eastern_time }}</span>
+                            <span class="print-picks__start_time"> · {{ lg.game.start_time|eastern_time }}</span>
                         </td>
                         <td>
                             {% if lg.locked_home_spread is not None %}
@@ -145,7 +145,7 @@
                         <div class="flex justify-center mb-2">
                             <div class="badge badge-primary badge-sm md:badge-md">
                                 <i class="fas fa-clock mr-1"></i>
-                                {{ lg.game.kickoff|eastern_time }}
+                                {{ lg.game.start_time|eastern_time }}
                             </div>
                         </div>
                         
@@ -201,7 +201,7 @@
                                    {% if p and p.picked_team_id == lg.game.away_team.id %}checked{% endif %} />
                             <div class="team-card-content flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-lg border-2 border-base-300 bg-base-200/50 {% if not game_started %}hover:bg-base-200{% endif %} transition-all {% if game_started %}opacity-60{% endif %}">
                                 {% if lg.game.away_team|team_logo_url %}
-                                <img src="{% static lg.game.away_team|team_logo_url %}" 
+                                <img src="{{ lg.game.away_team|team_logo_url }}"
                                      alt="{{ lg.game.away_team.name }}" 
                                      class="team-logo w-10 h-10 md:w-12 md:h-12 object-contain transition-transform flex-shrink-0" />
                                 {% endif %}
@@ -230,7 +230,7 @@
                                    {% if p and p.picked_team_id == lg.game.home_team.id %}checked{% endif %} />
                             <div class="team-card-content flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-lg border-2 border-base-300 bg-base-200/50 {% if not game_started %}hover:bg-base-200{% endif %} transition-all {% if game_started %}opacity-60{% endif %}">
                                 {% if lg.game.home_team|team_logo_url %}
-                                <img src="{% static lg.game.home_team|team_logo_url %}" 
+                                <img src="{{ lg.game.home_team|team_logo_url }}"
                                      alt="{{ lg.game.home_team.name }}" 
                                      class="team-logo w-10 h-10 md:w-12 md:h-12 object-contain transition-transform flex-shrink-0" />
                                 {% endif %}
@@ -684,7 +684,7 @@
             filter: none !important;
         }
 
-        .print-picks__kickoff {
+        .print-picks__start time {
             color: #444;
             font-size: 7.5pt;
             white-space: nowrap;
@@ -846,7 +846,7 @@
                 keyPickCounter.textContent = checkedCount;
             }
             
-            // Hide unused key-pick toggles when the weekly limit is reached
+            // Hide unused key-pick toggles when the period limit is reached
             // (instead of leaving them visible but grayed out).
             keyPickCheckboxes.forEach(checkbox => {
                 const options = checkbox.closest('.key-pick-options');
@@ -910,15 +910,15 @@
             
             // Warning 1: Not all games picked
             {% if league_rules %}
-                {% if league_rules.picks_per_week == 0 %}
+                {% if league_rules.picks_per_period == 0 %}
                     // Must pick all games
                     if (picksMade < totalGames && totalGames > 0) {
                         warnings.push(`You've only made ${picksMade} out of ${totalGames} possible picks.`);
                     }
-                {% elif league_rules.picks_per_week > 0 %}
+                {% elif league_rules.picks_per_period > 0 %}
                     // Must pick a specific number
-                    if (picksMade < {{ league_rules.picks_per_week }}) {
-                        warnings.push(`You've only made ${picksMade} out of {{ league_rules.picks_per_week }} required picks.`);
+                    if (picksMade < {{ league_rules.picks_per_period }}) {
+                        warnings.push(`You've only made ${picksMade} out of {{ league_rules.picks_per_period }} required picks.`);
                     }
                 {% endif %}
             {% else %}

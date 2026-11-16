@@ -9,10 +9,10 @@ def get_spread_lock_target_date(game: Game, spread_lock_weekday: int) -> date:
     """
     Return the spread lock date for a game.
 
-    Uses the configured weekday on or before kickoff, walking back to the prior
-    occurrence when kickoff falls on the lock weekday itself.
+    Uses the configured weekday on or before start_time, walking back to the prior
+    occurrence when start_time falls on the lock weekday itself.
     """
-    game_date = timezone.localtime(game.kickoff).date()
+    game_date = timezone.localtime(game.start_time).date()
     days_back = (game_date.weekday() - spread_lock_weekday) % 7
     if days_back == 0:
         days_back = 7

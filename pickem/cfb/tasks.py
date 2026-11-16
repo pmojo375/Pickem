@@ -13,7 +13,7 @@ from django.core.cache import cache
 from django.db import transaction
 from django.utils import timezone
 
-from .models import Game, Team, Season, Location, Week, Ranking, GameSpread, League, LeagueRules, LeagueGame
+from .models import Game, Team, Season, Location, SchedulePeriod, Ranking, GameSpread, League, LeagueRules, LeagueGame
 from .services.cfbd_api import get_cfbd_client
 from .services.live import fetch_and_store_live_scores, fetch_single_game_score
 from .services.spreads import get_spread_to_lock
@@ -83,9 +83,9 @@ def poll_espn_scores(self):
         active_count = Game.objects.filter(
             season__is_active=True,
             season__sport__is_active=True,
-            kickoff__gte=start_date,
+            start_time__gte=start_date,
             is_final=False,
-            kickoff__lte=now,
+            start_time__lte=now,
         ).count()
 
         if active_count == 0:
@@ -156,7 +156,7 @@ def cleanup_old_game_cache():
         cutoff_date = timezone.now() - timedelta(days=settings.GAME_CHECK_WINDOW_PAST + 1)
         
         old_games = Game.objects.filter(
-            kickoff__lt=cutoff_date,
+            start_time__lt=cutoff_date,
             is_final=True
         ).select_related("season__sport")
 
@@ -185,7 +185,7 @@ def pull_calendar(season_year: int, force: bool = False):
         if not calendar_data:
             logger.error(f"No calendar data returned from CFBD for {season_year}")
             return
-        logger.info("Processing %s calendar weeks for %s", len(calendar_data), season_year)
+        logger.info("Processing %s calendar schedule_periods for %s", len(calendar_data), season_year)
 
         season = Season.objects.get(sport_id="college-football", year=season_year)
 
@@ -208,8 +208,8 @@ def pull_calendar(season_year: int, force: bool = False):
                 logger.warning(f"Invalid start_date for game {calendar_item['week']}: {e}")
                 continue
             
-            # Update or create week
-            Week.objects.update_or_create(
+            # Update or create schedule_period
+            SchedulePeriod.objects.update_or_create(
                 season=season,
                 season_type=calendar_item['seasonType'],
                 number=calendar_item['week'],
@@ -224,36 +224,36 @@ def pull_calendar(season_year: int, force: bool = False):
 
 
 @shared_task(bind=True, name='cfb.tasks.update_spreads', max_retries=3, default_retry_delay=300,)
-def update_spreads(self, season_year: int = None, season_type: str = 'regular', week: int = None):
+def update_spreads(self, season_year: int = None, season_type: str = 'regular', schedule_period: int = None):
     """
     Periodic task to update game spreads/odds from CFBD.
-    Fetches spreads for all games in the current week.
+    Fetches spreads for all games in the current schedule_period.
     
     NOTE: Spreads captured on game day (9 AM daily) are considered the final
     spreads for that game. No post-game spread updates are performed.
-    This ensures consistent 7 API calls per week maximum.
+    This ensures consistent 7 API calls per schedule_period maximum.
     
     Args:
         season_year: Year of the season (if None, uses active season)
-        season_type: 'regular' or 'postseason' (if None, uses current week's type)
-        week: Week number to update spreads for (if None, uses current week)
+        season_type: 'regular' or 'postseason' (if None, uses current schedule_period's type)
+        schedule_period: SchedulePeriod number to update spreads for (if None, uses current schedule_period)
     """
     try:
-        from .services.schedule import get_current_week
+        from .services.schedule import get_current_period
         
         # Auto-determine parameters if not provided
-        if season_year is None or week is None:
-            current_week = get_current_week()
-            if not current_week:
-                logger.error("No current week found and parameters not provided")
+        if season_year is None or schedule_period is None:
+            current_period = get_current_period()
+            if not current_period:
+                logger.error("No current schedule_period found and parameters not provided")
                 return
             
             if season_year is None:
-                season_year = current_week.season.year
-            if week is None:
-                week = current_week.number
+                season_year = current_period.season.year
+            if schedule_period is None:
+                schedule_period = current_period.number
             if season_type == 'regular':  # Only override if still default
-                season_type = current_week.season_type
+                season_type = current_period.season_type
         
         # Verify season exists
         try:
@@ -263,23 +263,23 @@ def update_spreads(self, season_year: int = None, season_type: str = 'regular', 
             return
         
         try:
-            week_obj = Week.objects.get(season=season, number=week, season_type=season_type)
-        except Week.DoesNotExist:
-            logger.error(f"Week {week} not found for {season_year} {season_type}")
+            period_obj = SchedulePeriod.objects.get(season=season, number=schedule_period, season_type=season_type)
+        except SchedulePeriod.DoesNotExist:
+            logger.error(f"SchedulePeriod {schedule_period} not found for {season_year} {season_type}")
             return
         
-        logger.info(f"Updating spreads for {season_year} {season_type} week {week}")
+        logger.info(f"Updating spreads for {season_year} {season_type} schedule_period {schedule_period}")
         
         # Fetch lines from CFBD
         cfbd_client = get_cfbd_client()
         lines_data = cfbd_client.fetch_lines(
             year=season_year,
-            week=week,
+            week=schedule_period,
             season_type=season_type
         )
         
         if not lines_data:
-            logger.error(f"No lines data returned from CFBD for {season_year} {season_type} week {week}")
+            logger.error(f"No lines data returned from CFBD for {season_year} {season_type} schedule_period {schedule_period}")
             return
 
         logger.info(f"Fetched {len(lines_data)} games with lines from CFBD")
@@ -298,10 +298,10 @@ def update_spreads(self, season_year: int = None, season_type: str = 'regular', 
                 games_no_lines += 1
                 continue
 
-            # Find the game in our database (week is a FK; match by Week object)
+            # Find the game in our database (schedule_period is a FK; match by SchedulePeriod object)
             game = Game.objects.filter(
                 season=season,
-                week=week_obj,
+                schedule_period=period_obj,
                 season_type=season_type,
                 home_team__name__iexact=home_team_name,
                 away_team__name__iexact=away_team_name
@@ -397,19 +397,19 @@ def update_spreads(self, season_year: int = None, season_type: str = 'regular', 
                 continue
 
         logger.info(
-            f"Spread update complete for {season_year} week {week}: "
+            f"Spread update complete for {season_year} schedule_period {schedule_period}: "
             f"{games_updated} updated, {games_not_found} not found, {games_no_lines} no lines"
         )
         
         # After updating spreads, lock spreads for leagues with against_the_spread enabled
-        lock_league_spreads_for_week(season_year=season_year, week=week, season_type=season_type)
+        lock_league_spreads_for_period(season_year=season_year, schedule_period=schedule_period, season_type=season_type)
         
     except Exception as exc:
         logger.error(f"Error in update_spreads task: {exc}", exc_info=True)
         raise self.retry(exc=exc)
 
 
-# Rankings often publish late on Monday (or Tuesday after long weeks).
+# Rankings often publish late on Monday (or Tuesday after long schedule_periods).
 RANKINGS_RETRY_COUNTDOWN = 24 * 60 * 60  # 1 day
 
 
@@ -419,21 +419,21 @@ RANKINGS_RETRY_COUNTDOWN = 24 * 60 * 60  # 1 day
     max_retries=3,
     default_retry_delay=RANKINGS_RETRY_COUNTDOWN,
 )
-def update_rankings(self, season_year: int = None, season_type: str = 'regular', week: int = None):
+def update_rankings(self, season_year: int = None, season_type: str = 'regular', schedule_period: int = None):
     """
-    Update rankings for a given season and week.
+    Update rankings for a given season and schedule_period.
 
-    When rankings are not available yet (common after long weeks), retries once
-    per day up to 3 times. Week is re-resolved on each attempt when not passed
+    When rankings are not available yet (common after long schedule_periods), retries once
+    per day up to 3 times. SchedulePeriod is re-resolved on each attempt when not passed
     explicitly so a calendar rollover is picked up.
 
     Args:
         season_year: Year of the season (if None, uses active season)
-        season_type: 'regular' or 'postseason' (if None, uses current week's type)
-        week: Specific week number (if None, uses current week; fetches all weeks if explicitly 0)
+        season_type: 'regular' or 'postseason' (if None, uses current schedule_period's type)
+        schedule_period: Specific schedule_period number (if None, uses current schedule_period; fetches all schedule_periods if explicitly 0)
     """
     from celery.exceptions import MaxRetriesExceededError, Retry
-    from .services.schedule import get_current_week
+    from .services.schedule import get_current_period
 
     def retry_next_day(exc: Optional[Exception] = None):
         """Schedule another attempt tomorrow; give up after max_retries."""
@@ -447,24 +447,24 @@ def update_rankings(self, season_year: int = None, season_type: str = 'regular',
                 self.max_retries,
                 season_year,
                 season_type,
-                f" week {week}" if week else "",
+                f" schedule_period {schedule_period}" if schedule_period else "",
             )
 
     try:
-        week_auto = week is None
+        period_auto = schedule_period is None
         # Auto-determine parameters if not provided
-        if season_year is None or week is None:
-            current_week = get_current_week()
-            if not current_week:
-                logger.error("No current week found and parameters not provided")
+        if season_year is None or schedule_period is None:
+            current_period = get_current_period()
+            if not current_period:
+                logger.error("No current schedule_period found and parameters not provided")
                 return
 
             if season_year is None:
-                season_year = current_week.season.year
-            if week is None:
-                week = current_week.number
+                season_year = current_period.season.year
+            if schedule_period is None:
+                schedule_period = current_period.number
             if season_type == 'regular':  # Only override if still default
-                season_type = current_week.season_type
+                season_type = current_period.season_type
 
         # Verify season exists
         try:
@@ -473,46 +473,46 @@ def update_rankings(self, season_year: int = None, season_type: str = 'regular',
             logger.error(f"Season {season_year} not found")
             return
 
-        # week=0 means fetch all weeks (management-command style)
-        fetch_week = None if week == 0 else week
+        # schedule_period=0 means fetch all schedule_periods (management-command style)
+        fetch_period = None if schedule_period == 0 else schedule_period
 
         logger.info(
             f"Updating rankings for {season_year} {season_type}"
-            + (f" week {fetch_week}" if fetch_week else " (all weeks)")
+            + (f" schedule_period {fetch_period}" if fetch_period else " (all schedule_periods)")
         )
 
         cfbd_client = get_cfbd_client()
         rankings_data = cfbd_client.fetch_rankings(
             year=season_year,
-            week=fetch_week,
+            week=fetch_period,
             season_type=season_type
         )
 
-        # New poll after week N games is often published as week N+1. If the
-        # active week returns nothing, try the next week before retrying later.
+        # New poll after schedule_period N games is often published as schedule_period N+1. If the
+        # active schedule_period returns nothing, try the next schedule_period before retrying later.
         if (
             not rankings_data
-            and week_auto
-            and fetch_week is not None
-            and Week.objects.filter(
+            and period_auto
+            and fetch_period is not None
+            and SchedulePeriod.objects.filter(
                 season=season,
-                number=fetch_week + 1,
+                number=fetch_period + 1,
                 season_type=season_type,
             ).exists()
         ):
-            alt_week = fetch_week + 1
+            alt_period = fetch_period + 1
             logger.info(
-                "No rankings for week %s; trying week %s",
-                fetch_week,
-                alt_week,
+                "No rankings for schedule_period %s; trying schedule_period %s",
+                fetch_period,
+                alt_period,
             )
             rankings_data = cfbd_client.fetch_rankings(
                 year=season_year,
-                week=alt_week,
+                week=alt_period,
                 season_type=season_type,
             )
             if rankings_data:
-                fetch_week = alt_week
+                fetch_period = alt_period
 
         if not rankings_data:
             logger.warning(
@@ -520,32 +520,32 @@ def update_rankings(self, season_year: int = None, season_type: str = 'regular',
                 "(attempt %s/%s); retrying tomorrow",
                 season_year,
                 season_type,
-                f" week {fetch_week}" if fetch_week else "",
+                f" schedule_period {fetch_period}" if fetch_period else "",
                 self.request.retries + 1,
                 self.max_retries + 1,
             )
             retry_next_day()
             return
 
-        logger.info(f"Fetched {len(rankings_data)} weeks of rankings from CFBD")
+        logger.info(f"Fetched {len(rankings_data)} schedule_periods of rankings from CFBD")
 
         total_created = 0
         total_updated = 0
         total_skipped = 0
 
-        for week_data in rankings_data:
-            week_number = week_data.get('week')
-            polls = week_data.get('polls', [])
+        for period_data in rankings_data:
+            period_number = period_data.get('week')
+            polls = period_data.get('polls', [])
 
             if not polls:
-                logger.warning(f"No polls for Week {week_number}")
+                logger.warning(f"No polls for SchedulePeriod {period_number}")
                 continue
 
             for poll_data in polls:
                 poll_name = poll_data.get('poll')
                 ranks = poll_data.get('ranks', [])
 
-                logger.debug(f"Week {week_number} - {poll_name}: {len(ranks)} teams")
+                logger.debug(f"SchedulePeriod {period_number} - {poll_name}: {len(ranks)} teams")
 
                 for rank_data in ranks:
                     school_name = rank_data.get('school')
@@ -572,22 +572,22 @@ def update_rankings(self, season_year: int = None, season_type: str = 'regular',
                         logger.warning(f"Team not found in DB: {school_name} (ID: {team_id})")
                         continue
 
-                    # Get the Week object
+                    # Get the SchedulePeriod object
                     try:
-                        week_obj = Week.objects.get(
+                        period_obj = SchedulePeriod.objects.get(
                             season=season,
-                            number=week_number,
+                            number=period_number,
                             season_type=season_type
                         )
-                    except Week.DoesNotExist:
-                        logger.error(f"Week {week_number} not found for {season_year} {season_type}")
+                    except SchedulePeriod.DoesNotExist:
+                        logger.error(f"SchedulePeriod {period_number} not found for {season_year} {season_type}")
                         continue
 
                     # Check if ranking already exists
                     try:
                         existing_ranking = Ranking.objects.get(
                             season=season,
-                            week=week_obj,
+                            schedule_period=period_obj,
                             season_type=season_type,
                             team=team,
                             poll=poll_name
@@ -611,7 +611,7 @@ def update_rankings(self, season_year: int = None, season_type: str = 'regular',
                         # Create new ranking
                         Ranking.objects.create(
                             season=season,
-                            week=week_obj,
+                            schedule_period=period_obj,
                             season_type=season_type,
                             team=team,
                             poll=poll_name,
@@ -627,7 +627,7 @@ def update_rankings(self, season_year: int = None, season_type: str = 'regular',
                 "(attempt %s/%s); retrying tomorrow",
                 season_year,
                 season_type,
-                f" week {fetch_week}" if fetch_week else "",
+                f" schedule_period {fetch_period}" if fetch_period else "",
                 self.request.retries + 1,
                 self.max_retries + 1,
             )
@@ -809,10 +809,10 @@ def pull_season_games(season_year: int = None, season_type: str = 'regular', for
         force: If True, pull even if already pulled
     """
     try:
-        from .services.schedule import get_current_week
+        from .services.schedule import get_current_period
         
-        # Use the active season even before week 1 starts so kickoff refreshes
-        # still run. Only borrow season_type from the current week when one exists.
+        # Use the active season even before schedule_period 1 starts so start_time refreshes
+        # still run. Only borrow season_type from the current schedule_period when one exists.
         if season_year is None:
             active_season = Season.objects.filter(sport_id="college-football", is_active=True).first()
             if not active_season:
@@ -820,9 +820,9 @@ def pull_season_games(season_year: int = None, season_type: str = 'regular', for
                 return
             season_year = active_season.year
             if season_type == 'regular':
-                current_week = get_current_week(season=active_season)
-                if current_week:
-                    season_type = current_week.season_type
+                current_period = get_current_period(season=active_season)
+                if current_period:
+                    season_type = current_period.season_type
         
         season = Season.objects.get(sport_id="college-football", year=season_year)
         
@@ -836,8 +836,8 @@ def pull_season_games(season_year: int = None, season_type: str = 'regular', for
             logger.warning(f"Teams not pulled for {season_year} yet, pulling teams first")
             pull_season_teams(season_year)
         
-        if not Week.objects.filter(season=season).exists():
-            logger.warning(f"No weeks found for {season_year}, pulling calendar first")
+        if not SchedulePeriod.objects.filter(season=season).exists():
+            logger.warning(f"No schedule_periods found for {season_year}, pulling calendar first")
             pull_calendar(season_year, force=True)
         
         logger.info(f"Pulling ALL {season_type} games data for {season_year} season")
@@ -863,36 +863,36 @@ def pull_season_games(season_year: int = None, season_type: str = 'regular', for
         
         for game_data in games_data:
             try:
-                week_number = game_data.get('week')
-                week = Week.objects.filter(
+                period_number = game_data.get('week')
+                schedule_period = SchedulePeriod.objects.filter(
                     season=season,
                     season_type=season_type,
-                    number=week_number,
+                    number=period_number,
                 ).first()
-                if not week:
+                if not schedule_period:
                     start_date_str = game_data.get('startDate')
-                    if not start_date_str or week_number is None:
+                    if not start_date_str or period_number is None:
                         logger.warning(
-                            f"Week {week_number} not found for {season_year} {season_type} "
-                            f"and game has no date/week, skipping"
+                            f"SchedulePeriod {period_number} not found for {season_year} {season_type} "
+                            f"and game has no date/schedule_period, skipping"
                         )
                         skipped_count += 1
                         continue
-                    kickoff_for_week = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
-                    if timezone.is_naive(kickoff_for_week):
-                        kickoff_for_week = timezone.make_aware(kickoff_for_week)
-                    week_date = timezone.localtime(kickoff_for_week).date()
-                    week, _ = Week.objects.get_or_create(
+                    start_time_for_period = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
+                    if timezone.is_naive(start_time_for_period):
+                        start_time_for_period = timezone.make_aware(start_time_for_period)
+                    period_date = timezone.localtime(start_time_for_period).date()
+                    schedule_period, _ = SchedulePeriod.objects.get_or_create(
                         season=season,
                         season_type=season_type,
-                        number=week_number,
+                        number=period_number,
                         defaults={
-                            'start_date': week_date,
-                            'end_date': week_date,
+                            'start_date': period_date,
+                            'end_date': period_date,
                         },
                     )
                     logger.info(
-                        f"Created missing {season_type} week {week_number} for {season_year}"
+                        f"Created missing {season_type} schedule_period {period_number} for {season_year}"
                     )
                 
                 # Extract game fields (CFBD uses camelCase)
@@ -909,7 +909,7 @@ def pull_season_games(season_year: int = None, season_type: str = 'regular', for
                 away_points = game_data.get('awayPoints')  # camelCase!
                 completed = game_data.get('completed', False)
                 
-                # Parse kickoff time
+                # Parse start_time time
                 start_date_str = game_data.get('startDate')  # camelCase!
                 if not start_date_str:
                     logger.warning(f"Game {game_id} has no start_date, skipping")
@@ -917,10 +917,10 @@ def pull_season_games(season_year: int = None, season_type: str = 'regular', for
                     continue
                 
                 try:
-                    kickoff = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
+                    start_time = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
                     # Ensure timezone-aware
-                    if timezone.is_naive(kickoff):
-                        kickoff = timezone.make_aware(kickoff)
+                    if timezone.is_naive(start_time):
+                        start_time = timezone.make_aware(start_time)
                 except (ValueError, AttributeError) as e:
                     logger.warning(f"Invalid start_date for game {game_id}: {e}")
                     skipped_count += 1
@@ -978,11 +978,11 @@ def pull_season_games(season_year: int = None, season_type: str = 'regular', for
                     season=season,
                     external_id=str(game_id) if game_id else None,
                     defaults={
-                        'week': week,
+                        'schedule_period': schedule_period,
                         'season_type': season_type_value,
                         'home_team': home_team,
                         'away_team': away_team,
-                        'kickoff': kickoff,
+                        'start_time': start_time,
                         'neutral_site': neutral_site,
                         'conference_game': conference_game,
                         'attendance': attendance,
@@ -1008,7 +1008,7 @@ def pull_season_games(season_year: int = None, season_type: str = 'regular', for
         season.save(update_fields=['games_pulled'])
         
         logger.info(
-            f"Games pull complete for {season_year} (all weeks): "
+            f"Games pull complete for {season_year} (all schedule_periods): "
             f"{created_count} created, {updated_count} updated, {skipped_count} skipped"
         )
     
@@ -1018,14 +1018,14 @@ def pull_season_games(season_year: int = None, season_type: str = 'regular', for
         logger.error(f"Error pulling games for {season_year}: {e}", exc_info=True)
 
 
-@shared_task(name='cfb.tasks.lock_league_spreads_for_week')
-def lock_league_spreads_for_week(season_year: int = None, season_type: str = 'regular', week: int = None):
+@shared_task(name='cfb.tasks.lock_league_spreads_for_period')
+def lock_league_spreads_for_period(season_year: int = None, season_type: str = 'regular', schedule_period: int = None):
     """
     Lock spreads for all leagues that have against_the_spread enabled.
     This task should run after update_spreads to ensure we have the latest spread data.
     
     Spread locking logic:
-    1. Lock day is the configured weekday before each game's kickoff
+    1. Lock day is the configured weekday before each game's start_time
     2. If a spread exists from the lock day, use it
     3. Otherwise, use the next spread pulled after that day
     4. If no future spreads exist, use the latest available spread
@@ -1033,24 +1033,24 @@ def lock_league_spreads_for_week(season_year: int = None, season_type: str = 're
     Args:
         season_year: Year of the season (if None, uses active season)
         season_type: 'regular' or 'postseason'
-        week: Week number to lock spreads for (if None, uses current week)
+        schedule_period: SchedulePeriod number to lock spreads for (if None, uses current schedule_period)
     """
     try:
-        from .services.schedule import get_current_week
+        from .services.schedule import get_current_period
         
         # Auto-determine parameters if not provided
-        if season_year is None or week is None:
-            current_week = get_current_week()
-            if not current_week:
-                logger.error("No current week found and parameters not provided")
+        if season_year is None or schedule_period is None:
+            current_period = get_current_period()
+            if not current_period:
+                logger.error("No current schedule_period found and parameters not provided")
                 return
             
             if season_year is None:
-                season_year = current_week.season.year
-            if week is None:
-                week = current_week.number
+                season_year = current_period.season.year
+            if schedule_period is None:
+                schedule_period = current_period.number
             if season_type == 'regular':
-                season_type = current_week.season_type
+                season_type = current_period.season_type
         
         # Verify season exists
         try:
@@ -1059,14 +1059,14 @@ def lock_league_spreads_for_week(season_year: int = None, season_type: str = 're
             logger.error(f"Season {season_year} not found")
             return
         
-        # Get week object
+        # Get schedule_period object
         try:
-            week_obj = Week.objects.get(season=season, number=week, season_type=season_type)
-        except Week.DoesNotExist:
-            logger.error(f"Week {week} not found for {season_year} {season_type}")
+            period_obj = SchedulePeriod.objects.get(season=season, number=schedule_period, season_type=season_type)
+        except SchedulePeriod.DoesNotExist:
+            logger.error(f"SchedulePeriod {schedule_period} not found for {season_year} {season_type}")
             return
         
-        logger.info(f"Locking spreads for leagues in {season_year} {season_type} week {week}")
+        logger.info(f"Locking spreads for leagues in {season_year} {season_type} schedule_period {schedule_period}")
         
         # Get all active leagues with against_the_spread enabled for this season
         league_rules = LeagueRules.objects.filter(
@@ -1087,10 +1087,10 @@ def lock_league_spreads_for_week(season_year: int = None, season_type: str = 're
             
             logger.debug(f"Processing league '{league.name}' (lock day: {spread_lock_weekday})")
             
-            # Get all league games for this week that don't have locked spreads yet
+            # Get all league games for this schedule_period that don't have locked spreads yet
             league_games = LeagueGame.objects.filter(
                 league=league,
-                game__week=week_obj,
+                game__schedule_period=period_obj,
                 is_active=True,
                 locked_home_spread__isnull=True
             ).select_related('game')
@@ -1122,12 +1122,12 @@ def lock_league_spreads_for_week(season_year: int = None, season_type: str = 're
                 )
         
         logger.info(
-            f"Spread locking complete for {season_year} week {week}: "
+            f"Spread locking complete for {season_year} schedule_period {schedule_period}: "
             f"{total_locked} spreads locked, {total_skipped} skipped"
         )
         
     except Exception as e:
-        logger.error(f"Error in lock_league_spreads_for_week task: {e}", exc_info=True)
+        logger.error(f"Error in lock_league_spreads_for_period task: {e}", exc_info=True)
 
 
 @shared_task(name='cfb.tasks.initialize_season')
@@ -1302,32 +1302,32 @@ def update_team_records_async(season_year: int):
 
 
 @shared_task(bind=True, name='cfb.tasks.update_team_stats', max_retries=3, default_retry_delay=300)
-def update_team_stats(self, season_year: int = None, week: int = None):
+def update_team_stats(self, season_year: int = None, schedule_period: int = None):
     """
     Update team season statistics from CFBD API.
-    Fetches cumulative stats from week 0 through the last completed week.
+    Fetches cumulative stats from schedule_period 0 through the last completed schedule_period.
     
-    The API call uses startWeek=0 and endWeek=last_completed_week (which is current_week - 1).
-    This ensures we get stats through the last completed week.
+    The API call uses startWeek=0 and endWeek=last_completed_period (which is current_period - 1).
+    This ensures we get stats through the last completed schedule_period.
     
     Args:
         season_year: Year of the season (if None, uses active season)
-        week: Current week number (if None, uses current week)
+        schedule_period: Current schedule_period number (if None, uses current schedule_period)
     """
     try:
-        from .services.schedule import get_current_week
+        from .services.schedule import get_current_period
         
         # Auto-determine parameters if not provided
-        if season_year is None or week is None:
-            current_week = get_current_week()
-            if not current_week:
-                logger.error("No current week found and parameters not provided")
+        if season_year is None or schedule_period is None:
+            current_period = get_current_period()
+            if not current_period:
+                logger.error("No current schedule_period found and parameters not provided")
                 return
             
             if season_year is None:
-                season_year = current_week.season.year
-            if week is None:
-                week = current_week.number
+                season_year = current_period.season.year
+            if schedule_period is None:
+                schedule_period = current_period.number
         
         # Verify season exists
         try:
@@ -1336,88 +1336,66 @@ def update_team_stats(self, season_year: int = None, week: int = None):
             logger.error(f"Season {season_year} not found")
             return
         
-        logger.info(f"Updating team stats for {season_year} (through week {week})")
+        logger.info(f"Updating team stats for {season_year} (through schedule_period {schedule_period})")
         
         # Fetch stats from CFBD
         # The fetch_season_stats method handles:
-        # - Using end_week - 1 as the last completed week
-        # - Setting startWeek=0 and endWeek=last_completed_week
+        # - Using end_period - 1 as the last completed schedule_period
+        # - Setting startWeek=0 and endWeek=last_completed_period
         # - Processing and saving stats to the database
         cfbd_client = get_cfbd_client()
         stats_data = cfbd_client.fetch_season_stats(
             year=season_year,
-            end_week=week
+            end_week=schedule_period
         )
         
         if not stats_data:
-            logger.error(f"No team stats data returned from CFBD for {season_year} week {week}")
+            logger.error(f"No team stats data returned from CFBD for {season_year} schedule_period {schedule_period}")
             return
         
-        logger.info(f"Team stats update complete for {season_year} (through week {week})")
+        logger.info(f"Team stats update complete for {season_year} (through schedule_period {schedule_period})")
         
     except Exception as exc:
         logger.error(f"Error in update_team_stats task: {exc}", exc_info=True)
         raise self.retry(exc=exc)
 
 
-@shared_task(name='cfb.tasks.send_pick_reminders')
+@shared_task(name="cfb.tasks.send_pick_reminders")
 def send_pick_reminders():
-    """
-    Email incomplete pickers for leagues with reminders enabled, once the
-    window opens before each league's first kickoff of the week.
-    """
-    try:
-        from .services.reminders import process_league_reminders
-        from .services.schedule import get_current_week, get_display_week
+    from .services.reminders import process_league_reminders
+    from .services.schedule import get_current_period, get_display_period
 
-        week = get_current_week() or get_display_week()
-        if not week:
-            logger.debug("No current/display week for pick reminders")
-            return {"status": "no_week"}
-
-        rules_qs = LeagueRules.objects.filter(
-            season=week.season,
-            pick_reminder_emails_enabled=True,
-        ).select_related("league")
-
-        if not rules_qs.exists():
-            logger.debug("No leagues have pick reminder emails enabled")
-            return {"status": "no_leagues", "week_id": week.id}
-
-        totals = {"sent": 0, "skipped": 0, "failed": 0, "processed": 0}
-        for rules in rules_qs:
-            result = process_league_reminders(rules, week)
+    totals = {"sent": 0, "skipped": 0, "failed": 0, "processed": 0}
+    for season in Season.objects.filter(is_active=True, sport__is_active=True):
+        schedule_period = get_current_period(season) or get_display_period(season)
+        if not schedule_period:
+            continue
+        for rules in LeagueRules.objects.filter(season=season, league__sport_id=season.sport_id, pick_reminder_emails_enabled=True).select_related("league"):
+            result = process_league_reminders(rules, schedule_period)
             if result["status"] == "processed":
                 totals["processed"] += 1
-                totals["sent"] += result["sent"]
-                totals["skipped"] += result["skipped"]
-                totals["failed"] += result["failed"]
-                logger.info(
-                    "Pick reminders for league %s week %s: sent=%s skipped=%s failed=%s",
-                    rules.league_id,
-                    week.id,
-                    result["sent"],
-                    result["skipped"],
-                    result["failed"],
-                )
-            else:
-                logger.debug(
-                    "Pick reminders skipped for league %s week %s: %s",
-                    rules.league_id,
-                    week.id,
-                    result["status"],
-                )
+                for field in ("sent", "skipped", "failed"):
+                    totals[field] += result[field]
+    return {"status": "ok", **totals}
 
-        logger.info(
-            "Pick reminder run for week %s: processed=%s sent=%s skipped=%s failed=%s",
-            week.id,
-            totals["processed"],
-            totals["sent"],
-            totals["skipped"],
-            totals["failed"],
-        )
-        return {"status": "ok", "week_id": week.id, **totals}
 
-    except Exception as e:
-        logger.error(f"Error in send_pick_reminders task: {e}", exc_info=True)
-        raise
+@shared_task(name="cfb.tasks.lock_active_sport_spreads")
+def lock_active_sport_spreads():
+    """Lock selected games for every active sport without calling a provider."""
+    from .services.schedule import get_current_period, get_display_period
+    locked = 0
+    for season in Season.objects.filter(is_active=True, sport__is_active=True):
+        schedule_period = get_current_period(season) or get_display_period(season)
+        if not schedule_period:
+            continue
+        for rules in LeagueRules.objects.filter(season=season, league__sport_id=season.sport_id, against_the_spread_enabled=True):
+            selections = LeagueGame.objects.filter(league=rules.league, game__schedule_period=schedule_period, locked_home_spread__isnull=True, is_active=True).select_related("game")
+            for selection in selections:
+                spread, _ = get_spread_to_lock(selection.game, rules.spread_lock_weekday)
+                if spread:
+                    selection.locked_home_spread = spread.home_spread
+                    selection.locked_away_spread = spread.away_spread
+                    selection.spread_locked_at = timezone.now()
+                    selection.save()
+                    locked += 1
+    return locked

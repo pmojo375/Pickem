@@ -9,14 +9,14 @@ from cfb.models import DEFAULT_SPORT, League, LeagueRules, Season, Sport
 
 logger = logging.getLogger(__name__)
 
-# season_end_week is season-specific (points at a Week in the old season).
+# season_end_period is season-specific (points at a SchedulePeriod in the old season).
 RULES_SKIP_FIELDS = {
     "id",
     "pk",
     "season",
     "season_id",
-    "season_end_week",
-    "season_end_week_id",
+    "season_end_period",
+    "season_end_period_id",
     "created_at",
     "updated_at",
 }

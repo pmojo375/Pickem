@@ -7,7 +7,7 @@ from typing import Dict, Optional
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from cfb.models import Season, Team, Ranking, Week
+from cfb.models import Season, Team, Ranking, SchedulePeriod
 from cfb.services.cfbd_api import get_cfbd_client
 
 
@@ -28,15 +28,15 @@ class Command(BaseCommand):
             help='Season type (default: regular)',
         )
         parser.add_argument(
-            '--week',
+            '--period', '--week', dest='schedule_period',
             type=int,
-            help='Specific week number (optional, default: fetch all weeks)',
+            help='Specific schedule_period number (optional, default: fetch all schedule_periods)',
         )
 
     def handle(self, *args, **options):
         season_year = options['season']
         season_type = options['season_type']
-        week = options.get('week')
+        schedule_period = options.get('schedule_period')
         
         # Verify season exists
         try:
@@ -44,10 +44,10 @@ class Command(BaseCommand):
         except Season.DoesNotExist:
             raise CommandError(f'Season {season_year} does not exist')
 
-        if week:
+        if schedule_period:
             self.stdout.write(
                 self.style.WARNING(
-                    f'Fetching rankings from CFBD for {season_year} Week {week} ({season_type})...'
+                    f'Fetching rankings from CFBD for {season_year} SchedulePeriod {schedule_period} ({season_type})...'
                 )
             )
         else:
@@ -61,23 +61,23 @@ class Command(BaseCommand):
         cfbd_client = get_cfbd_client()
         rankings_data = cfbd_client.fetch_rankings(
             year=season_year,
-            week=week,
+            week=schedule_period,
             season_type=season_type
         )
         
         if not rankings_data:
             raise CommandError('Failed to fetch rankings data from CFBD API')
 
-        self.stdout.write(f'Fetched {len(rankings_data)} weeks of rankings from CFBD')
+        self.stdout.write(f'Fetched {len(rankings_data)} schedule_periods of rankings from CFBD')
 
-        # Process each week's rankings
+        # Process each schedule_period's rankings
         total_created = 0
         total_updated = 0
         total_skipped = 0
 
-        for week_data in rankings_data:
-            created, updated, skipped = self._process_week_rankings(
-                week_data,
+        for period_data in rankings_data:
+            created, updated, skipped = self._process_period_rankings(
+                period_data,
                 season,
                 season_type
             )
@@ -95,24 +95,24 @@ class Command(BaseCommand):
             )
         )
 
-    def _process_week_rankings(
+    def _process_period_rankings(
         self,
-        week_data: Dict,
+        period_data: Dict,
         season: Season,
         season_type: str
     ) -> tuple:
         """
-        Process rankings for a single week.
+        Process rankings for a single schedule_period.
         
         Returns:
             Tuple of (created_count, updated_count, skipped_count)
         """
-        week = week_data.get('week')
-        polls = week_data.get('polls', [])
+        schedule_period = period_data.get('week')
+        polls = period_data.get('polls', [])
 
         if not polls:
             self.stdout.write(
-                self.style.WARNING(f'  No polls for Week {week}')
+                self.style.WARNING(f'  No polls for SchedulePeriod {schedule_period}')
             )
             return 0, 0, 0
 
@@ -124,12 +124,12 @@ class Command(BaseCommand):
             poll_name = poll_data.get('poll')
             ranks = poll_data.get('ranks', [])
 
-            self.stdout.write(f'  Week {week} - {poll_name}: {len(ranks)} teams')
+            self.stdout.write(f'  SchedulePeriod {schedule_period} - {poll_name}: {len(ranks)} teams')
 
             for rank_data in ranks:
                 result = self._process_team_ranking(
                     season=season,
-                    week=week,
+                    schedule_period=schedule_period,
                     season_type=season_type,
                     poll_name=poll_name,
                     rank_data=rank_data
@@ -147,7 +147,7 @@ class Command(BaseCommand):
     def _process_team_ranking(
         self,
         season: Season,
-        week: int,
+        schedule_period: int,
         season_type: str,
         poll_name: str,
         rank_data: Dict
@@ -176,11 +176,11 @@ class Command(BaseCommand):
             return 'error'
 
         try:
-            week_obj = Week.objects.get(season=season, number=week, season_type=season_type)
-        except Week.DoesNotExist:
+            period_obj = SchedulePeriod.objects.get(season=season, number=schedule_period, season_type=season_type)
+        except SchedulePeriod.DoesNotExist:
             self.stdout.write(
                 self.style.WARNING(
-                    f'    Week {week} not found for {season.year} {season_type}'
+                    f'    SchedulePeriod {schedule_period} not found for {season.year} {season_type}'
                 )
             )
             return 'error'
@@ -189,7 +189,7 @@ class Command(BaseCommand):
         try:
             existing_ranking = Ranking.objects.get(
                 season=season,
-                week=week_obj,
+                schedule_period=period_obj,
                 season_type=season_type,
                 team=team,
                 poll=poll_name
@@ -213,7 +213,7 @@ class Command(BaseCommand):
             # Create new ranking
             Ranking.objects.create(
                 season=season,
-                week=week_obj,
+                schedule_period=period_obj,
                 season_type=season_type,
                 team=team,
                 poll=poll_name,

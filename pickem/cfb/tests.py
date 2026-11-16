@@ -24,21 +24,21 @@ from cfb.models import (
     LeagueRules,
     MemberSeason,
     MemberSeasonPayment,
-    MemberWeek,
+    MemberPeriod,
     Pick,
     Season,
     Team,
     UserAnnouncementDismissal,
-    Week,
+    SchedulePeriod,
 )
 from cfb.services import invites
-from cfb.services.schedule import get_display_week, get_live_week
+from cfb.services.schedule import get_display_period, get_live_period
 from cfb.services.payouts import build_payout_summary
 from cfb.services.scoring import (
     is_pick_correct,
-    live_week_snapshot,
+    live_period_snapshot,
     remaining_points_by_user,
-    update_member_week_for_game,
+    update_member_period_for_game,
 )
 from cfb.services.whatif import (
     WhatIfError,
@@ -129,13 +129,13 @@ class GamesListApiTests(TestCase):
             season=self.season,
             home_team=teams[0],
             away_team=teams[1],
-            kickoff=timezone.now(),
+            start_time=timezone.now(),
         )
         self.late_game = Game.objects.create(
             season=self.season,
             home_team=teams[2],
             away_team=teams[3],
-            kickoff=timezone.now() + timedelta(days=100),
+            start_time=timezone.now() + timedelta(days=100),
         )
 
     def test_ids_filter_is_applied_before_ordered_result_limit(self):
@@ -173,7 +173,7 @@ class PickKeyPickLimitTests(TestCase):
             league=self.league, user=self.user, role="owner"
         )
         self.season = Season.objects.create(year=2026, is_active=True)
-        self.week = Week.objects.create(
+        self.schedule_period = SchedulePeriod.objects.create(
             season=self.season,
             number=1,
             start_date=timezone.localdate(),
@@ -193,10 +193,10 @@ class PickKeyPickLimitTests(TestCase):
         for index in range(2):
             game = Game.objects.create(
                 season=self.season,
-                week=self.week,
+                schedule_period=self.schedule_period,
                 home_team=self.teams[index * 2],
                 away_team=self.teams[index * 2 + 1],
-                kickoff=timezone.now() + timedelta(days=2),
+                start_time=timezone.now() + timedelta(days=2),
             )
             LeagueGame.objects.create(league=self.league, game=game)
             self.games.append(game)
@@ -224,12 +224,12 @@ class PickKeyPickLimitTests(TestCase):
         response_messages = list(get_messages(response.wsgi_request))
         self.assertEqual(len(response_messages), 1)
         self.assertEqual(response_messages[0].level_tag, "error")
-        self.assertIn("only select 1 key pick per week", str(response_messages[0]))
+        self.assertIn("only select 1 key pick per schedule_period", str(response_messages[0]))
 
     def test_locked_key_pick_counts_toward_limit_when_checkbox_is_omitted(self):
         locked_game, new_game = self.games
-        locked_game.kickoff = timezone.now() - timedelta(minutes=1)
-        locked_game.save(update_fields=["kickoff"])
+        locked_game.start_time = timezone.now() - timedelta(minutes=1)
+        locked_game.save(update_fields=["start_time"])
         Pick.objects.create(
             user=self.user,
             league=self.league,
@@ -270,7 +270,7 @@ class PickKeyPickLimitTests(TestCase):
         response_messages = list(get_messages(response.wsgi_request))
         self.assertEqual(len(response_messages), 1)
         self.assertEqual(response_messages[0].level_tag, "error")
-        self.assertIn("only select 1 key pick per week", str(response_messages[0]))
+        self.assertIn("only select 1 key pick per schedule_period", str(response_messages[0]))
 
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
@@ -654,9 +654,9 @@ class PayoutSummaryTests(TestCase):
             league=self.league,
             season=self.season,
             entry_fee=Decimal("50.00"),
-            weekly_payout_percent=Decimal("40.00"),
+            period_payout_percent=Decimal("40.00"),
             season_payout_percent=Decimal("60.00"),
-            weekly_payout_structure={"1": 100},
+            period_payout_structure={"1": 100},
             season_payout_structure={"1": 70, "2": 20},
             season_payout_last_percent=Decimal("10.00"),
         )
@@ -665,8 +665,8 @@ class PayoutSummaryTests(TestCase):
         summary = build_payout_summary(self.rules, member_count=10)
         self.assertEqual(summary["entry_fee"], Decimal("50.00"))
         self.assertEqual(summary["total_pool"], Decimal("500.00"))
-        self.assertEqual(summary["weekly_places"][0]["label"], "1st place")
-        self.assertEqual(summary["weekly_places"][0]["amount"], Decimal("16.67"))
+        self.assertEqual(summary["period_places"][0]["label"], "1st place")
+        self.assertEqual(summary["period_places"][0]["amount"], Decimal("16.67"))
         self.assertEqual(summary["season_places"][0]["label"], "1st place")
         self.assertEqual(summary["season_places"][0]["amount"], Decimal("210.00"))
         self.assertEqual(summary["season_places"][1]["amount"], Decimal("60.00"))
@@ -674,7 +674,7 @@ class PayoutSummaryTests(TestCase):
 
     def test_no_payout_returns_none(self):
         self.rules.entry_fee = Decimal("0.00")
-        self.rules.weekly_payout_percent = Decimal("0.00")
+        self.rules.period_payout_percent = Decimal("0.00")
         self.rules.season_payout_percent = Decimal("0.00")
         self.assertIsNone(build_payout_summary(self.rules, member_count=10))
 
@@ -732,9 +732,9 @@ class MemberRulesViewTests(TestCase):
             league=self.league,
             season=self.season,
             entry_fee=Decimal("25.00"),
-            weekly_payout_percent=Decimal("50.00"),
+            period_payout_percent=Decimal("50.00"),
             season_payout_percent=Decimal("50.00"),
-            weekly_payout_structure={"1": 100},
+            period_payout_structure={"1": 100},
             season_payout_structure={"1": 100},
         )
 
@@ -745,7 +745,7 @@ class MemberRulesViewTests(TestCase):
         self.assertContains(response, "Entry cost")
         self.assertContains(response, "$25.00")
         self.assertContains(response, "1st place")
-        self.assertContains(response, "Each week")
+        self.assertContains(response, "Each period")
         self.assertContains(response, "Season finish")
 
     def test_member_sees_readonly_invite_link(self):
@@ -1254,7 +1254,7 @@ class RemainingPointsByUserTests(TestCase):
         self.league = League.objects.create(name="Points Possible League", created_by=self.user)
         LeagueMembership.objects.create(league=self.league, user=self.user, role="owner")
         self.season = Season.objects.create(year=2026, is_active=True)
-        self.week = Week.objects.create(
+        self.schedule_period = SchedulePeriod.objects.create(
             season=self.season,
             number=1,
             start_date=timezone.localdate(),
@@ -1273,18 +1273,18 @@ class RemainingPointsByUserTests(TestCase):
         ]
         self.open_game = Game.objects.create(
             season=self.season,
-            week=self.week,
+            schedule_period=self.schedule_period,
             home_team=teams[0],
             away_team=teams[1],
-            kickoff=timezone.now() + timedelta(days=1),
+            start_time=timezone.now() + timedelta(days=1),
             is_final=False,
         )
         self.final_game = Game.objects.create(
             season=self.season,
-            week=self.week,
+            schedule_period=self.schedule_period,
             home_team=teams[2],
             away_team=teams[3],
-            kickoff=timezone.now() - timedelta(days=1),
+            start_time=timezone.now() - timedelta(days=1),
             is_final=True,
             home_score=21,
             away_score=14,
@@ -1310,7 +1310,7 @@ class RemainingPointsByUserTests(TestCase):
         )
 
         remaining = remaining_points_by_user(
-            self.league, self.rules, week=self.week
+            self.league, self.rules, schedule_period=self.schedule_period
         )
         self.assertEqual(remaining, {self.user.id: 2})
 
@@ -1321,7 +1321,7 @@ class InactiveLeagueGameScoringTests(TestCase):
         self.league = League.objects.create(name="Inactive Slate League", created_by=self.user)
         LeagueMembership.objects.create(league=self.league, user=self.user, role="owner")
         self.season = Season.objects.create(year=2026, is_active=True)
-        self.week = Week.objects.create(
+        self.schedule_period = SchedulePeriod.objects.create(
             season=self.season,
             number=1,
             start_date=timezone.localdate(),
@@ -1340,20 +1340,20 @@ class InactiveLeagueGameScoringTests(TestCase):
         ]
         self.active_game = Game.objects.create(
             season=self.season,
-            week=self.week,
+            schedule_period=self.schedule_period,
             home_team=teams[0],
             away_team=teams[1],
-            kickoff=timezone.now() - timedelta(hours=3),
+            start_time=timezone.now() - timedelta(hours=3),
             is_final=True,
             home_score=28,
             away_score=21,
         )
         self.removed_game = Game.objects.create(
             season=self.season,
-            week=self.week,
+            schedule_period=self.schedule_period,
             home_team=teams[2],
             away_team=teams[3],
-            kickoff=timezone.now() - timedelta(hours=1),
+            start_time=timezone.now() - timedelta(hours=1),
             is_final=True,
             home_score=17,
             away_score=14,
@@ -1387,17 +1387,17 @@ class InactiveLeagueGameScoringTests(TestCase):
             is_correct=None,
         )
 
-    def test_week_stats_ignore_picks_on_inactive_league_games(self):
-        update_member_week_for_game(self.active_game)
+    def test_period_stats_ignore_picks_on_inactive_league_games(self):
+        update_member_period_for_game(self.active_game)
 
-        member_week = MemberWeek.objects.get(
-            league=self.league, week=self.week, user=self.user
+        member_period = MemberPeriod.objects.get(
+            league=self.league, schedule_period=self.schedule_period, user=self.user
         )
-        self.assertEqual(member_week.picks_made, 1)
-        self.assertEqual(member_week.correct, 1)
-        self.assertEqual(member_week.incorrect, 0)
-        self.assertEqual(member_week.ties, 0)
-        self.assertEqual(member_week.points, 1)
+        self.assertEqual(member_period.picks_made, 1)
+        self.assertEqual(member_period.correct, 1)
+        self.assertEqual(member_period.incorrect, 0)
+        self.assertEqual(member_period.ties, 0)
+        self.assertEqual(member_period.points, 1)
 
 
 class SynthesizeScoresTests(SimpleTestCase):
@@ -1463,13 +1463,13 @@ class WhatIfStandingsTests(TestCase):
         LeagueMembership.objects.create(league=self.league, user=self.user_a, role="owner")
         LeagueMembership.objects.create(league=self.league, user=self.user_b, role="member")
         self.season = Season.objects.create(year=2026, is_active=True)
-        self.week1 = Week.objects.create(
+        self.week1 = SchedulePeriod.objects.create(
             season=self.season,
             number=1,
             start_date=timezone.localdate() - timedelta(days=14),
             end_date=timezone.localdate() - timedelta(days=8),
         )
-        self.week2 = Week.objects.create(
+        self.week2 = SchedulePeriod.objects.create(
             season=self.season,
             number=2,
             start_date=timezone.localdate(),
@@ -1483,19 +1483,19 @@ class WhatIfStandingsTests(TestCase):
             points_per_correct_pick=1,
             key_pick_extra_points=1,
             key_picks_enabled=True,
-            drop_weeks=1,
+            drop_periods=1,
         )
         teams = [
             Team.objects.create(season=self.season, name=f"WhatIf Team {i}")
             for i in range(6)
         ]
-        # Week 1 final game (already graded into MemberWeek below)
+        # SchedulePeriod 1 final game (already graded into MemberPeriod below)
         self.w1_game = Game.objects.create(
             season=self.season,
-            week=self.week1,
+            schedule_period=self.week1,
             home_team=teams[0],
             away_team=teams[1],
-            kickoff=timezone.now() - timedelta(days=10),
+            start_time=timezone.now() - timedelta(days=10),
             is_final=True,
             home_score=24,
             away_score=17,
@@ -1507,33 +1507,33 @@ class WhatIfStandingsTests(TestCase):
             locked_away_spread=Decimal("3"),
             is_active=True,
         )
-        # Week 2: one final, one started, one unstarted
+        # SchedulePeriod 2: one final, one started, one unstarted
         self.w2_final = Game.objects.create(
             season=self.season,
-            week=self.week2,
+            schedule_period=self.week2,
             home_team=teams[2],
             away_team=teams[3],
-            kickoff=timezone.now() - timedelta(hours=6),
+            start_time=timezone.now() - timedelta(hours=6),
             is_final=True,
             home_score=21,
             away_score=14,
         )
         self.w2_live = Game.objects.create(
             season=self.season,
-            week=self.week2,
+            schedule_period=self.week2,
             home_team=teams[4],
             away_team=teams[5],
-            kickoff=timezone.now() - timedelta(hours=1),
+            start_time=timezone.now() - timedelta(hours=1),
             is_final=False,
             home_score=10,
             away_score=7,
         )
         self.w2_upcoming = Game.objects.create(
             season=self.season,
-            week=self.week2,
+            schedule_period=self.week2,
             home_team=teams[0],
             away_team=teams[2],
-            kickoff=timezone.now() + timedelta(days=1),
+            start_time=timezone.now() + timedelta(days=1),
             is_final=False,
         )
         self.lg_final = LeagueGame.objects.create(
@@ -1573,10 +1573,10 @@ class WhatIfStandingsTests(TestCase):
             )
 
         # Persist official week1 + week2 partial stats
-        update_member_week_for_game(self.w1_game)
-        update_member_week_for_game(self.w2_final)
+        update_member_period_for_game(self.w1_game)
+        update_member_period_for_game(self.w2_final)
 
-    def test_hypo_week_grades_simulated_and_final_games(self):
+    def test_hypo_period_grades_simulated_and_final_games(self):
         # Home covers on live (-7): A picked home → correct; B picked away → incorrect
         result = simulate_standings(
             self.league,
@@ -1584,7 +1584,7 @@ class WhatIfStandingsTests(TestCase):
             self.rules,
             {self.w2_live.id: "home"},
         )
-        by_user = {row["user_id"]: row for row in result.week_standings}
+        by_user = {row["user_id"]: row for row in result.period_standings}
         # Final: home covered -3.5 (margin 7) → A correct, B incorrect
         # Live hypo: home covers → A correct, B incorrect
         self.assertEqual(by_user[self.user_a.id]["wins"], 2)
@@ -1598,7 +1598,7 @@ class WhatIfStandingsTests(TestCase):
         result = simulate_standings(
             self.league, self.week2, self.rules, {}
         )
-        by_user = {row["user_id"]: row for row in result.week_standings}
+        by_user = {row["user_id"]: row for row in result.period_standings}
         # Only the final week2 game counts
         self.assertEqual(by_user[self.user_a.id]["wins"], 1)
         self.assertEqual(by_user[self.user_a.id]["picks_made"], 1)
@@ -1614,7 +1614,7 @@ class WhatIfStandingsTests(TestCase):
 
     def test_does_not_mutate_persisted_stats(self):
         mw_before = list(
-            MemberWeek.objects.filter(league=self.league).values_list(
+            MemberPeriod.objects.filter(league=self.league).values_list(
                 "id", "points", "correct", "rank"
             )
         )
@@ -1633,7 +1633,7 @@ class WhatIfStandingsTests(TestCase):
         )
 
         mw_after = list(
-            MemberWeek.objects.filter(league=self.league).values_list(
+            MemberPeriod.objects.filter(league=self.league).values_list(
                 "id", "points", "correct", "rank"
             )
         )
@@ -1647,7 +1647,7 @@ class WhatIfStandingsTests(TestCase):
         self.assertEqual(ms_before, ms_after)
         self.assertEqual(picks_before, picks_after)
 
-    def test_season_respects_drop_weeks(self):
+    def test_season_respects_drop_periods(self):
         # User A: strong week1, strong week2 hypo → drop weaker if any
         # User B: weak everywhere
         result = simulate_standings(
@@ -1658,7 +1658,7 @@ class WhatIfStandingsTests(TestCase):
             use_season_drops=True,
         )
         by_user = {row["user_id"]: row for row in result.season_standings}
-        # With drop_weeks=1 and 2 weeks, one week is dropped.
+        # With drop_periods=1 and 2 schedule_periods, one schedule_period is dropped.
         # A has 1 pt week1 + 2 pts week2 = 3 full; drops worst (1) → 2 adjusted
         self.assertEqual(by_user[self.user_a.id]["points"], 2)
         self.assertEqual(by_user[self.user_a.id]["hypo_rank"], 1)
@@ -1670,7 +1670,7 @@ class WhatIfStandingsTests(TestCase):
             url,
             data={
                 "league_id": self.league.id,
-                "week_id": self.week2.id,
+                "schedule_period_id": self.week2.id,
                 "outcomes": {str(self.w2_upcoming.id): "home"},
             },
             content_type="application/json",
@@ -1682,7 +1682,7 @@ class WhatIfStandingsTests(TestCase):
             url,
             data={
                 "league_id": self.league.id,
-                "week_id": self.week2.id,
+                "schedule_period_id": self.week2.id,
                 "outcomes": {str(self.w2_live.id): "home"},
             },
             content_type="application/json",
@@ -1690,14 +1690,14 @@ class WhatIfStandingsTests(TestCase):
         self.assertEqual(resp_ok.status_code, 200)
         payload = resp_ok.json()
         self.assertTrue(payload["ok"])
-        self.assertEqual(len(payload["week_standings"]), 2)
+        self.assertEqual(len(payload["period_standings"]), 2)
         self.assertEqual(len(payload["season_standings"]), 2)
 
     def test_standings_what_if_tab_renders(self):
         self.client.force_login(self.user_a)
         resp = self.client.get(
             reverse("standings"),
-            {"league_id": self.league.id, "what_if": "true", "week": self.week2.id},
+            {"league_id": self.league.id, "what_if": "true", "schedule_period": self.week2.id},
         )
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Hypothetical")
@@ -1714,31 +1714,31 @@ class LiveWeekSelectionTests(TestCase):
     def setUp(self):
         self.enterContext(patch("cfb.tasks.queue_team_records_update"))
         self.now = timezone.now()
-        self.user = User.objects.create_user("weekpicker", "week@example.com", "pass")
-        self.league = League.objects.create(name="Week Selection", created_by=self.user)
+        self.user = User.objects.create_user("weekpicker", "schedule_period@example.com", "pass")
+        self.league = League.objects.create(name="SchedulePeriod Selection", created_by=self.user)
         LeagueMembership.objects.create(league=self.league, user=self.user, role="owner")
         self.season = Season.objects.create(year=2026, is_active=True)
         LeagueRules.objects.create(league=self.league, season=self.season)
-        self.previous = Week.objects.create(
+        self.previous = SchedulePeriod.objects.create(
             season=self.season, number=6,
             start_date=self.now.date() - timedelta(days=8),
             end_date=self.now.date() - timedelta(days=2),
         )
-        self.current = Week.objects.create(
+        self.current = SchedulePeriod.objects.create(
             season=self.season, number=7,
             start_date=self.now.date() - timedelta(days=1),
             end_date=self.now.date() + timedelta(days=5),
         )
-        home = Team.objects.create(season=self.season, name="Week Home")
-        away = Team.objects.create(season=self.season, name="Week Away")
+        home = Team.objects.create(season=self.season, name="SchedulePeriod Home")
+        away = Team.objects.create(season=self.season, name="SchedulePeriod Away")
         self.previous_game = Game.objects.create(
-            season=self.season, week=self.previous, home_team=home, away_team=away,
-            kickoff=self.now - timedelta(days=4), is_final=True,
+            season=self.season, schedule_period=self.previous, home_team=home, away_team=away,
+            start_time=self.now - timedelta(days=4), is_final=True,
             home_score=21, away_score=7,
         )
         self.current_game = Game.objects.create(
-            season=self.season, week=self.current, home_team=home, away_team=away,
-            kickoff=self.now + timedelta(hours=1),
+            season=self.season, schedule_period=self.current, home_team=home, away_team=away,
+            start_time=self.now + timedelta(hours=1),
         )
         for game in (self.previous_game, self.current_game):
             LeagueGame.objects.create(
@@ -1749,157 +1749,157 @@ class LiveWeekSelectionTests(TestCase):
             )
         self.client.force_login(self.user)
 
-    def test_prior_results_remain_until_first_kickoff(self):
-        self.assertEqual(get_live_week(self.league, now=self.now), self.previous)
+    def test_prior_results_remain_until_first_start_time(self):
+        self.assertEqual(get_live_period(self.league, now=self.now), self.previous)
         # Picks and Settings must still use the upcoming slate.
-        self.assertEqual(get_display_week(now=self.now), self.current)
+        self.assertEqual(get_display_period(now=self.now), self.current)
         self.assertEqual(
-            get_live_week(self.league, now=self.current_game.kickoff), self.current
+            get_live_period(self.league, now=self.current_game.start_time), self.current
         )
 
     def test_stays_current_after_first_game_finishes(self):
-        self.current_game.kickoff = self.now - timedelta(hours=3)
+        self.current_game.start_time = self.now - timedelta(hours=3)
         self.current_game.is_final = True
         self.current_game.save()
-        self.assertEqual(get_live_week(self.league, now=self.now), self.current)
+        self.assertEqual(get_live_period(self.league, now=self.now), self.current)
 
     def test_other_league_and_inactive_games_do_not_trigger_switch(self):
         other = League.objects.create(name="Other League", created_by=self.user)
         game = Game.objects.create(
-            season=self.season, week=self.current,
+            season=self.season, schedule_period=self.current,
             home_team=self.current_game.home_team, away_team=self.current_game.away_team,
-            kickoff=self.now - timedelta(hours=1), quarter=1,
+            start_time=self.now - timedelta(hours=1), period=1,
         )
         LeagueGame.objects.create(league=other, game=game, is_active=True)
         LeagueGame.objects.create(league=self.league, game=game, is_active=False)
-        self.assertEqual(get_live_week(self.league, now=self.now), self.previous)
+        self.assertEqual(get_live_period(self.league, now=self.now), self.previous)
 
     def test_switch_does_not_depend_on_user_having_a_pick_or_scores(self):
         Pick.objects.filter(game=self.current_game).delete()
         self.assertEqual(
-            get_live_week(self.league, now=self.current_game.kickoff), self.current
+            get_live_period(self.league, now=self.current_game.start_time), self.current
         )
 
-    def test_uses_calendar_window_even_without_provider_week(self):
-        Game.objects.update(week=None)
-        self.assertEqual(get_live_week(self.league, now=self.now), self.previous)
+    def test_uses_calendar_window_even_without_provider_period(self):
+        Game.objects.update(schedule_period=None)
+        self.assertEqual(get_live_period(self.league, now=self.now), self.previous)
         self.assertEqual(
-            get_live_week(self.league, now=self.current_game.kickoff), self.current
+            get_live_period(self.league, now=self.current_game.start_time), self.current
         )
 
-    def test_no_previous_week_keeps_current_week(self):
+    def test_no_previous_period_keeps_current_period(self):
         self.previous.delete()
-        self.assertEqual(get_live_week(self.league, now=self.now), self.current)
+        self.assertEqual(get_live_period(self.league, now=self.now), self.current)
 
-    def test_empty_previous_slate_keeps_current_week(self):
+    def test_empty_previous_slate_keeps_current_period(self):
         LeagueGame.objects.filter(game=self.previous_game).update(is_active=False)
-        self.assertEqual(get_live_week(self.league, now=self.now), self.current)
+        self.assertEqual(get_live_period(self.league, now=self.now), self.current)
 
     def test_no_current_slate_keeps_previous_results(self):
         LeagueGame.objects.filter(game=self.current_game).delete()
-        self.assertEqual(get_live_week(self.league, now=self.now), self.previous)
+        self.assertEqual(get_live_period(self.league, now=self.now), self.previous)
 
     def test_no_active_season_returns_none(self):
         self.season.is_active = False
         self.season.save()
-        self.assertIsNone(get_live_week(self.league, now=self.now))
+        self.assertIsNone(get_live_period(self.league, now=self.now))
 
-    def test_page_and_standing_api_use_previous_week(self):
+    def test_page_and_standing_api_use_previous_period(self):
         page = self.client.get(reverse("live"), {"league_id": self.league.id})
         self.assertEqual(page.status_code, 200)
-        self.assertEqual(page.context["live_week"], self.previous)
+        self.assertEqual(page.context["live_period"], self.previous)
         self.assertEqual(
             [pick.game_id for pick, _ in page.context["picks_with_league_game"]],
             [self.previous_game.id],
         )
-        self.assertContains(page, f'data-week-id="{self.previous.id}"')
-        self.assertEqual(page.context["live_standing"]["week_id"], self.previous.id)
+        self.assertContains(page, f'data-period-id="{self.previous.id}"')
+        self.assertEqual(page.context["live_standing"]["schedule_period_id"], self.previous.id)
         data = self.client.get(
             reverse("api_live_standing"), {"league_id": self.league.id}
         ).json()
-        self.assertEqual(data["week_id"], self.previous.id)
-        self.assertEqual(data["standing"]["week_id"], self.previous.id)
-        self.assertIn(f"week={self.previous.id}", data["standing"]["standings_url"])
+        self.assertEqual(data["schedule_period_id"], self.previous.id)
+        self.assertEqual(data["standing"]["schedule_period_id"], self.previous.id)
+        self.assertIn(f"schedule_period={self.previous.id}", data["standing"]["standings_url"])
 
-    def test_kickoff_switches_page_and_api_before_first_score(self):
-        with patch("django.utils.timezone.now", return_value=self.current_game.kickoff):
+    def test_start_time_switches_page_and_api_before_first_score(self):
+        with patch("django.utils.timezone.now", return_value=self.current_game.start_time):
             page = self.client.get(reverse("live"), {"league_id": self.league.id})
-            self.assertEqual(page.context["live_week"], self.current)
+            self.assertEqual(page.context["live_period"], self.current)
             self.assertEqual(
                 [pick.game_id for pick, _ in page.context["picks_with_league_game"]],
                 [self.current_game.id],
             )
             self.assertIsNone(page.context["live_standing"])
             # Polling remains available without a standings bar or live scores.
-            self.assertContains(page, 'id="live-week-state"')
+            self.assertContains(page, 'id="live-schedule_period-state"')
             data = self.client.get(
                 reverse("api_live_standing"), {"league_id": self.league.id}
             ).json()
-        self.assertEqual(data, {"standing": None, "week_id": self.current.id})
+        self.assertEqual(data, {"standing": None, "schedule_period_id": self.current.id})
 
 
-    def test_standings_latest_keeps_previous_week_before_kickoff(self):
+    def test_standings_latest_keeps_previous_period_before_start_time(self):
         response = self.client.get(
-            reverse("standings"), {"league_id": self.league.id, "week": "latest"}
+            reverse("standings"), {"league_id": self.league.id, "schedule_period": "latest"}
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["selected_week"], self.previous)
+        self.assertEqual(response.context["selected_period"], self.previous)
         self.assertNotIn(
             self.current.id,
-            [item["week"].id for item in response.context["available_weeks"]],
+            [item["schedule_period"].id for item in response.context["available_periods"]],
         )
 
-    def test_standings_latest_shows_started_week_before_first_score(self):
+    def test_standings_latest_shows_started_period_before_first_score(self):
         # A game may be underway without the score feed reporting any points.
-        with patch("django.utils.timezone.now", return_value=self.current_game.kickoff):
+        with patch("django.utils.timezone.now", return_value=self.current_game.start_time):
             response = self.client.get(
-                reverse("standings"), {"league_id": self.league.id, "week": "latest"}
+                reverse("standings"), {"league_id": self.league.id, "schedule_period": "latest"}
             )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["selected_week"], self.current)
-        self.assertTrue(response.context["show_week_standings"])
+        self.assertEqual(response.context["selected_period"], self.current)
+        self.assertTrue(response.context["show_period_standings"])
 
-    def test_standings_latest_keeps_partially_final_week_with_delayed_game(self):
-        # A postponed game may still have yesterday's stale kickoff and no score,
-        # or its kickoff might be corrected to a future date.
-        self.current_game.kickoff = self.now - timedelta(hours=5)
+    def test_standings_latest_keeps_partially_final_period_with_delayed_game(self):
+        # A postponed game may still have yesterday's stale start_time and no score,
+        # or its start_time might be corrected to a future date.
+        self.current_game.start_time = self.now - timedelta(hours=5)
         self.current_game.is_final = True
         self.current_game.home_score = 28
         self.current_game.away_score = 14
         self.current_game.save(
-            update_fields=["kickoff", "is_final", "home_score", "away_score"]
+            update_fields=["start_time", "is_final", "home_score", "away_score"]
         )
         delayed = Game.objects.create(
             season=self.season,
-            week=self.current,
+            schedule_period=self.current,
             home_team=self.current_game.home_team,
             away_team=self.current_game.away_team,
-            kickoff=self.now - timedelta(hours=1),
+            start_time=self.now - timedelta(hours=1),
             is_final=False,
         )
         LeagueGame.objects.create(
             league=self.league, game=delayed, is_active=True,
             locked_home_spread=0,
         )
-        for delayed_kickoff in (
+        for delayed_start_time in (
             self.now - timedelta(hours=1),
             self.now + timedelta(days=1),
         ):
-            with self.subTest(delayed_kickoff=delayed_kickoff):
-                delayed.kickoff = delayed_kickoff
-                delayed.save(update_fields=["kickoff"])
+            with self.subTest(delayed_start_time=delayed_start_time):
+                delayed.start_time = delayed_start_time
+                delayed.save(update_fields=["start_time"])
                 response = self.client.get(
                     reverse("standings"),
-                    {"league_id": self.league.id, "week": "latest"},
+                    {"league_id": self.league.id, "schedule_period": "latest"},
                 )
                 self.assertEqual(response.status_code, 200)
-                self.assertEqual(response.context["selected_week"], self.current)
-                self.assertFalse(response.context["week_is_final"])
-                week_data = next(
-                    item for item in response.context["available_weeks"]
-                    if item["week"] == self.current
+                self.assertEqual(response.context["selected_period"], self.current)
+                self.assertFalse(response.context["period_is_final"])
+                period_data = next(
+                    item for item in response.context["available_periods"]
+                    if item["schedule_period"] == self.current
                 )
-                self.assertFalse(week_data["all_games_final"])
+                self.assertFalse(period_data["all_games_final"])
 
 
 class LiveWeekSnapshotTests(TestCase):
@@ -1913,7 +1913,7 @@ class LiveWeekSnapshotTests(TestCase):
         LeagueMembership.objects.create(league=self.league, user=self.spectator, role="member")
         self.season = Season.objects.create(year=2026, is_active=True)
         today = timezone.localdate()
-        self.week = Week.objects.create(
+        self.schedule_period = SchedulePeriod.objects.create(
             season=self.season,
             number=7,
             start_date=today - timedelta(days=1),
@@ -1935,41 +1935,41 @@ class LiveWeekSnapshotTests(TestCase):
         ]
         self.live_game = Game.objects.create(
             season=self.season,
-            week=self.week,
+            schedule_period=self.schedule_period,
             home_team=teams[0],
             away_team=teams[1],
-            kickoff=timezone.now() - timedelta(hours=1),
+            start_time=timezone.now() - timedelta(hours=1),
             is_final=False,
             home_score=21,
             away_score=14,
-            quarter=2,
+            period=2,
         )
         self.final_game = Game.objects.create(
             season=self.season,
-            week=self.week,
+            schedule_period=self.schedule_period,
             home_team=teams[2],
             away_team=teams[3],
-            kickoff=timezone.now() - timedelta(days=1),
+            start_time=timezone.now() - timedelta(days=1),
             is_final=True,
             home_score=17,
             away_score=10,
         )
         self.future_game = Game.objects.create(
             season=self.season,
-            week=self.week,
+            schedule_period=self.schedule_period,
             home_team=teams[4],
             away_team=teams[5],
-            kickoff=timezone.now() + timedelta(days=1),
+            start_time=timezone.now() + timedelta(days=1),
             is_final=False,
             home_score=100,
             away_score=0,
         )
         self.removed_game = Game.objects.create(
             season=self.season,
-            week=self.week,
+            schedule_period=self.schedule_period,
             home_team=teams[6],
             away_team=teams[7],
-            kickoff=timezone.now() - timedelta(hours=2),
+            start_time=timezone.now() - timedelta(hours=2),
             is_final=True,
             home_score=35,
             away_score=0,
@@ -2019,7 +2019,7 @@ class LiveWeekSnapshotTests(TestCase):
         self._pick(self.user, self.future_game, self.future_game.home_team, key=True)
         self._pick(self.user, self.removed_game, self.removed_game.home_team, key=True)
 
-        snapshot = live_week_snapshot(self.league, self.user, week=self.week)
+        snapshot = live_period_snapshot(self.league, self.user, schedule_period=self.schedule_period)
 
         self.assertEqual(snapshot["points"], 3)
         self.assertEqual(snapshot["correct"], 2)
@@ -2028,9 +2028,9 @@ class LiveWeekSnapshotTests(TestCase):
         self.assertEqual(snapshot["field_size"], 3)
         self.assertIsNone(snapshot["points_behind"])
         self.assertTrue(snapshot["has_live_games"])
-        self.assertEqual(snapshot["week_label"], "Week 7")
+        self.assertEqual(snapshot["period_label"], "Week 7")
 
-        rival = live_week_snapshot(self.league, self.rival, week=self.week)
+        rival = live_period_snapshot(self.league, self.rival, schedule_period=self.schedule_period)
         self.assertEqual(rival["points"], 0)
         self.assertEqual(rival["rank"], 2)
         self.assertEqual(rival["rank_label"], "2nd")
@@ -2048,7 +2048,7 @@ class LiveWeekSnapshotTests(TestCase):
         )
         self._pick(self.user, self.live_game, self.live_game.away_team)
 
-        snapshot = live_week_snapshot(self.league, self.user, week=self.week)
+        snapshot = live_period_snapshot(self.league, self.user, schedule_period=self.schedule_period)
         self.assertEqual(snapshot["points"], 1)
         self.assertEqual(snapshot["correct"], 1)
 
@@ -2059,8 +2059,8 @@ class LiveWeekSnapshotTests(TestCase):
         self._pick(self.user, self.live_game, self.live_game.home_team, key=True)
         self._pick(self.rival, self.live_game, self.live_game.home_team)
 
-        snapshot = live_week_snapshot(self.league, self.user, week=self.week)
-        rival = live_week_snapshot(self.league, self.rival, week=self.week)
+        snapshot = live_period_snapshot(self.league, self.user, schedule_period=self.schedule_period)
+        rival = live_period_snapshot(self.league, self.rival, schedule_period=self.schedule_period)
 
         self.assertEqual(snapshot["points"], 1)
         self.assertEqual(rival["points"], 1)
@@ -2079,7 +2079,7 @@ class LiveWeekSnapshotTests(TestCase):
         self.final_game.save(update_fields=["home_score", "away_score", "is_final"])
         self.removed_game.delete()
 
-        self.assertIsNone(live_week_snapshot(self.league, self.user, week=self.week))
+        self.assertIsNone(live_period_snapshot(self.league, self.user, schedule_period=self.schedule_period))
 
     @override_settings(
         STORAGES={
@@ -2095,7 +2095,7 @@ class LiveWeekSnapshotTests(TestCase):
 
         page = self.client.get(reverse("live"), {"league_id": self.league.id})
         self.assertEqual(page.status_code, 200)
-        self.assertContains(page, 'id="live-week-bar"')
+        self.assertContains(page, 'id="live-schedule_period-bar"')
         self.assertContains(page, "1st")
         self.assertContains(page, "Week 7")
 
@@ -2113,12 +2113,12 @@ class LiveWeekSnapshotTests(TestCase):
         self.assertEqual(standing["rank"], 1)
         self.assertEqual(standing["points"], 1)
         self.assertEqual(standing["field_size"], 3)
-        self.assertIn(f"week={self.week.id}", standing["standings_url"])
+        self.assertIn(f"schedule_period={self.schedule_period.id}", standing["standings_url"])
 
 
 
 class LastPlaceDroppedWeekPayoutTests(TestCase):
-    def test_dropped_week_incorrect_picks_count_for_last_place_in_both_views(self):
+    def test_dropped_period_incorrect_picks_count_for_last_place_in_both_views(self):
         from cfb.views import _season_incorrect_by_user
         from cfb.services.payouts import attach_prize_amounts
 
@@ -2126,13 +2126,13 @@ class LastPlaceDroppedWeekPayoutTests(TestCase):
             User.objects.create_user(f"drop_payer_{i}", f"drop_payer_{i}@example.com", "pass")
             for i in range(3)
         ]
-        league = League.objects.create(name="Dropped Week Payout League", created_by=users[0])
+        league = League.objects.create(name="Dropped SchedulePeriod Payout League", created_by=users[0])
         for user in users:
             LeagueMembership.objects.create(league=league, user=user, role="member")
         season = Season.objects.create(year=2027, is_active=True)
-        rules = LeagueRules.objects.create(league=league, season=season, drop_weeks=1)
+        rules = LeagueRules.objects.create(league=league, season=season, drop_periods=1)
 
-        # Player 0 has the most losses overall, even though most are in a dropped week.
+        # Player 0 has the most losses overall, even though most are in a dropped schedule_period.
         for user, raw, dropped in zip(users, [12, 9, 4], [8, 1, 0]):
             MemberSeason.objects.create(
                 league=league,
@@ -2178,12 +2178,12 @@ class MultiSportFoundationTests(TestCase):
         cls.games = []
         today = timezone.localdate()
         for season in (cls.football_season, cls.basketball_season):
-            week = Week.objects.create(season=season, number=1, start_date=today, end_date=today + timedelta(days=6))
+            schedule_period = SchedulePeriod.objects.create(season=season, number=1, start_date=today, end_date=today + timedelta(days=6))
             home = Team.objects.create(season=season, name="Michigan State", provider_ids={"espn": "127"})
             away = Team.objects.create(season=season, name="Michigan", provider_ids={"espn": "130"})
             cls.games.append(Game.objects.create(
-                season=season, week=week, home_team=home, away_team=away,
-                external_id="same-provider-id", kickoff=timezone.now() - timedelta(minutes=5),
+                season=season, schedule_period=schedule_period, home_team=home, away_team=away,
+                external_id="same-provider-id", start_time=timezone.now() - timedelta(minutes=5),
             ))
 
     def setUp(self):
@@ -2231,9 +2231,9 @@ class MultiSportFoundationTests(TestCase):
         initialize.assert_called_once_with(2027)
 
     def test_league_schedule_resolves_its_sport(self):
-        from cfb.services.schedule import get_display_week_for_league, get_live_week
-        self.assertEqual(get_display_week_for_league(self.basketball_league).season, self.basketball_season)
-        self.assertEqual(get_live_week(self.basketball_league).season, self.basketball_season)
+        from cfb.services.schedule import get_display_period_for_league, get_live_period
+        self.assertEqual(get_display_period_for_league(self.basketball_league).season, self.basketball_season)
+        self.assertEqual(get_live_period(self.basketball_league).season, self.basketball_season)
 
     def test_cross_sport_and_cross_season_relationships_are_rejected(self):
         with self.assertRaises(ValidationError):
@@ -2274,9 +2274,9 @@ class MultiSportFoundationTests(TestCase):
         self.assertEqual(self.basketball.format_period(4), "2OT")
         hockey = Sport.objects.create(slug="nhl", name="NHL", espn_sport="hockey", espn_league="nhl", regulation_periods=3)
         self.assertIn("hockey/nhl/scoreboard", hockey.scoreboard_urls[0])
-        week = self.games[1].week
-        week.name = "Sweet 16"
-        self.assertEqual(week.display_name, "Sweet 16")
+        schedule_period = self.games[1].schedule_period
+        schedule_period.name = "Sweet 16"
+        self.assertEqual(schedule_period.display_name, "Sweet 16")
 
     @patch("cfb.services.live.requests.get")
     def test_basketball_feed_is_selected_from_configuration(self, get):

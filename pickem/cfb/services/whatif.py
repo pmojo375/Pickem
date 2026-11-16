@@ -2,7 +2,7 @@
 Ephemeral what-if standings simulation.
 
 Users assign outcomes to started, unfinished slate games and see hypothetical
-week/season ranks. Never writes Pick, MemberWeek, or MemberSeason.
+schedule_period/season ranks. Never writes Pick, MemberPeriod, or MemberSeason.
 """
 from __future__ import annotations
 
@@ -22,9 +22,9 @@ from ..models import (
     LeagueMembership,
     LeagueRules,
     MemberSeason,
-    MemberWeek,
+    MemberPeriod,
     Pick,
-    Week,
+    SchedulePeriod,
 )
 from .scoring import (
     _tiebreak_cascade,
@@ -81,7 +81,7 @@ class SeasonStat:
 @dataclass
 class WhatIfResult:
     games: List[dict] = field(default_factory=list)
-    week_standings: List[dict] = field(default_factory=list)
+    period_standings: List[dict] = field(default_factory=list)
     season_standings: List[dict] = field(default_factory=list)
     allows_push: bool = False
     against_the_spread: bool = True
@@ -167,7 +167,7 @@ def _classify_league_games(
         game = lg.game
         if game.is_final:
             final_games.append(lg)
-        elif game.kickoff <= now:
+        elif game.start_time <= now:
             started.append(lg)
         else:
             unstarted.append(lg)
@@ -225,7 +225,7 @@ def _competition_ranks(sorted_keys: List[Tuple]) -> List[int]:
     return ranks
 
 
-def _rank_week_stats(stats: List[WeekStat], league_rules: LeagueRules) -> None:
+def _rank_period_stats(stats: List[WeekStat], league_rules: LeagueRules) -> None:
     def sort_key(stat: WeekStat):
         return (
             stat.points,
@@ -271,7 +271,7 @@ def _rank_season_stats(stats: List[SeasonStat], league_rules: LeagueRules) -> No
     for stat, rank in zip(ordered_full, _competition_ranks([full_key(s) for s in ordered_full])):
         stat.rank = rank
 
-    if league_rules.drop_weeks > 0:
+    if league_rules.drop_periods > 0:
         ordered_adj = sorted(stats, key=adjusted_key, reverse=True)
         for stat, rank in zip(
             ordered_adj, _competition_ranks([adjusted_key(s) for s in ordered_adj])
@@ -282,30 +282,30 @@ def _rank_season_stats(stats: List[SeasonStat], league_rules: LeagueRules) -> No
             stat.rank_with_drops = 0
 
 
-def _apply_drop_weeks(
-    weeks: List[WeekStat],
+def _apply_drop_periods(
+    schedule_periods: List[WeekStat],
     league_rules: LeagueRules,
 ) -> Tuple[int, int, int, int, int, int]:
     """
     Return dropped (picks_made, correct, incorrect, ties, correct_key, points)
-    from the worst N weeks, matching update_member_season_for_league.
+    from the worst N schedule_periods, matching update_member_season_for_league.
     """
     empty = (0, 0, 0, 0, 0, 0)
-    if league_rules.drop_weeks <= 0 or len(weeks) <= league_rules.drop_weeks:
+    if league_rules.drop_periods <= 0 or len(schedule_periods) <= league_rules.drop_periods:
         return empty
 
-    def week_key(week: WeekStat):
+    def period_key(schedule_period: WeekStat):
         return (
-            week.points,
+            schedule_period.points,
             _tiebreak_cascade(
                 league_rules,
-                correct=week.correct,
-                correct_key=week.correct_key,
-                tiebreak_abs_diff=week.tiebreak_abs_diff,
+                correct=schedule_period.correct,
+                correct_key=schedule_period.correct_key,
+                tiebreak_abs_diff=schedule_period.tiebreak_abs_diff,
             ),
         )
 
-    worst = sorted(weeks, key=week_key)[: league_rules.drop_weeks]
+    worst = sorted(schedule_periods, key=period_key)[: league_rules.drop_periods]
     return (
         sum(w.picks_made for w in worst),
         sum(w.correct for w in worst),
@@ -327,7 +327,7 @@ def _grade_pick_on_game(
     return is_correct, points
 
 
-def _build_week_stats_for_user(
+def _build_period_stats_for_user(
     *,
     user_id: int,
     picks: List[Pick],
@@ -381,7 +381,7 @@ def _build_week_stats_for_user(
     return stat
 
 
-def _member_week_to_stat(mw: MemberWeek) -> WeekStat:
+def _member_period_to_stat(mw: MemberPeriod) -> WeekStat:
     return WeekStat(
         user_id=mw.user_id,
         picks_made=mw.picks_made,
@@ -397,10 +397,10 @@ def _member_week_to_stat(mw: MemberWeek) -> WeekStat:
     )
 
 
-def _actual_week_ranks(league: League, week: Week) -> Dict[int, int]:
-    rows = MemberWeek.objects.filter(
+def _actual_period_ranks(league: League, schedule_period: SchedulePeriod) -> Dict[int, int]:
+    rows = MemberPeriod.objects.filter(
         league=league,
-        week=week,
+        schedule_period=schedule_period,
         user_id__in=LeagueMembership.objects.filter(
             league=league, is_active=True
         ).values_list("user_id", flat=True),
@@ -424,7 +424,7 @@ def _actual_season_ranks(
     )
     result = {}
     for ms in rows:
-        if use_drops and league_rules.drop_weeks > 0 and ms.rank_with_drops:
+        if use_drops and league_rules.drop_periods > 0 and ms.rank_with_drops:
             result[ms.user_id] = ms.rank_with_drops
         else:
             result[ms.user_id] = ms.rank or 0
@@ -433,7 +433,7 @@ def _actual_season_ranks(
 
 def get_simulatable_games(
     league: League,
-    week: Week,
+    schedule_period: SchedulePeriod,
     league_rules: LeagueRules,
 ) -> List[dict]:
     """Public list of started, non-final active slate games for the UI."""
@@ -441,7 +441,7 @@ def get_simulatable_games(
         LeagueGame.objects.filter(
             league=league,
             is_active=True,
-            game__week=week,
+            game__schedule_period=schedule_period,
         ).select_related("game__home_team", "game__away_team")
     )
     _, started, _ = _classify_league_games(league_games)
@@ -464,14 +464,14 @@ def get_simulatable_games(
 
 def simulate_standings(
     league: League,
-    week: Week,
+    schedule_period: SchedulePeriod,
     league_rules: LeagueRules,
     outcomes: Dict[int, str],
     *,
     use_season_drops: bool = True,
 ) -> WhatIfResult:
     """
-    Compute hypothetical week and season standings for the given outcomes.
+    Compute hypothetical schedule_period and season standings for the given outcomes.
 
     outcomes: mapping of game_id -> 'home' | 'away' | 'push'
     """
@@ -486,7 +486,7 @@ def simulate_standings(
         LeagueGame.objects.filter(
             league=league,
             is_active=True,
-            game__week=week,
+            game__schedule_period=schedule_period,
         ).select_related("game__home_team", "game__away_team")
     )
     final_lgs, started_lgs, unstarted_lgs = _classify_league_games(league_games)
@@ -511,7 +511,7 @@ def simulate_standings(
         if game_id in final_ids:
             raise WhatIfError(f"Game {game_id} is already final")
         if game_id not in started_ids:
-            raise WhatIfError(f"Game {game_id} is not on this week's active slate")
+            raise WhatIfError(f"Game {game_id} is not on this schedule_period's active slate")
         normalized[game_id] = outcome
 
     result.games = [
@@ -556,24 +556,24 @@ def simulate_standings(
     member_ids = [m.id for m in members]
     users_by_id = {m.id: m for m in members}
 
-    # All active-slate picks for this week
-    week_picks = list(
+    # All active-slate picks for this schedule_period
+    period_picks = list(
         filter_active_league_picks(
-            Pick.objects.filter(league=league, game__week=week).select_related(
+            Pick.objects.filter(league=league, game__schedule_period=schedule_period).select_related(
                 "game", "picked_team"
             ),
             league,
         )
     )
     picks_by_user: Dict[int, List[Pick]] = {uid: [] for uid in member_ids}
-    for pick in week_picks:
+    for pick in period_picks:
         if pick.user_id in picks_by_user:
             picks_by_user[pick.user_id].append(pick)
 
-    hypo_weeks: List[WeekStat] = []
+    hypo_periods: List[WeekStat] = []
     for user_id in member_ids:
-        hypo_weeks.append(
-            _build_week_stats_for_user(
+        hypo_periods.append(
+            _build_period_stats_for_user(
                 user_id=user_id,
                 picks=picks_by_user.get(user_id, []),
                 final_by_game_id=final_by_game_id,
@@ -582,17 +582,17 @@ def simulate_standings(
             )
         )
 
-    _rank_week_stats(hypo_weeks, league_rules)
-    actual_week_ranks = _actual_week_ranks(league, week)
+    _rank_period_stats(hypo_periods, league_rules)
+    actual_period_ranks = _actual_period_ranks(league, schedule_period)
 
-    for stat in hypo_weeks:
+    for stat in hypo_periods:
         user = users_by_id[stat.user_id]
-        actual_rank = actual_week_ranks.get(stat.user_id) or None
+        actual_rank = actual_period_ranks.get(stat.user_id) or None
         hypo_rank = stat.rank or None
         delta = None
         if actual_rank and hypo_rank:
             delta = actual_rank - hypo_rank  # positive = moved up
-        result.week_standings.append(
+        result.period_standings.append(
             {
                 "user_id": user.id,
                 "username": user.username,
@@ -611,43 +611,43 @@ def simulate_standings(
                 "tiebreak_abs_diff": stat.tiebreak_abs_diff,
             }
         )
-    result.week_standings.sort(key=lambda r: r["hypo_rank"] or 999)
+    result.period_standings.sort(key=lambda r: r["hypo_rank"] or 999)
 
-    # Season: prior weeks' stored MemberWeek + this hypo week
-    season = week.season
-    weeks_with_finals = set(
+    # Season: prior schedule_periods' stored MemberPeriod + this hypo schedule_period
+    season = schedule_period.season
+    periods_with_finals = set(
         LeagueGame.objects.filter(
             league=league,
             game__season=season,
             game__is_final=True,
             is_active=True,
-        ).values_list("game__week_id", flat=True)
+        ).values_list("game__schedule_period_id", flat=True)
     )
-    # Current week counts toward season if it has finals or any simulation.
+    # Current schedule_period counts toward season if it has finals or any simulation.
     if final_lgs or simulated_by_game_id:
-        weeks_with_finals.add(week.id)
+        periods_with_finals.add(schedule_period.id)
 
-    prior_member_weeks = MemberWeek.objects.filter(
+    prior_member_periods = MemberPeriod.objects.filter(
         league=league,
-        week__season=season,
+        schedule_period__season=season,
         user_id__in=member_ids,
-        week_id__in=weeks_with_finals,
-    ).exclude(week_id=week.id)
+        schedule_period_id__in=periods_with_finals,
+    ).exclude(schedule_period_id=schedule_period.id)
 
     prior_by_user: Dict[int, List[WeekStat]] = {uid: [] for uid in member_ids}
-    for mw in prior_member_weeks:
-        prior_by_user[mw.user_id].append(_member_week_to_stat(mw))
+    for mw in prior_member_periods:
+        prior_by_user[mw.user_id].append(_member_period_to_stat(mw))
 
-    hypo_by_user = {s.user_id: s for s in hypo_weeks}
+    hypo_by_user = {s.user_id: s for s in hypo_periods}
     season_stats: List[SeasonStat] = []
 
     for user_id in member_ids:
-        weeks_for_user = list(prior_by_user.get(user_id, []))
-        if week.id in weeks_with_finals:
-            weeks_for_user.append(hypo_by_user[user_id])
+        periods_for_user = list(prior_by_user.get(user_id, []))
+        if schedule_period.id in periods_with_finals:
+            periods_for_user.append(hypo_by_user[user_id])
 
         season_stat = SeasonStat(user_id=user_id)
-        for w in weeks_for_user:
+        for w in periods_for_user:
             season_stat.picks_made += w.picks_made
             season_stat.correct += w.correct
             season_stat.incorrect += w.incorrect
@@ -662,7 +662,7 @@ def simulate_standings(
             season_stat.ties_dropped,
             season_stat.correct_key_dropped,
             season_stat.points_dropped,
-        ) = _apply_drop_weeks(weeks_for_user, league_rules)
+        ) = _apply_drop_periods(periods_for_user, league_rules)
         season_stats.append(season_stat)
 
     _rank_season_stats(season_stats, league_rules)
@@ -672,7 +672,7 @@ def simulate_standings(
 
     for stat in season_stats:
         user = users_by_id[stat.user_id]
-        if use_season_drops and league_rules.drop_weeks > 0 and stat.rank_with_drops:
+        if use_season_drops and league_rules.drop_periods > 0 and stat.rank_with_drops:
             hypo_rank = stat.rank_with_drops
             points = stat.points - stat.points_dropped
             wins = stat.correct - stat.correct_dropped
@@ -701,7 +701,7 @@ def simulate_standings(
                 "points": points,
                 "correct_key": (
                     stat.correct_key - stat.correct_key_dropped
-                    if use_season_drops and league_rules.drop_weeks > 0
+                    if use_season_drops and league_rules.drop_periods > 0
                     else stat.correct_key
                 ),
                 "hypo_rank": hypo_rank or None,

@@ -1,10 +1,47 @@
 from django.contrib import admin
-from .models import Sport, Season, Team, Game, GameSpread, Pick, League, LeagueAnnouncement, LeagueInvite, LeagueMembership, LeagueGame, LeagueRules, Location, Week, Ranking, MemberWeek, MemberSeason, MemberSeasonPayment, TeamStat, UserAnnouncementDismissal, UserProfile
+from .models import Sport, Season, Team, Game, GameSpread, Pick, League, LeagueAnnouncement, LeagueInvite, LeagueMembership, LeagueGame, LeagueRules, Location, SchedulePeriod, Ranking, MemberPeriod, MemberSeason, MemberSeasonPayment, TeamStat, UserAnnouncementDismissal, UserProfile
+
+
+class SportScopedAdmin(admin.ModelAdmin):
+    SPORT_PATHS = {
+        "team": "season__sport", "game": "season__sport", "scheduleperiod": "season__sport",
+        "ranking": "season__sport", "teamstat": "season__sport", "gamespread": "game__season__sport",
+        "pick": "league__sport", "leaguegame": "league__sport", "leaguerules": "league__sport",
+        "memberperiod": "league__sport", "memberseason": "league__sport", "memberseasonpayment": "league__sport",
+        "leaguemembership": "league__sport", "leagueinvite": "league__sport", "leagueannouncement": "league__sport",
+    }
+
+    def get_list_display(self, request):
+        return ("inherited_sport",) + tuple(super().get_list_display(request))
+
+    def get_list_filter(self, request):
+        return (self.SPORT_PATHS[self.model._meta.model_name],) + tuple(super().get_list_filter(request))
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(self.SPORT_PATHS[self.model._meta.model_name])
+
+    def get_readonly_fields(self, request, obj=None):
+        return tuple(super().get_readonly_fields(request, obj)) + ("inherited_sport",)
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = super().get_fieldsets(request, obj)
+        if self.fieldsets:
+            return (("Sport", {"fields": ("inherited_sport",)}),) + tuple(fieldsets)
+        return fieldsets
+
+    @admin.display(description="Sport")
+    def inherited_sport(self, obj):
+        if obj is None:
+            return "Selected through the season or league."
+        value = obj
+        for field in self.SPORT_PATHS[self.model._meta.model_name].split("__"):
+            value = getattr(value, field)
+        return value
 
 
 @admin.register(Sport)
 class SportAdmin(admin.ModelAdmin):
-    list_display = ("name", "slug", "espn_sport", "espn_league", "is_active")
+    list_display = ("name", "slug", "data_provider", "espn_sport", "espn_league", "is_active")
     search_fields = ("name", "slug")
 
 
@@ -16,7 +53,7 @@ class SeasonAdmin(admin.ModelAdmin):
 
 
 @admin.register(Team)
-class TeamAdmin(admin.ModelAdmin):
+class TeamAdmin(SportScopedAdmin):
     list_display = ("name", "abbreviation", "classification", "conference", "division", "season", "record_display")
     list_filter = ("season", "classification", "conference", "division")
     search_fields = ("name", "nickname", "abbreviation", "cfbd_id", "espn_id", "twitter", "conference")
@@ -30,17 +67,17 @@ class TeamAdmin(admin.ModelAdmin):
 
 
 @admin.register(Game)
-class GameAdmin(admin.ModelAdmin):
+class GameAdmin(SportScopedAdmin):
     list_display = (
         "game_display",
-        "week",
+        "schedule_period",
         "season_type",
-        "kickoff",
+        "start_time",
         "current_spread_display",
         "score_display",
         "is_final",
     )
-    list_filter = ("season", "week", "season_type", "is_final", "neutral_site", "conference_game")
+    list_filter = ("season", "schedule_period", "season_type", "is_final", "neutral_site", "conference_game")
     search_fields = ("home_team__name", "away_team__name", "venue_name")
     autocomplete_fields = ("home_team", "away_team")
     readonly_fields = ("opening_spread_display", "current_spread_display")
@@ -73,7 +110,7 @@ class GameAdmin(admin.ModelAdmin):
 
 
 @admin.register(GameSpread)
-class GameSpreadAdmin(admin.ModelAdmin):
+class GameSpreadAdmin(SportScopedAdmin):
     list_display = ("game", "home_spread", "away_spread", "source", "timestamp")
     list_filter = ("source", "timestamp")
     search_fields = ("game__home_team__name", "game__away_team__name")
@@ -83,7 +120,7 @@ class GameSpreadAdmin(admin.ModelAdmin):
 
 
 @admin.register(Pick)
-class PickAdmin(admin.ModelAdmin):
+class PickAdmin(SportScopedAdmin):
     list_display = ("user", "league", "game", "picked_team", "is_key_pick", "is_correct", "created_at")
     list_filter = ("league", "is_key_pick", "is_correct")
     search_fields = ("user__username", "picked_team__name", "league__name")
@@ -105,7 +142,7 @@ class LeagueAdmin(admin.ModelAdmin):
 
 
 @admin.register(LeagueMembership)
-class LeagueMembershipAdmin(admin.ModelAdmin):
+class LeagueMembershipAdmin(SportScopedAdmin):
     list_display = ("league", "user", "role", "is_active", "joined_at")
     list_filter = ("role", "is_active", "joined_at")
     search_fields = ("league__name", "user__username")
@@ -114,7 +151,7 @@ class LeagueMembershipAdmin(admin.ModelAdmin):
 
 
 @admin.register(LeagueInvite)
-class LeagueInviteAdmin(admin.ModelAdmin):
+class LeagueInviteAdmin(SportScopedAdmin):
     list_display = ("league", "email", "created_at", "expires_at", "accepted_at", "revoked_at")
     list_filter = ("league", "accepted_at", "revoked_at")
     search_fields = ("email", "league__name", "token")
@@ -123,7 +160,7 @@ class LeagueInviteAdmin(admin.ModelAdmin):
 
 
 @admin.register(LeagueAnnouncement)
-class LeagueAnnouncementAdmin(admin.ModelAdmin):
+class LeagueAnnouncementAdmin(SportScopedAdmin):
     list_display = ("title", "league", "kind", "level", "is_active", "starts_at", "ends_at", "created_at")
     list_filter = ("kind", "level", "is_active", "league")
     search_fields = ("title", "body", "league__name")
@@ -141,18 +178,18 @@ class UserAnnouncementDismissalAdmin(admin.ModelAdmin):
 
 
 @admin.register(LeagueRules)
-class LeagueRulesAdmin(admin.ModelAdmin):
+class LeagueRulesAdmin(SportScopedAdmin):
     list_display = (
         "league",
         "season",
         "points_per_correct_pick",
         "key_pick_extra_points",
-        "drop_weeks",
+        "drop_periods",
         "against_the_spread_enabled",
         "force_hooks",
         "tiebreaker",
         "spread_lock_weekday",
-        "pickable_games_per_week",
+        "pickable_games_per_period",
         "key_picks_enabled",
         "pick_reminder_emails_enabled",
         "entry_fee",
@@ -168,7 +205,7 @@ class LeagueRulesAdmin(admin.ModelAdmin):
         "tiebreaker",
     )
     search_fields = ("league__name", "season__year")
-    autocomplete_fields = ("league", "season", "season_end_week")
+    autocomplete_fields = ("league", "season", "season_end_period")
     readonly_fields = ("created_at", "updated_at")
     
     fieldsets = (
@@ -176,13 +213,13 @@ class LeagueRulesAdmin(admin.ModelAdmin):
             "fields": ("league", "season")
         }),
         ("Scoring Rules", {
-            "fields": ("points_per_correct_pick", "key_pick_extra_points", "drop_weeks")
+            "fields": ("points_per_correct_pick", "key_pick_extra_points", "drop_periods")
         }),
         ("Game Mode", {
             "fields": ("against_the_spread_enabled", "force_hooks", "tiebreaker")
         }),
         ("Game Selection Rules", {
-            "fields": ("spread_lock_weekday", "pickable_games_per_week", "picks_per_week")
+            "fields": ("spread_lock_weekday", "pickable_games_per_period", "picks_per_period")
         }),
         ("Key Pick Rules", {
             "fields": ("key_picks_enabled", "number_of_key_picks")
@@ -193,12 +230,12 @@ class LeagueRulesAdmin(admin.ModelAdmin):
         ("Payout Structure", {
             "fields": (
                 "entry_fee",
-                "weekly_payout_percent",
+                "period_payout_percent",
                 "season_payout_percent",
-                "weekly_payout_structure",
+                "period_payout_structure",
                 "season_payout_structure",
                 "season_payout_last_percent",
-                "season_end_week",
+                "season_end_period",
             ),
             "classes": ("collapse",)
         }),
@@ -217,7 +254,7 @@ class LocationAdmin(admin.ModelAdmin):
 
 
 @admin.register(LeagueGame)
-class LeagueGameAdmin(admin.ModelAdmin):
+class LeagueGameAdmin(SportScopedAdmin):
     list_display = ("league", "game", "locked_spread_display", "spread_locked_at", "is_active", "selected_at")
     list_filter = ("league", "is_active", "spread_locked_at")
     search_fields = ("league__name", "game__home_team__name", "game__away_team__name")
@@ -241,33 +278,33 @@ class LeagueGameAdmin(admin.ModelAdmin):
         self.message_user(request, f"Successfully locked spreads for {locked_count} game(s).")
     lock_spreads.short_description = "Lock current spreads for selected games"
 
-@admin.register(Week)
-class WeekAdmin(admin.ModelAdmin):
-    list_display = ("season", "number", "season_type", "start_date", "end_date")
+@admin.register(SchedulePeriod)
+class SchedulePeriodAdmin(SportScopedAdmin):
+    list_display = ("season", "number", "name", "kind", "season_type", "start_date", "end_date")
     list_filter = ("season", "season_type")
     search_fields = ("season__year", "number")
     autocomplete_fields = ("season",)
     readonly_fields = ("start_date", "end_date")
 
 @admin.register(Ranking)
-class RankingAdmin(admin.ModelAdmin):
-    list_display = ("season", "week", "team", "poll", "rank", "first_place_votes", "points")
-    list_filter = ("season", "week", "poll")
-    search_fields = ("season__year", "week__number", "team__name", "poll")
-    autocomplete_fields = ("season", "week", "team")
+class RankingAdmin(SportScopedAdmin):
+    list_display = ("season", "schedule_period", "team", "poll", "rank", "first_place_votes", "points")
+    list_filter = ("season", "schedule_period", "poll")
+    search_fields = ("season__year", "schedule_period__number", "team__name", "poll")
+    autocomplete_fields = ("season", "schedule_period", "team")
 
 
-@admin.register(MemberWeek)
-class MemberWeekAdmin(admin.ModelAdmin):
-    list_display = ("league", "week", "user", "picks_made", "correct", "incorrect", "ties", "correct_key", "points", "rank", "scored_at")
-    list_filter = ("league", "week__season", "scored_at")
-    search_fields = ("league__name", "user__username", "week__season__year")
-    autocomplete_fields = ("league", "week", "user")
+@admin.register(MemberPeriod)
+class MemberPeriodAdmin(SportScopedAdmin):
+    list_display = ("league", "schedule_period", "user", "picks_made", "correct", "incorrect", "ties", "correct_key", "points", "rank", "scored_at")
+    list_filter = ("league", "schedule_period__season", "scored_at")
+    search_fields = ("league__name", "user__username", "schedule_period__season__year")
+    autocomplete_fields = ("league", "schedule_period", "user")
     readonly_fields = ("scored_at",)
     
     fieldsets = (
-        ("Member & Week", {
-            "fields": ("league", "week", "user")
+        ("Member & SchedulePeriod", {
+            "fields": ("league", "schedule_period", "user")
         }),
         ("Statistics", {
             "fields": ("picks_made", "correct", "incorrect", "ties", "correct_key", "points", "rank")
@@ -284,27 +321,27 @@ class MemberWeekAdmin(admin.ModelAdmin):
 
 
 @admin.register(MemberSeason)
-class MemberSeasonAdmin(admin.ModelAdmin):
-    list_display = ("league", "season", "user", "through_week", "picks_made", "correct", "incorrect", "ties", "correct_key", "points", "points_dropped", "adjusted_points", "rank", "rank_with_drops", "updated_at")
+class MemberSeasonAdmin(SportScopedAdmin):
+    list_display = ("league", "season", "user", "through_period", "picks_made", "correct", "incorrect", "ties", "correct_key", "points", "points_dropped", "adjusted_points", "rank", "rank_with_drops", "updated_at")
     list_filter = ("league", "season", "updated_at")
     search_fields = ("league__name", "season__year", "user__username")
     autocomplete_fields = ("league", "season", "user")
     readonly_fields = ("updated_at", "adjusted_points", "adjusted_correct", "adjusted_correct_key")
     
     def adjusted_points(self, obj):
-        """Display adjusted points (full season - dropped weeks)"""
+        """Display adjusted points (full season - dropped schedule_periods)"""
         return obj.points - obj.points_dropped
     adjusted_points.short_description = "Adjusted Points"
     adjusted_points.admin_order_field = "points"
     
     def adjusted_correct(self, obj):
-        """Display adjusted correct picks (full season - dropped weeks)"""
+        """Display adjusted correct picks (full season - dropped schedule_periods)"""
         return obj.correct - obj.correct_dropped
     adjusted_correct.short_description = "Adjusted Correct"
     adjusted_correct.admin_order_field = "correct"
     
     def adjusted_correct_key(self, obj):
-        """Display adjusted key picks correct (full season - dropped weeks)"""
+        """Display adjusted key picks correct (full season - dropped schedule_periods)"""
         return obj.correct_key - obj.correct_key_dropped
     adjusted_correct_key.short_description = "Adjusted Key Correct"
     adjusted_correct_key.admin_order_field = "correct_key"
@@ -314,19 +351,19 @@ class MemberSeasonAdmin(admin.ModelAdmin):
             "fields": ("league", "season", "user")
         }),
         ("Full Season Statistics", {
-            "fields": ("through_week", "picks_made", "correct", "incorrect", "ties", "correct_key", "points")
+            "fields": ("through_period", "picks_made", "correct", "incorrect", "ties", "correct_key", "points")
         }),
-        ("Dropped Week Statistics", {
+        ("Dropped SchedulePeriod Statistics", {
             "fields": ("picks_made_dropped", "correct_dropped", "incorrect_dropped", "ties_dropped", "correct_key_dropped", "points_dropped"),
-            "description": "Statistics from the worst performing weeks that were dropped from standings"
+            "description": "Statistics from the worst performing schedule_periods that were dropped from standings"
         }),
         ("Adjusted Statistics (For Rankings)", {
             "fields": ("adjusted_points", "adjusted_correct", "adjusted_correct_key"),
-            "description": "Final statistics used for standings (Full Season - Dropped Weeks)"
+            "description": "Final statistics used for standings (Full Season - Dropped Periods)"
         }),
         ("Ranking", {
             "fields": ("rank", "rank_with_drops"),
-            "description": "rank: full season ranking, rank_with_drops: ranking after dropping worst weeks"
+            "description": "rank: full season ranking, rank_with_drops: ranking after dropping worst schedule_periods"
         }),
         ("Timestamps", {
             "fields": ("updated_at",),
@@ -336,7 +373,7 @@ class MemberSeasonAdmin(admin.ModelAdmin):
 
 
 @admin.register(MemberSeasonPayment)
-class MemberSeasonPaymentAdmin(admin.ModelAdmin):
+class MemberSeasonPaymentAdmin(SportScopedAdmin):
     list_display = ("league", "season", "user", "paid", "paid_receipt_dismissed")
     list_filter = ("paid", "paid_receipt_dismissed", "season", "league")
     search_fields = ("league__name", "user__username", "season__year")
@@ -344,7 +381,7 @@ class MemberSeasonPaymentAdmin(admin.ModelAdmin):
 
 
 @admin.register(TeamStat)
-class TeamStatAdmin(admin.ModelAdmin):
+class TeamStatAdmin(SportScopedAdmin):
     list_display = ("season", "team", "stat", "value")
     list_filter = ("season", "stat")
     search_fields = ("team__name", "stat", "season__year")

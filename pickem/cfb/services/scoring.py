@@ -10,9 +10,9 @@ from typing import Tuple, Optional, List, Dict
 from django.db import transaction
 from django.db.models import Case, Count, F, IntegerField, Max, Q, Sum, Value, When
 from django.utils import timezone
-from ..models import Game, Pick, League, LeagueRules, MemberWeek, MemberSeason, Week, LeagueGame, LeagueMembership
+from ..models import Game, Pick, League, LeagueRules, MemberPeriod, MemberSeason, SchedulePeriod, LeagueGame, LeagueMembership
 from .hooks import apply_forced_hook
-from .schedule import get_live_week, get_week_datetime_range
+from .schedule import get_live_period, get_period_datetime_range, period_game_filters
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ def filter_active_league_picks(qs, league: League):
     Restrict a Pick queryset to games currently on the league slate.
 
     Deselected LeagueGames stay in the DB (is_active=False) and their Pick
-    rows are kept for history, but they must not affect week/season scoring.
+    rows are kept for history, but they must not affect schedule_period/season scoring.
     """
     return qs.filter(
         game__league_selections__league=league,
@@ -143,7 +143,7 @@ def remaining_points_by_user(
     league: League,
     league_rules: Optional[LeagueRules],
     *,
-    week: Optional[Week] = None,
+    schedule_period: Optional[SchedulePeriod] = None,
     season=None,
 ) -> Dict[int, int]:
     """
@@ -165,8 +165,8 @@ def remaining_points_by_user(
         Pick.objects.filter(league=league, game__is_final=False),
         league,
     )
-    if week is not None:
-        qs = qs.filter(game__week=week)
+    if schedule_period is not None:
+        qs = qs.filter(game__schedule_period=schedule_period)
     if season is not None:
         qs = qs.filter(game__season=season)
 
@@ -185,18 +185,18 @@ def remaining_points_by_user(
     )
 
 
-def resolve_total_points_tiebreak(week_picks) -> tuple:
+def resolve_total_points_tiebreak(period_picks) -> tuple:
     """
-    Resolve Total Points tiebreaker fields from a user's final week picks.
+    Resolve Total Points tiebreaker fields from a user's final schedule_period picks.
 
-    Looks up the week's total-points pick (not the game currently being graded),
+    Looks up the schedule_period's total-points pick (not the game currently being graded),
     so later non-TB finals do not wipe guess/actual/diff.
 
     Returns:
         (points_guess, points_actual, tiebreak_abs_diff)
     """
     total_pts_pick = (
-        week_picks.filter(is_total_points_game=True)
+        period_picks.filter(is_total_points_game=True)
         .select_related("game")
         .order_by("id")
         .first()
@@ -213,9 +213,9 @@ def resolve_total_points_tiebreak(week_picks) -> tuple:
     return points_guess, points_actual, abs(points_guess - points_actual)
 
 
-def calculate_tiebreaker_value(member_week: MemberWeek, league_rules: LeagueRules) -> tuple:
+def calculate_tiebreaker_value(member_period: MemberPeriod, league_rules: LeagueRules) -> tuple:
     """
-    Sort key used after points for week ranking (higher is better).
+    Sort key used after points for schedule_period ranking (higher is better).
 
     Cascade:
       1. League tiebreaker method
@@ -226,9 +226,9 @@ def calculate_tiebreaker_value(member_week: MemberWeek, league_rules: LeagueRule
     """
     return _tiebreak_cascade(
         league_rules,
-        correct=member_week.correct,
-        correct_key=member_week.correct_key,
-        tiebreak_abs_diff=member_week.tiebreak_abs_diff,
+        correct=member_period.correct,
+        correct_key=member_period.correct_key,
+        tiebreak_abs_diff=member_period.tiebreak_abs_diff,
     )
 
 
@@ -263,9 +263,9 @@ def _tiebreak_cascade(
     return (method_val, correct, correct_key)
 
 
-def assign_ranks_for_week(member_weeks: List[MemberWeek], league_rules: LeagueRules) -> Dict[int, int]:
+def assign_ranks_for_period(member_periods: List[MemberPeriod], league_rules: LeagueRules) -> Dict[int, int]:
     """
-    Assign ranks to member weeks with proper tiebreaker handling.
+    Assign ranks to member schedule_periods with proper tiebreaker handling.
 
     Ranking cascade:
       1. Points (higher is better)
@@ -274,23 +274,23 @@ def assign_ranks_for_week(member_weeks: List[MemberWeek], league_rules: LeagueRu
       4. Key picks
     Equal on the full cascade → same competition rank (next rank skipped).
     """
-    if not member_weeks:
+    if not member_periods:
         return {}
 
-    def sort_key(member_week):
-        return (member_week.points, calculate_tiebreaker_value(member_week, league_rules))
+    def sort_key(member_period):
+        return (member_period.points, calculate_tiebreaker_value(member_period, league_rules))
 
-    sorted_weeks = sorted(member_weeks, key=sort_key, reverse=True)
+    sorted_periods = sorted(member_periods, key=sort_key, reverse=True)
 
     rank_map = {}
     current_rank = 1
     previous_key = None
 
-    for index, member_week in enumerate(sorted_weeks):
-        key = sort_key(member_week)
+    for index, member_period in enumerate(sorted_periods):
+        key = sort_key(member_period)
         if previous_key is not None and key != previous_key:
             current_rank = index + 1
-        rank_map[member_week.id] = current_rank
+        rank_map[member_period.id] = current_rank
         previous_key = key
 
     return rank_map
@@ -301,8 +301,8 @@ def assign_ranks_for_season(member_seasons: List[MemberSeason], league_rules: Le
     Assign ranks to member seasons with proper tiebreaker handling.
     Calculates both full season ranks and adjusted ranks (with drops).
 
-    Same cascade as weeks: points → league tiebreaker → correct → key picks.
-    Total Points is weekly-only, so on season it is a no-op and standings
+    Same cascade as schedule_periods: points → league tiebreaker → correct → key picks.
+    Total Points is period-only, so on season it is a no-op and standings
     fall through to correct then key picks.
     """
     if not member_seasons:
@@ -350,7 +350,7 @@ def assign_ranks_for_season(member_seasons: List[MemberSeason], league_rules: Le
 
     full_rank_map = calculate_ranks_for_stats(member_seasons, use_full_stats=True)
 
-    if league_rules and league_rules.drop_weeks > 0:
+    if league_rules and league_rules.drop_periods > 0:
         adjusted_rank_map = calculate_ranks_for_stats(member_seasons, use_full_stats=False)
     else:
         adjusted_rank_map = {ms.id: 0 for ms in member_seasons}
@@ -366,12 +366,12 @@ def assign_ranks_for_season(member_seasons: List[MemberSeason], league_rules: Le
 
 
 @transaction.atomic
-def update_member_week_for_game(game: Game) -> int:
+def update_member_period_for_game(game: Game) -> int:
     """
-    Update MemberWeek records for a finished game.
+    Update MemberPeriod records for a finished game.
     Called when a game is marked as is_final.
     
-    Returns the number of MemberWeek records updated.
+    Returns the number of MemberPeriod records updated.
     """
     if not game.is_final:
         return 0
@@ -387,8 +387,8 @@ def update_member_week_for_game(game: Game) -> int:
     if not league_games.exists():
         return 0
     
-    # Get the week
-    if not game.week:
+    # Get the schedule_period
+    if not game.schedule_period:
         return 0
     
     for league_game in league_games:
@@ -413,10 +413,10 @@ def update_member_week_for_game(game: Game) -> int:
                 pick.is_correct = is_correct
                 pick.save(update_fields=['is_correct'])
             
-            # Get or create MemberWeek
-            member_week, created = MemberWeek.objects.get_or_create(
+            # Get or create MemberPeriod
+            member_period, created = MemberPeriod.objects.get_or_create(
                 league=league,
-                week=game.week,
+                schedule_period=game.schedule_period,
                 user=pick.user
             )
             
@@ -426,7 +426,7 @@ def update_member_week_for_game(game: Game) -> int:
                 Pick.objects.filter(
                     league=league,
                     user=pick.user,
-                    game__week=game.week,
+                    game__schedule_period=game.schedule_period,
                     game__is_final=True,
                 ),
                 league,
@@ -442,12 +442,12 @@ def update_member_week_for_game(game: Game) -> int:
                 is_correct=True
             ).count()
             
-            # Calculate total points for the week
+            # Calculate total points for the schedule_period
             total_points = 0
-            for week_pick in user_picks:
-                total_points += calculate_pick_points(week_pick, week_pick.is_correct, league_rules)
+            for period_pick in user_picks:
+                total_points += calculate_pick_points(period_pick, period_pick.is_correct, league_rules)
             
-            # Total Points TB must be resolved from the week's TB pick every time
+            # Total Points TB must be resolved from the schedule_period's TB pick every time
             # a game finals — otherwise later non-TB games wipe guess/diff to None.
             points_guess = None
             points_actual = None
@@ -457,39 +457,39 @@ def update_member_week_for_game(game: Game) -> int:
                     user_picks
                 )
 
-            # Update MemberWeek
-            member_week.picks_made = user_picks.count()
-            member_week.correct = correct_count
-            member_week.incorrect = incorrect_count
-            member_week.ties = ties_count
-            member_week.correct_key = key_picks_correct
-            member_week.points = total_points
-            member_week.points_guess = points_guess
-            member_week.points_actual = points_actual
-            member_week.tiebreak_abs_diff = tiebreak_abs_diff
-            member_week.save()
+            # Update MemberPeriod
+            member_period.picks_made = user_picks.count()
+            member_period.correct = correct_count
+            member_period.incorrect = incorrect_count
+            member_period.ties = ties_count
+            member_period.correct_key = key_picks_correct
+            member_period.points = total_points
+            member_period.points_guess = points_guess
+            member_period.points_actual = points_actual
+            member_period.tiebreak_abs_diff = tiebreak_abs_diff
+            member_period.save()
             
             updated_count += 1
         
-        # After updating all picks for this league/week, calculate ranks and update MemberSeason
-        week_member_weeks = MemberWeek.objects.filter(
+        # After updating all picks for this league/schedule_period, calculate ranks and update MemberSeason
+        period_member_periods = MemberPeriod.objects.filter(
             league=league,
-            week=game.week,
+            schedule_period=game.schedule_period,
             user_id__in=LeagueMembership.objects.filter(league=league, is_active=True).values_list('user_id', flat=True),
         )
         
-        if week_member_weeks.exists():
+        if period_member_periods.exists():
             # Calculate and assign ranks
-            rank_map = assign_ranks_for_week(list(week_member_weeks), league_rules)
-            for member_week in week_member_weeks:
-                if member_week.id in rank_map:
-                    member_week.rank = rank_map[member_week.id]
-                    member_week.save(update_fields=['rank'])
+            rank_map = assign_ranks_for_period(list(period_member_periods), league_rules)
+            for member_period in period_member_periods:
+                if member_period.id in rank_map:
+                    member_period.rank = rank_map[member_period.id]
+                    member_period.save(update_fields=['rank'])
         
         update_member_season_for_league(league, game.season)
     
     logger.debug(
-        "Updated %s MemberWeek records for game %s",
+        "Updated %s MemberPeriod records for game %s",
         updated_count,
         game.id,
     )
@@ -499,8 +499,8 @@ def update_member_week_for_game(game: Game) -> int:
 @transaction.atomic
 def update_member_season_for_league(league: League, season) -> int:
     """
-    Update all MemberSeason records for a league/season by aggregating MemberWeek data.
-    Implements drop_weeks logic to exclude worst performing weeks from season standings.
+    Update all MemberSeason records for a league/season by aggregating MemberPeriod data.
+    Implements drop_periods logic to exclude worst performing schedule_periods from season standings.
     
     Returns the number of MemberSeason records updated.
     """
@@ -518,14 +518,14 @@ def update_member_season_for_league(league: League, season) -> int:
     
     members = LeagueMembership.objects.filter(league=league, is_active=True).values_list('user_id', flat=True)
     
-    # Get weeks that have finalized games for this league
-    weeks_with_finalized_games = set(
+    # Get schedule_periods that have finalized games for this league
+    periods_with_finalized_games = set(
         LeagueGame.objects.filter(
             league=league,
             game__season=season,
             game__is_final=True,
             is_active=True
-        ).values_list('game__week_id', flat=True).distinct()
+        ).values_list('game__schedule_period_id', flat=True).distinct()
     )
     
     for user_id in members:
@@ -535,28 +535,28 @@ def update_member_season_for_league(league: League, season) -> int:
             user_id=user_id
         )
         
-        # Get all MemberWeek records for this user in this league/season
-        all_member_weeks = MemberWeek.objects.filter(
+        # Get all MemberPeriod records for this user in this league/season
+        all_member_periods = MemberPeriod.objects.filter(
             league=league,
-            week__season=season,
+            schedule_period__season=season,
             user_id=user_id
-        ).select_related('week').order_by('week__number')
+        ).select_related('schedule_period').order_by('schedule_period__number')
         
-        # Filter to only include weeks that have finalized games
-        member_weeks_with_finals = all_member_weeks.filter(
-            week_id__in=weeks_with_finalized_games
+        # Filter to only include schedule_periods that have finalized games
+        member_periods_with_finals = all_member_periods.filter(
+            schedule_period_id__in=periods_with_finalized_games
         )
         
-        if not member_weeks_with_finals.exists():
-            # Reset if no weeks with finalized games
-            member_season.through_week = 0
+        if not member_periods_with_finals.exists():
+            # Reset if no schedule_periods with finalized games
+            member_season.through_period = 0
             member_season.picks_made = 0
             member_season.correct = 0
             member_season.incorrect = 0
             member_season.ties = 0
             member_season.correct_key = 0
             member_season.points = 0
-            # Reset dropped week stats
+            # Reset dropped schedule_period stats
             member_season.points_dropped = 0
             member_season.picks_made_dropped = 0
             member_season.correct_dropped = 0
@@ -564,9 +564,9 @@ def update_member_season_for_league(league: League, season) -> int:
             member_season.ties_dropped = 0
             member_season.correct_key_dropped = 0
         else:
-            # First, calculate full season stats from all weeks with finalized games
-            full_season_stats = member_weeks_with_finals.aggregate(
-                max_week=Max('week__number'),
+            # First, calculate full season stats from all schedule_periods with finalized games
+            full_season_stats = member_periods_with_finals.aggregate(
+                max_period=Max('schedule_period__number'),
                 total_picks=Sum('picks_made'),
                 total_correct=Sum('correct'),
                 total_incorrect=Sum('incorrect'),
@@ -576,7 +576,7 @@ def update_member_season_for_league(league: League, season) -> int:
             )
             
             # Store full season stats in original fields
-            member_season.through_week = full_season_stats['max_week'] or 0
+            member_season.through_period = full_season_stats['max_period'] or 0
             member_season.picks_made = full_season_stats['total_picks'] or 0
             member_season.correct = full_season_stats['total_correct'] or 0
             member_season.incorrect = full_season_stats['total_incorrect'] or 0
@@ -592,37 +592,37 @@ def update_member_season_for_league(league: League, season) -> int:
             member_season.ties_dropped = 0
             member_season.correct_key_dropped = 0
             
-            # Apply drop_weeks logic if enabled
-            if league_rules.drop_weeks > 0 and len(member_weeks_with_finals) > league_rules.drop_weeks:
+            # Apply drop_periods logic if enabled
+            if league_rules.drop_periods > 0 and len(member_periods_with_finals) > league_rules.drop_periods:
                 # Convert to list for sorting
-                weeks_list = list(member_weeks_with_finals)
+                periods_list = list(member_periods_with_finals)
                 
-                # Sort weeks by points (ascending) to identify worst weeks
+                # Sort schedule_periods by points (ascending) to identify worst schedule_periods
                 # Then by tiebreaker (ascending) as secondary sort based on league rules
                 # Ascending = worst first; mirror ranking cascade (points → TB → correct → key)
-                def get_week_tiebreaker_key(week):
+                def get_period_tiebreaker_key(schedule_period):
                     return (
-                        week.points,
+                        schedule_period.points,
                         _tiebreak_cascade(
                             league_rules,
-                            correct=week.correct,
-                            correct_key=week.correct_key,
-                            tiebreak_abs_diff=week.tiebreak_abs_diff,
+                            correct=schedule_period.correct,
+                            correct_key=schedule_period.correct_key,
+                            tiebreak_abs_diff=schedule_period.tiebreak_abs_diff,
                         ),
                     )
 
-                weeks_list.sort(key=get_week_tiebreaker_key)
+                periods_list.sort(key=get_period_tiebreaker_key)
                 
-                # Get the weeks to drop (worst performing)
-                weeks_to_drop = weeks_list[:league_rules.drop_weeks]
+                # Get the schedule_periods to drop (worst performing)
+                periods_to_drop = periods_list[:league_rules.drop_periods]
                 
-                # Calculate dropped stats from the worst weeks
-                dropped_stats = sum((week.picks_made for week in weeks_to_drop), 0), \
-                               sum((week.correct for week in weeks_to_drop), 0), \
-                               sum((week.incorrect for week in weeks_to_drop), 0), \
-                               sum((week.ties for week in weeks_to_drop), 0), \
-                               sum((week.correct_key for week in weeks_to_drop), 0), \
-                               sum((week.points for week in weeks_to_drop), 0)
+                # Calculate dropped stats from the worst schedule_periods
+                dropped_stats = sum((schedule_period.picks_made for schedule_period in periods_to_drop), 0), \
+                               sum((schedule_period.correct for schedule_period in periods_to_drop), 0), \
+                               sum((schedule_period.incorrect for schedule_period in periods_to_drop), 0), \
+                               sum((schedule_period.ties for schedule_period in periods_to_drop), 0), \
+                               sum((schedule_period.correct_key for schedule_period in periods_to_drop), 0), \
+                               sum((schedule_period.points for schedule_period in periods_to_drop), 0)
                 
                 member_season.picks_made_dropped = dropped_stats[0]
                 member_season.correct_dropped = dropped_stats[1]
@@ -669,7 +669,7 @@ def recalculate_all_member_stats(season) -> dict:
     """
     stats = {
         'leagues_processed': 0,
-        'member_weeks_updated': 0,
+        'member_periods_updated': 0,
         'member_seasons_updated': 0,
         'errors': []
     }
@@ -681,13 +681,13 @@ def recalculate_all_member_stats(season) -> dict:
         try:
             stats['leagues_processed'] += 1
             
-            # Get all weeks for this league in the season
-            weeks = Week.objects.filter(season=season)
+            # Get all schedule_periods for this league in the season
+            schedule_periods = SchedulePeriod.objects.filter(season=season)
             
-            # Clear existing MemberWeek and MemberSeason for this league/season
-            MemberWeek.objects.filter(
+            # Clear existing MemberPeriod and MemberSeason for this league/season
+            MemberPeriod.objects.filter(
                 league=league,
-                week__season=season
+                schedule_period__season=season
             ).delete()
             
             MemberSeason.objects.filter(
@@ -705,11 +705,11 @@ def recalculate_all_member_stats(season) -> dict:
                 continue
             
             for member in members:
-                for week in weeks:
-                    # Create MemberWeek
-                    member_week = MemberWeek.objects.create(
+                for schedule_period in schedule_periods:
+                    # Create MemberPeriod
+                    member_period = MemberPeriod.objects.create(
                         league=league,
-                        week=week,
+                        schedule_period=schedule_period,
                         user=member.user,
                         picks_made=0,
                         correct=0,
@@ -720,25 +720,25 @@ def recalculate_all_member_stats(season) -> dict:
                     )
                     
                     # Picks on final, still-active league games (None = push/tie)
-                    week_picks = filter_active_league_picks(
+                    period_picks = filter_active_league_picks(
                         Pick.objects.filter(
                             league=league,
                             user=member.user,
-                            game__week=week,
+                            game__schedule_period=schedule_period,
                             game__is_final=True,
                         ),
                         league,
                     )
                     
-                    if week_picks.exists():
+                    if period_picks.exists():
                         # Calculate stats
-                        correct_count = week_picks.filter(is_correct=True).count()
-                        incorrect_count = week_picks.filter(is_correct=False).count()
-                        ties_count = week_picks.filter(is_correct__isnull=True).count()
-                        key_correct_count = week_picks.filter(is_key_pick=True, is_correct=True).count()
+                        correct_count = period_picks.filter(is_correct=True).count()
+                        incorrect_count = period_picks.filter(is_correct=False).count()
+                        ties_count = period_picks.filter(is_correct__isnull=True).count()
+                        key_correct_count = period_picks.filter(is_key_pick=True, is_correct=True).count()
                         
                         total_points = 0
-                        for pick in week_picks:
+                        for pick in period_picks:
                             total_points += calculate_pick_points(pick, pick.is_correct, league_rules)
                         
                         points_guess = None
@@ -746,28 +746,28 @@ def recalculate_all_member_stats(season) -> dict:
                         tiebreak_abs_diff = None
                         if league_rules.tiebreaker == 2:
                             points_guess, points_actual, tiebreak_abs_diff = (
-                                resolve_total_points_tiebreak(week_picks)
+                                resolve_total_points_tiebreak(period_picks)
                             )
 
-                        member_week.picks_made = week_picks.count()
-                        member_week.correct = correct_count
-                        member_week.incorrect = incorrect_count
-                        member_week.ties = ties_count
-                        member_week.correct_key = key_correct_count
-                        member_week.points = total_points
-                        member_week.points_guess = points_guess
-                        member_week.points_actual = points_actual
-                        member_week.tiebreak_abs_diff = tiebreak_abs_diff
-                        member_week.save()
+                        member_period.picks_made = period_picks.count()
+                        member_period.correct = correct_count
+                        member_period.incorrect = incorrect_count
+                        member_period.ties = ties_count
+                        member_period.correct_key = key_correct_count
+                        member_period.points = total_points
+                        member_period.points_guess = points_guess
+                        member_period.points_actual = points_actual
+                        member_period.tiebreak_abs_diff = tiebreak_abs_diff
+                        member_period.save()
                         
-                        stats['member_weeks_updated'] += 1
+                        stats['member_periods_updated'] += 1
                 
                 # Create/update MemberSeason
                 member_season = MemberSeason.objects.create(
                     league=league,
                     season=season,
                     user=member.user,
-                    through_week=0,
+                    through_period=0,
                     picks_made=0,
                     correct=0,
                     incorrect=0,
@@ -776,33 +776,33 @@ def recalculate_all_member_stats(season) -> dict:
                     points=0
                 )
                 
-                # Get weeks that have finalized games for this league
+                # Get schedule_periods that have finalized games for this league
                 from ..models import LeagueGame
-                weeks_with_finalized_games = set(
+                periods_with_finalized_games = set(
                     LeagueGame.objects.filter(
                         league=league,
                         game__season=season,
                         game__is_final=True,
                         is_active=True
-                    ).values_list('game__week_id', flat=True).distinct()
+                    ).values_list('game__schedule_period_id', flat=True).distinct()
                 )
                 
-                # Get all MemberWeek records for this user in this league/season
-                all_member_weeks = MemberWeek.objects.filter(
+                # Get all MemberPeriod records for this user in this league/season
+                all_member_periods = MemberPeriod.objects.filter(
                     league=league,
-                    week__season=season,
+                    schedule_period__season=season,
                     user=member.user
-                ).select_related('week').order_by('week__number')
+                ).select_related('schedule_period').order_by('schedule_period__number')
                 
-                # Filter to only include weeks that have finalized games
-                member_weeks_with_finals = all_member_weeks.filter(
-                    week_id__in=weeks_with_finalized_games
+                # Filter to only include schedule_periods that have finalized games
+                member_periods_with_finals = all_member_periods.filter(
+                    schedule_period_id__in=periods_with_finalized_games
                 )
                 
-                if member_weeks_with_finals.exists():
-                    # First, calculate full season stats from all weeks with finalized games
-                    full_season_stats = member_weeks_with_finals.aggregate(
-                        max_week=Max('week__number'),
+                if member_periods_with_finals.exists():
+                    # First, calculate full season stats from all schedule_periods with finalized games
+                    full_season_stats = member_periods_with_finals.aggregate(
+                        max_period=Max('schedule_period__number'),
                         total_picks=Sum('picks_made'),
                         total_correct=Sum('correct'),
                         total_incorrect=Sum('incorrect'),
@@ -812,7 +812,7 @@ def recalculate_all_member_stats(season) -> dict:
                     )
                     
                     # Store full season stats in original fields
-                    member_season.through_week = full_season_stats['max_week'] or 0
+                    member_season.through_period = full_season_stats['max_period'] or 0
                     member_season.picks_made = full_season_stats['total_picks'] or 0
                     member_season.correct = full_season_stats['total_correct'] or 0
                     member_season.incorrect = full_season_stats['total_incorrect'] or 0
@@ -828,37 +828,37 @@ def recalculate_all_member_stats(season) -> dict:
                     member_season.ties_dropped = 0
                     member_season.correct_key_dropped = 0
                     
-                    # Apply drop_weeks logic if enabled
-                    if league_rules.drop_weeks > 0 and len(member_weeks_with_finals) > league_rules.drop_weeks:
+                    # Apply drop_periods logic if enabled
+                    if league_rules.drop_periods > 0 and len(member_periods_with_finals) > league_rules.drop_periods:
                         # Convert to list for sorting
-                        weeks_list = list(member_weeks_with_finals)
+                        periods_list = list(member_periods_with_finals)
                         
-                        # Sort weeks by points (ascending) to identify worst weeks
+                        # Sort schedule_periods by points (ascending) to identify worst schedule_periods
                         # Then by tiebreaker (ascending) as secondary sort based on league rules
                         # Ascending = worst first; mirror ranking cascade
-                        def get_week_tiebreaker_key(week):
+                        def get_period_tiebreaker_key(schedule_period):
                             return (
-                                week.points,
+                                schedule_period.points,
                                 _tiebreak_cascade(
                                     league_rules,
-                                    correct=week.correct,
-                                    correct_key=week.correct_key,
-                                    tiebreak_abs_diff=week.tiebreak_abs_diff,
+                                    correct=schedule_period.correct,
+                                    correct_key=schedule_period.correct_key,
+                                    tiebreak_abs_diff=schedule_period.tiebreak_abs_diff,
                                 ),
                             )
 
-                        weeks_list.sort(key=get_week_tiebreaker_key)
+                        periods_list.sort(key=get_period_tiebreaker_key)
                         
-                        # Get the weeks to drop (worst performing)
-                        weeks_to_drop = weeks_list[:league_rules.drop_weeks]
+                        # Get the schedule_periods to drop (worst performing)
+                        periods_to_drop = periods_list[:league_rules.drop_periods]
                         
-                        # Calculate dropped stats from the worst weeks
-                        dropped_stats = sum((week.picks_made for week in weeks_to_drop), 0), \
-                                       sum((week.correct for week in weeks_to_drop), 0), \
-                                       sum((week.incorrect for week in weeks_to_drop), 0), \
-                                       sum((week.ties for week in weeks_to_drop), 0), \
-                                       sum((week.correct_key for week in weeks_to_drop), 0), \
-                                       sum((week.points for week in weeks_to_drop), 0)
+                        # Calculate dropped stats from the worst schedule_periods
+                        dropped_stats = sum((schedule_period.picks_made for schedule_period in periods_to_drop), 0), \
+                                       sum((schedule_period.correct for schedule_period in periods_to_drop), 0), \
+                                       sum((schedule_period.incorrect for schedule_period in periods_to_drop), 0), \
+                                       sum((schedule_period.ties for schedule_period in periods_to_drop), 0), \
+                                       sum((schedule_period.correct_key for schedule_period in periods_to_drop), 0), \
+                                       sum((schedule_period.points for schedule_period in periods_to_drop), 0)
                         
                         member_season.picks_made_dropped = dropped_stats[0]
                         member_season.correct_dropped = dropped_stats[1]
@@ -870,8 +870,8 @@ def recalculate_all_member_stats(season) -> dict:
                     member_season.save()
                     stats['member_seasons_updated'] += 1
                 else:
-                    # No weeks with finalized games - reset all stats
-                    member_season.through_week = 0
+                    # No schedule_periods with finalized games - reset all stats
+                    member_season.through_period = 0
                     member_season.picks_made = 0
                     member_season.correct = 0
                     member_season.incorrect = 0
@@ -887,20 +887,20 @@ def recalculate_all_member_stats(season) -> dict:
                     member_season.save()
                     stats['member_seasons_updated'] += 1
             
-            # After all members have their stats calculated, calculate ranks for each week
-            for week in weeks:
-                # Calculate and assign week ranks for this week across all members
-                week_member_weeks = MemberWeek.objects.filter(
+            # After all members have their stats calculated, calculate ranks for each schedule_period
+            for schedule_period in schedule_periods:
+                # Calculate and assign schedule_period ranks for this schedule_period across all members
+                period_member_periods = MemberPeriod.objects.filter(
                     league=league,
-                    week=week,
+                    schedule_period=schedule_period,
                     user_id__in=LeagueMembership.objects.filter(league=league, is_active=True).values_list('user_id', flat=True),
                 )
-                if week_member_weeks.exists():
-                    rank_map = assign_ranks_for_week(list(week_member_weeks), league_rules)
-                    for member_week in week_member_weeks:
-                        if member_week.id in rank_map:
-                            member_week.rank = rank_map[member_week.id]
-                            member_week.save(update_fields=['rank'])
+                if period_member_periods.exists():
+                    rank_map = assign_ranks_for_period(list(period_member_periods), league_rules)
+                    for member_period in period_member_periods:
+                        if member_period.id in rank_map:
+                            member_period.rank = rank_map[member_period.id]
+                            member_period.save(update_fields=['rank'])
             
             # Calculate and assign season ranks across all members
             season_member_seasons = MemberSeason.objects.filter(
@@ -942,21 +942,21 @@ def _game_counts_now(game: Game, now) -> bool:
         return False
     if game.is_final:
         return True
-    return game.kickoff <= now
+    return game.start_time <= now
 
 
-def live_week_snapshot(league: League, user, week: Optional[Week] = None) -> Optional[dict]:
+def live_period_snapshot(league: League, user, schedule_period: Optional[SchedulePeriod] = None) -> Optional[dict]:
     """
-    This user's week rank and points if every started game ended at the current score.
+    This user's schedule_period rank and points if every started game ended at the current score.
 
     Final games use the same grader as standings. In-progress games with a score
     count too, so the live page can show a total without waiting for final.
     Unstarted games are left out. Returns None until at least one slate game
     has a score.
     """
-    if week is None:
-        week = get_live_week(league)
-    if week is None:
+    if schedule_period is None:
+        schedule_period = get_live_period(league)
+    if schedule_period is None:
         return None
 
     member_ids = list(
@@ -967,13 +967,13 @@ def live_week_snapshot(league: League, user, week: Optional[Week] = None) -> Opt
     if user.id not in member_ids:
         return None
 
-    start, end = get_week_datetime_range(week)
+    start, end = get_period_datetime_range(schedule_period)
     league_games = list(
         LeagueGame.objects.filter(
             league=league,
             is_active=True,
-            game__season=week.season,
-            game__kickoff__range=(start, end),
+            game__season=schedule_period.season,
+            **period_game_filters(schedule_period),
         ).select_related("game")
     )
     if not league_games:
@@ -992,7 +992,7 @@ def live_week_snapshot(league: League, user, week: Optional[Week] = None) -> Opt
     if not any_scoreable:
         return None
 
-    league_rules = LeagueRules.objects.filter(league=league, season=week.season).first()
+    league_rules = LeagueRules.objects.filter(league=league, season=schedule_period.season).first()
     if league_rules is None:
         league_rules = LeagueRules(
             against_the_spread_enabled=True,
@@ -1137,9 +1137,9 @@ def live_week_snapshot(league: League, user, week: Optional[Week] = None) -> Opt
     rank = rank_by_user[user.id]
 
     return {
-        "week_id": week.id,
-        "week_number": week.number,
-        "week_label": f"Week {week.number}",
+        "schedule_period_id": schedule_period.id,
+        "period_number": schedule_period.number,
+        "period_label": schedule_period.display_name,
         "rank": rank,
         "rank_label": _ordinal(rank),
         "field_size": len(member_ids),

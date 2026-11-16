@@ -54,7 +54,7 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.SUCCESS(
                     f'Game updated: {game.away_score or 0} - {game.home_score or 0} '
-                    f'{"FINAL" if game.is_final else f"Q{game.quarter or 0}"}'
+                    f'{"FINAL" if game.is_final else f"Q{game.period or 0}"}'
                 )
             )
 

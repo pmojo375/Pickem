@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional
 
 from django.utils import timezone
 
-from cfb.models import Game, League, LeagueRules, Week
+from cfb.models import Game, League, LeagueRules, SchedulePeriod
 
 WEEKS_IN_SEASON = 12
 MONEY = Decimal("0.01")
@@ -54,24 +54,24 @@ def _place_rows(structure, pool: Decimal) -> List[Dict[str, Any]]:
     ]
 
 
-def league_week_slate(league: League, week: Week):
-    """Active games selected for a league in a given week."""
+def league_period_slate(league: League, schedule_period: SchedulePeriod):
+    """Active games selected for a league in a given schedule_period."""
     return Game.objects.filter(
-        week=week,
+        schedule_period=schedule_period,
         league_selections__league=league,
         league_selections__is_active=True,
     )
 
 
-def is_week_slate_final(league: Optional[League], week: Optional[Week]) -> bool:
+def is_period_slate_final(league: Optional[League], schedule_period: Optional[SchedulePeriod]) -> bool:
     """
-    True when the league has selected games for the week and all of them are final.
-    Weeks with no selected games are not considered complete.
+    True when the league has selected games for the schedule_period and all of them are final.
+    Periods with no selected games are not considered complete.
     """
-    if not league or not week:
+    if not league or not schedule_period:
         return False
 
-    slate = league_week_slate(league, week)
+    slate = league_period_slate(league, schedule_period)
     if not slate.exists():
         return False
 
@@ -80,18 +80,18 @@ def is_week_slate_final(league: Optional[League], week: Optional[Week]) -> bool:
 
 def is_league_season_final(league: Optional[League], league_rules: Optional[LeagueRules]) -> bool:
     """
-    True when the manager-set season end week has an active slate and either
-    all those games are final or the week's end date has passed.
+    True when the manager-set season end schedule_period has an active slate and either
+    all those games are final or the schedule_period's end date has passed.
     """
-    if not league or not league_rules or not league_rules.season_end_week_id:
+    if not league or not league_rules or not league_rules.season_end_period_id:
         return False
 
-    week = league_rules.season_end_week
-    slate = league_week_slate(league, week)
+    schedule_period = league_rules.season_end_period
+    slate = league_period_slate(league, schedule_period)
     if not slate.exists():
         return False
 
-    if timezone.localdate() > week.end_date:
+    if timezone.localdate() > schedule_period.end_date:
         return True
 
     return not slate.exclude(is_final=True).exists()
@@ -132,7 +132,7 @@ def attach_prize_amounts(
 
     Season last place (when configured) goes to the eligible row(s) with the
     most incorrect picks — not the worst points rank. Missed games are not
-    incorrect, so skipping does not farm last place. Callers should pass season-long incorrect counts, including dropped weeks.
+    incorrect, so skipping does not farm last place. Callers should pass season-long incorrect counts, including dropped schedule_periods.
     """
     for row in standings:
         row["prize_amount"] = None
@@ -227,15 +227,15 @@ def attach_season_prize_amounts(
     )
 
 
-def attach_weekly_prize_amounts(
+def attach_period_prize_amounts(
     standings: List[Dict[str, Any]],
     payout_summary: Optional[Dict[str, Any]],
 ) -> None:
-    """Attach weekly prize dollars to ranked week standings rows (mutates in place)."""
-    if not payout_summary or not payout_summary.get("has_weekly"):
+    """Attach period prize dollars to ranked schedule_period standings rows (mutates in place)."""
+    if not payout_summary or not payout_summary.get("has_period"):
         attach_prize_amounts(standings, None)
         return
-    attach_prize_amounts(standings, payout_summary.get("weekly_places"))
+    attach_prize_amounts(standings, payout_summary.get("period_places"))
 
 
 def _prize_lookup_by_user(
@@ -262,17 +262,17 @@ def _prize_lookup_by_user(
     }
 
 
-def _sum_weekly_amounts_by_user(
-    completed_week_ranks: List[Dict[int, int]],
+def _sum_period_amounts_by_user(
+    completed_period_ranks: List[Dict[int, int]],
     payout_summary: Dict[str, Any],
 ) -> Dict[int, Decimal]:
-    """Sum weekly place payouts across completed weeks for each user."""
+    """Sum period place payouts across completed schedule_periods for each user."""
     totals: Dict[int, Decimal] = {}
-    if not payout_summary.get("has_weekly"):
+    if not payout_summary.get("has_period"):
         return totals
 
-    places = payout_summary.get("weekly_places")
-    for rank_by_user in completed_week_ranks:
+    places = payout_summary.get("period_places")
+    for rank_by_user in completed_period_ranks:
         if not rank_by_user:
             continue
         lookup = _prize_lookup_by_user(rank_by_user, places)
@@ -288,51 +288,51 @@ def apply_standings_money_columns(
     standings: List[Dict[str, Any]],
     payout_summary: Optional[Dict[str, Any]],
     *,
-    completed_week_ranks: Optional[List[Dict[int, int]]] = None,
-    projected_week_ranks: Optional[Dict[int, int]] = None,
+    completed_period_ranks: Optional[List[Dict[int, int]]] = None,
+    projected_period_ranks: Optional[Dict[int, int]] = None,
     season_ranks: Optional[Dict[int, int]] = None,
     season_incorrect: Optional[Dict[int, int]] = None,
-    include_weeks_won: bool = False,
-    include_projected_week: bool = False,
+    include_periods_won: bool = False,
+    include_projected_period: bool = False,
     include_season: bool = False,
 ) -> None:
     """
     Attach money columns:
-    - weeks_won_amount: sum of completed weekly payouts
-    - projected_week_amount: as-is payout for the in-progress week
+    - periods_won_amount: sum of completed period payouts
+    - projected_period_amount: as-is payout for the in-progress schedule_period
     - season_prize_amount: final or projected season payout
     - prize_total_amount: sum of included columns
     """
     for row in standings:
-        row["weeks_won_amount"] = None
-        row["projected_week_amount"] = None
-        row["projected_week_label"] = None
+        row["periods_won_amount"] = None
+        row["projected_period_amount"] = None
+        row["projected_period_label"] = None
         row["season_prize_amount"] = None
         row["season_prize_label"] = None
         row["prize_total_amount"] = None
-        row["week_prize_amount"] = None
-        row["week_prize_label"] = None
+        row["period_prize_amount"] = None
+        row["period_prize_label"] = None
         row["prize_amount"] = None
         row["prize_label"] = None
 
     if not standings or not payout_summary:
         return
 
-    weeks_won_lookup = (
-        _sum_weekly_amounts_by_user(completed_week_ranks or [], payout_summary)
-        if include_weeks_won
+    periods_won_lookup = (
+        _sum_period_amounts_by_user(completed_period_ranks or [], payout_summary)
+        if include_periods_won
         else {}
     )
 
-    projected_week_lookup: Dict[int, Dict[str, Any]] = {}
+    projected_period_lookup: Dict[int, Dict[str, Any]] = {}
     if (
-        include_projected_week
-        and payout_summary.get("has_weekly")
-        and projected_week_ranks
+        include_projected_period
+        and payout_summary.get("has_period")
+        and projected_period_ranks
     ):
-        projected_week_lookup = _prize_lookup_by_user(
-            projected_week_ranks,
-            payout_summary.get("weekly_places"),
+        projected_period_lookup = _prize_lookup_by_user(
+            projected_period_ranks,
+            payout_summary.get("period_places"),
         )
 
     season_lookup: Dict[int, Dict[str, Any]] = {}
@@ -353,18 +353,18 @@ def apply_standings_money_columns(
         total = Decimal("0")
         has_any = False
 
-        if include_weeks_won:
-            won = weeks_won_lookup.get(user_id, Decimal("0.00"))
-            row["weeks_won_amount"] = _money(won)
-            total += _as_decimal(row["weeks_won_amount"])
+        if include_periods_won:
+            won = periods_won_lookup.get(user_id, Decimal("0.00"))
+            row["periods_won_amount"] = _money(won)
+            total += _as_decimal(row["periods_won_amount"])
             has_any = True
 
-        if include_projected_week:
-            projected = projected_week_lookup.get(user_id, {})
-            row["projected_week_amount"] = projected.get("amount")
-            row["projected_week_label"] = projected.get("label")
-            if row["projected_week_amount"] is not None:
-                total += _as_decimal(row["projected_week_amount"])
+        if include_projected_period:
+            projected = projected_period_lookup.get(user_id, {})
+            row["projected_period_amount"] = projected.get("amount")
+            row["projected_period_label"] = projected.get("label")
+            if row["projected_period_amount"] is not None:
+                total += _as_decimal(row["projected_period_amount"])
                 has_any = True
 
         if include_season:
@@ -384,20 +384,20 @@ def build_payout_summary(league_rules: Optional[LeagueRules], member_count: int)
         return None
 
     entry_fee = _as_decimal(league_rules.entry_fee)
-    weekly_percent = _as_decimal(league_rules.weekly_payout_percent)
+    period_percent = _as_decimal(league_rules.period_payout_percent)
     season_percent = _as_decimal(league_rules.season_payout_percent)
     last_percent = _as_decimal(league_rules.season_payout_last_percent)
 
     has_entry = entry_fee > 0
-    has_weekly = weekly_percent > 0
+    has_period = period_percent > 0
     has_season = season_percent > 0
-    if not has_entry and not has_weekly and not has_season:
+    if not has_entry and not has_period and not has_season:
         return None
 
     total_pool = _money(entry_fee * member_count)
-    weekly_pool = (
-        _money((total_pool * weekly_percent / Decimal("100")) / Decimal(WEEKS_IN_SEASON))
-        if has_weekly
+    period_pool = (
+        _money((total_pool * period_percent / Decimal("100")) / Decimal(WEEKS_IN_SEASON))
+        if has_period
         else Decimal("0.00")
     )
     season_pool = _money(total_pool * season_percent / Decimal("100")) if has_season else Decimal("0.00")
@@ -414,15 +414,15 @@ def build_payout_summary(league_rules: Optional[LeagueRules], member_count: int)
         "entry_fee": _money(entry_fee),
         "member_count": member_count,
         "total_pool": total_pool,
-        "weeks_in_season": WEEKS_IN_SEASON,
-        "weekly_percent": weekly_percent,
+        "periods_in_season": WEEKS_IN_SEASON,
+        "period_percent": period_percent,
         "season_percent": season_percent,
-        "weekly_pool": weekly_pool,
+        "period_pool": period_pool,
         "season_pool": season_pool,
-        "weekly_places": _place_rows(league_rules.weekly_payout_structure, weekly_pool),
+        "period_places": _place_rows(league_rules.period_payout_structure, period_pool),
         "season_places": _place_rows(league_rules.season_payout_structure, season_pool),
         "last_place": last_place,
         "has_entry": has_entry,
-        "has_weekly": has_weekly,
+        "has_period": has_period,
         "has_season": has_season,
     }

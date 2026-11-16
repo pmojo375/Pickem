@@ -46,7 +46,7 @@
                     <p class="text-base-content/80">
                         {% if current_league %}
                             {{ current_league.name }}
-                            {% if current_week %} · {{ current_week.display_name }}{% endif %}
+                            {% if current_period %} · {{ current_period.display_name }}{% endif %}
                         {% else %}
                             Join a league to start picking this Saturday.
                         {% endif %}
@@ -105,54 +105,54 @@
             <div class="card-body">
                 <div class="flex flex-col lg:flex-row lg:items-center gap-6">
                     <div class="flex-1">
-                        {% if current_week %}
-                            <div class="badge badge-primary mb-3">{{ current_week.display_name }}</div>
+                        {% if current_period %}
+                            <div class="badge badge-primary mb-3">{{ current_period.display_name }}</div>
                         {% endif %}
-                        {% if week_games_count == 0 %}
+                        {% if period_games_count == 0 %}
                             <h2 class="card-title text-2xl">The board is not up yet</h2>
                             <p class="text-base-content/70">
-                                Games for this week have not been posted in {{ current_league.name }}. Check back soon, or jump into live scores.
+                                Games for this period have not been posted in {{ current_league.name }}. Check back soon, or jump into live scores.
                             </p>
-                        {% elif week_games_final %}
-                            <h2 class="card-title text-2xl">{{ current_week.display_name }} is final</h2>
-                            {% if week_picks_count == 0 %}
+                        {% elif period_games_final %}
+                            <h2 class="card-title text-2xl">{{ current_period.display_name }} is final</h2>
+                            {% if period_picks_count == 0 %}
                             <p class="text-base-content/70">
-                                The slate is done. You did not have picks in for this week.
+                                The slate is done. You did not have picks in for this period.
                             </p>
                             {% else %}
                             <p class="text-base-content/70">
                                 You went
-                                <span class="font-semibold text-base-content">{{ week_correct }}-{{ week_incorrect }}{% if week_ties %}-{{ week_ties }}{% endif %}</span>
-                                {% if week_points != None %}
-                                    for <span class="font-semibold text-base-content">{{ week_points }}</span> point{{ week_points|pluralize }}
+                                <span class="font-semibold text-base-content">{{ period_correct }}-{{ period_incorrect }}{% if period_ties %}-{{ period_ties }}{% endif %}</span>
+                                {% if period_points != None %}
+                                    for <span class="font-semibold text-base-content">{{ period_points }}</span> point{{ period_points|pluralize }}
                                 {% endif %}
-                                {% if week_correct_key %}
-                                    · {{ week_correct_key }} key pick{{ week_correct_key|pluralize }} hit
+                                {% if period_correct_key %}
+                                    · {{ period_correct_key }} key pick{{ period_correct_key|pluralize }} hit
                                 {% endif %}
-                                {% if week_rank %}
-                                    · finished <span class="font-semibold text-base-content">#{{ week_rank }}</span> for the week
+                                {% if period_rank %}
+                                    · finished <span class="font-semibold text-base-content">#{{ period_rank }}</span> for the period
                                 {% endif %}.
                             </p>
                             {% endif %}
                         {% elif open_picks_count > 0 %}
                             <h2 class="card-title text-2xl">You have {{ open_picks_count }} pick{{ open_picks_count|pluralize }} left</h2>
                             <p class="text-base-content/70">
-                                {{ week_picks_count }} of {{ week_games_count }} games locked in. Get the rest in before kickoff.
+                                {{ period_picks_count }} of {{ period_games_count }} games locked in. Get the rest in before start time.
                             </p>
-                        {% elif week_picks_count >= week_games_count %}
+                        {% elif period_picks_count >= period_games_count %}
                             <h2 class="card-title text-2xl">You're locked in</h2>
                             <p class="text-base-content/70">
-                                All {{ week_games_count }} games are picked. Watch them live and keep an eye on the standings.
+                                All {{ period_games_count }} games are picked. Watch them live and keep an eye on the standings.
                             </p>
                         {% else %}
                             <h2 class="card-title text-2xl">The rest are underway</h2>
                             <p class="text-base-content/70">
-                                {{ week_picks_count }} of {{ week_games_count }} were in before kickoff. Follow the live board from here.
+                                {{ period_picks_count }} of {{ period_games_count }} were in before start time. Follow the live board from here.
                             </p>
                         {% endif %}
                     </div>
                     <div class="flex flex-wrap gap-3">
-                        {% if week_games_final %}
+                        {% if period_games_final %}
                         <a href="/standings/" class="btn btn-primary">
                             <i class="fas fa-trophy mr-2"></i>
                             Standings
@@ -173,14 +173,14 @@
                         {% endif %}
                     </div>
                 </div>
-                {% if week_games_count > 0 and not week_games_final %}
-                <progress class="progress progress-primary w-full mt-2" value="{{ week_picks_count }}" max="{{ week_games_count }}"></progress>
-                {% elif week_games_final and week_picks_count > 0 %}
+                {% if period_games_count > 0 and not period_games_final %}
+                <progress class="progress progress-primary w-full mt-2" value="{{ period_picks_count }}" max="{{ period_games_count }}"></progress>
+                {% elif period_games_final and period_picks_count > 0 %}
                 <div class="flex flex-wrap gap-4 mt-2 text-sm">
-                    <span class="text-success font-medium">{{ week_correct }} correct</span>
-                    <span class="text-error font-medium">{{ week_incorrect }} wrong</span>
-                    {% if week_ties %}<span class="text-base-content/60 font-medium">{{ week_ties }} push{{ week_ties|pluralize:"es" }}</span>{% endif %}
-                    {% if week_points != None %}<span class="text-base-content/60">{{ week_points }} pts</span>{% endif %}
+                    <span class="text-success font-medium">{{ period_correct }} correct</span>
+                    <span class="text-error font-medium">{{ period_incorrect }} wrong</span>
+                    {% if period_ties %}<span class="text-base-content/60 font-medium">{{ period_ties }} push{{ period_ties|pluralize:"es" }}</span>{% endif %}
+                    {% if period_points != None %}<span class="text-base-content/60">{{ period_points }} pts</span>{% endif %}
                 </div>
                 {% endif %}
             </div>
@@ -192,8 +192,8 @@
                     <i class="fas fa-check-circle text-3xl"></i>
                 </div>
                 <div class="stat-title">Picks Made</div>
-                <div class="stat-value text-primary">{{ week_picks_count|default:0 }}{% if week_games_count %}<span class="text-2xl text-base-content/40 font-normal">/{{ week_games_count }}</span>{% endif %}</div>
-                <div class="stat-desc">This week</div>
+                <div class="stat-value text-primary">{{ period_picks_count|default:0 }}{% if period_games_count %}<span class="text-2xl text-base-content/40 font-normal">/{{ period_games_count }}</span>{% endif %}</div>
+                <div class="stat-desc">This period</div>
             </div>
 
             <div class="stat bg-base-100 rounded-box shadow-xl">
@@ -325,7 +325,7 @@
                 <div class="card-body">
                     <div class="home-step-num text-primary mb-2"></div>
                     <h3 class="card-title">Watch it hit</h3>
-                    <p class="text-base-content/70">Live scores, standings, and bragging rights update as games go final. The chat can wait until after kickoff.</p>
+                    <p class="text-base-content/70">Live scores, standings, and bragging rights update as games go final. The chat can wait until after start time.</p>
                 </div>
             </div>
         </div>
@@ -344,7 +344,7 @@
                 <div class="card-body">
                     <i class="fas fa-star text-2xl text-secondary mb-2"></i>
                     <h3 class="card-title text-lg">Key picks</h3>
-                    <p class="text-base-content/70">Mark your confidence games for bonus points. One swing pick can flip a week — or a season.</p>
+                    <p class="text-base-content/70">Mark your confidence games for bonus points. One swing pick can flip a period — or a season.</p>
                 </div>
             </div>
             <div class="card bg-base-100 shadow-xl">
@@ -358,7 +358,7 @@
                 <div class="card-body">
                     <i class="fas fa-trophy text-2xl text-primary mb-2"></i>
                     <h3 class="card-title text-lg">Season standings</h3>
-                    <p class="text-base-content/70">Week-to-week and full-season ranks, so the trophy is not decided by one lucky Thursday night.</p>
+                    <p class="text-base-content/70">Period-to-period and full-season ranks, so the trophy is not decided by one lucky Thursday night.</p>
                 </div>
             </div>
             <div class="card bg-base-100 shadow-xl">

@@ -1,11 +1,11 @@
 """
-Management command to pull games and update kickoff times if they've changed.
+Management command to pull games and update start_time times if they've changed.
 This is useful when game times are announced or rescheduled during the season.
 """
 from datetime import datetime
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
-from cfb.models import Season, Game, Week, Team
+from cfb.models import Season, Game, SchedulePeriod, Team
 from cfb.services.cfbd_api import get_cfbd_client
 import logging
 
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = 'Pull games from CFBD and update kickoff times if they have changed'
+    help = 'Pull games from CFBD and update start_time times if they have changed'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -22,9 +22,9 @@ class Command(BaseCommand):
             help='Season year to update (e.g., 2025)'
         )
         parser.add_argument(
-            '--week',
+            '--period', '--week', dest='schedule_period',
             type=int,
-            help='Specific week to update (if omitted, updates all weeks)',
+            help='Specific schedule_period to update (if omitted, updates all schedule_periods)',
             default=None
         )
         parser.add_argument(
@@ -42,7 +42,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         year = options['year']
-        week = options['week']
+        schedule_period = options['schedule_period']
         season_type = options['season_type']
         dry_run = options['dry_run']
 
@@ -56,16 +56,16 @@ class Command(BaseCommand):
             raise CommandError(f'Season {year} does not exist. Run initialize_season first.')
 
         self.stdout.write(f"Fetching games for {year} {season_type} season" + 
-                         (f" week {week}" if week else " (all weeks)"))
+                         (f" schedule_period {schedule_period}" if schedule_period else " (all schedule_periods)"))
 
         # Get CFBD client and fetch games
         cfbd_client = get_cfbd_client()
         
-        if week is not None:
+        if schedule_period is not None:
             games_data = cfbd_client.fetch_games(
                 year=year,
                 season_type=season_type,
-                week=week,
+                week=schedule_period,
                 division='fbs'
             )
         else:
@@ -79,7 +79,7 @@ class Command(BaseCommand):
         # Track statistics
         stats = {
             'total': 0,
-            'updated_kickoff': 0,
+            'updated_start_time': 0,
             'updated_other': 0,
             'not_found': 0,
             'no_changes': 0,
@@ -95,7 +95,7 @@ class Command(BaseCommand):
             
             # Extract game info
             game_id = game_data.get('id')
-            week_number = game_data.get('week')
+            period_number = game_data.get('week')
             home_team_name = game_data.get('homeTeam')
             away_team_name = game_data.get('awayTeam')
             start_date_str = game_data.get('startDate')
@@ -106,11 +106,11 @@ class Command(BaseCommand):
                 )
                 continue
 
-            # Parse kickoff time
+            # Parse start_time time
             try:
-                new_kickoff = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
-                if timezone.is_naive(new_kickoff):
-                    new_kickoff = timezone.make_aware(new_kickoff)
+                new_start_time = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))
+                if timezone.is_naive(new_start_time):
+                    new_start_time = timezone.make_aware(new_start_time)
             except (ValueError, AttributeError) as e:
                 self.stdout.write(
                     self.style.WARNING(f"  ⚠ Invalid start date for game {game_id}: {e}")
@@ -130,17 +130,17 @@ class Command(BaseCommand):
                 stats['not_found'] += 1
                 continue
 
-            # Get week object
+            # Get schedule_period object
             try:
-                week_obj = Week.objects.get(
+                period_obj = SchedulePeriod.objects.get(
                     season=season,
-                    number=week_number,
+                    number=period_number,
                     season_type=season_type
                 )
-            except Week.DoesNotExist:
+            except SchedulePeriod.DoesNotExist:
                 self.stdout.write(
                     self.style.WARNING(
-                        f"  ⚠ Week {week_number} not found for {year} {season_type}"
+                        f"  ⚠ SchedulePeriod {period_number} not found for {year} {season_type}"
                     )
                 )
                 stats['not_found'] += 1
@@ -151,7 +151,7 @@ class Command(BaseCommand):
                 season=season,
                 home_team=home_team,
                 away_team=away_team,
-                week=week_obj
+                schedule_period=period_obj
             ).first()
 
             if not game:
@@ -160,11 +160,11 @@ class Command(BaseCommand):
                     game = Game.objects.create(
                         season=season,
                         external_id=str(game_id) if game_id else None,
-                        week=week_obj,
+                        schedule_period=period_obj,
                         season_type=season_type,
                         home_team=home_team,
                         away_team=away_team,
-                        kickoff=new_kickoff,
+                        start_time=new_start_time,
                         neutral_site=game_data.get('neutralSite', False),
                         conference_game=game_data.get('conferenceGame', False),
                         venue_name=game_data.get('venue', ''),
@@ -173,7 +173,7 @@ class Command(BaseCommand):
                     self.stdout.write(
                         self.style.SUCCESS(
                             f"  ✓ Created: {away_team_name} @ {home_team_name} - "
-                            f"{new_kickoff.strftime('%a %m/%d %I:%M %p %Z')}"
+                            f"{new_start_time.strftime('%a %m/%d %I:%M %p %Z')}"
                         )
                     )
                 else:
@@ -185,8 +185,8 @@ class Command(BaseCommand):
                 stats['created'] += 1
                 continue
 
-            # Check if kickoff time has changed
-            kickoff_changed = game.kickoff != new_kickoff
+            # Check if start_time time has changed
+            start_time_changed = game.start_time != new_start_time
             other_changes = []
             
             # Check other fields that might have changed
@@ -199,20 +199,20 @@ class Command(BaseCommand):
             if game.venue_name != game_data.get('venue', ''):
                 other_changes.append('venue_name')
             
-            if kickoff_changed or other_changes:
+            if start_time_changed or other_changes:
                 # Build change message
                 changes = []
-                if kickoff_changed:
-                    old_time = game.kickoff.strftime('%a %m/%d %I:%M %p %Z')
-                    new_time = new_kickoff.strftime('%a %m/%d %I:%M %p %Z')
-                    changes.append(f"kickoff: {old_time} → {new_time}")
+                if start_time_changed:
+                    old_time = game.start_time.strftime('%a %m/%d %I:%M %p %Z')
+                    new_time = new_start_time.strftime('%a %m/%d %I:%M %p %Z')
+                    changes.append(f"start_time: {old_time} → {new_time}")
                     
                 if other_changes:
                     changes.append(f"fields: {', '.join(other_changes)}")
                 
                 if not dry_run:
                     # Update the game
-                    game.kickoff = new_kickoff
+                    game.start_time = new_start_time
                     if game.external_id != str(game_id) and game_id:
                         game.external_id = str(game_id)
                     game.neutral_site = game_data.get('neutralSite', False)
@@ -235,8 +235,8 @@ class Command(BaseCommand):
                         )
                     )
                 
-                if kickoff_changed:
-                    stats['updated_kickoff'] += 1
+                if start_time_changed:
+                    stats['updated_start_time'] += 1
                 else:
                     stats['updated_other'] += 1
             else:
@@ -248,7 +248,7 @@ class Command(BaseCommand):
         self.stdout.write(f"  Total games processed: {stats['total']}")
         self.stdout.write(f"  Games created: {stats['created']}")
         self.stdout.write(
-            self.style.WARNING(f"  Kickoff times updated: {stats['updated_kickoff']}")
+            self.style.WARNING(f"  Kickoff times updated: {stats['updated_start_time']}")
         )
         self.stdout.write(f"  Other fields updated: {stats['updated_other']}")
         self.stdout.write(f"  No changes needed: {stats['no_changes']}")

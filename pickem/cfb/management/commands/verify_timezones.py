@@ -4,7 +4,7 @@ from cfb.models import Game
 
 
 class Command(BaseCommand):
-    help = 'Verify that all game kickoff times are timezone-aware'
+    help = 'Verify that all game start_time times are timezone-aware'
 
     def handle(self, *args, **options):
         games = Game.objects.all()
@@ -15,13 +15,13 @@ class Command(BaseCommand):
         self.stdout.write(f"Checking {total} games...")
         
         for game in games:
-            if timezone.is_aware(game.kickoff):
+            if timezone.is_aware(game.start_time):
                 aware_count += 1
             else:
                 naive_count += 1
                 self.stdout.write(
                     self.style.WARNING(
-                        f"Game {game.id} has naive datetime: {game.kickoff}"
+                        f"Game {game.id} has naive datetime: {game.start_time}"
                     )
                 )
         

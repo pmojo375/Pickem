@@ -29,10 +29,10 @@ from .models import (
     LeagueRules,
     Season,
     Ranking,
-    Week,
+    SchedulePeriod,
     MemberSeason,
     MemberSeasonPayment,
-    MemberWeek,
+    MemberPeriod,
     UserAnnouncementDismissal,
     UserProfile,
 )
@@ -258,68 +258,68 @@ def home_view(request):
         if league:
             from django.db.models import Count, Q
 
-            current_week = services.schedule.get_display_week_for_league(league)
+            current_period = services.schedule.get_display_period_for_league(league)
             now = timezone.now()
 
-            week_picks_count = 0
-            week_games_count = 0
+            period_picks_count = 0
+            period_games_count = 0
             open_picks_count = 0
-            week_games_final = False
-            week_correct = 0
-            week_incorrect = 0
-            week_ties = 0
-            week_points = None
-            week_rank = None
-            week_correct_key = 0
-            if current_week:
-                start, end = services.schedule.get_week_datetime_range(current_week)
-                week_games = LeagueGame.objects.filter(
+            period_games_final = False
+            period_correct = 0
+            period_incorrect = 0
+            period_ties = 0
+            period_points = None
+            period_rank = None
+            period_correct_key = 0
+            if current_period:
+                start, end = services.schedule.get_period_datetime_range(current_period)
+                period_games = LeagueGame.objects.filter(
                     league=league,
                     is_active=True,
-                    game__kickoff__range=(start, end),
+                    **services.schedule.period_game_filters(current_period),
                 )
                 if active_season:
-                    week_games = week_games.filter(game__season=active_season)
+                    period_games = period_games.filter(game__season=active_season)
 
-                week_games_count = week_games.count()
-                week_picks = Pick.objects.filter(
+                period_games_count = period_games.count()
+                period_picks = Pick.objects.filter(
                     user=request.user,
                     league=league,
-                    game__kickoff__range=(start, end),
+                    **services.schedule.period_game_filters(current_period),
                     game__league_selections__league=league,
                     game__league_selections__is_active=True,
                 )
                 if active_season:
-                    week_picks = week_picks.filter(game__season=active_season)
-                week_picks_count = week_picks.count()
-                picked_ids = week_picks.values_list("game_id", flat=True)
-                open_picks_count = week_games.filter(game__kickoff__gt=now).exclude(
+                    period_picks = period_picks.filter(game__season=active_season)
+                period_picks_count = period_picks.count()
+                picked_ids = period_picks.values_list("game_id", flat=True)
+                open_picks_count = period_games.filter(game__start_time__gt=now).exclude(
                     game_id__in=picked_ids
                 ).count()
-                week_games_final = (
-                    week_games_count > 0
-                    and not week_games.exclude(game__is_final=True).exists()
+                period_games_final = (
+                    period_games_count > 0
+                    and not period_games.exclude(game__is_final=True).exists()
                 )
 
-                if week_games_final:
-                    member_week = MemberWeek.objects.filter(
+                if period_games_final:
+                    member_period = MemberPeriod.objects.filter(
                         league=league,
-                        week=current_week,
+                        schedule_period=current_period,
                         user=request.user,
                     ).first()
-                    if member_week and member_week.picks_made:
-                        week_correct = member_week.correct
-                        week_incorrect = member_week.incorrect
-                        week_ties = member_week.ties
-                        week_points = member_week.points
-                        week_rank = member_week.rank
-                        week_correct_key = member_week.correct_key
+                    if member_period and member_period.picks_made:
+                        period_correct = member_period.correct
+                        period_incorrect = member_period.incorrect
+                        period_ties = member_period.ties
+                        period_points = member_period.points
+                        period_rank = member_period.rank
+                        period_correct_key = member_period.correct_key
                     else:
-                        graded = week_picks.filter(game__is_final=True)
-                        week_correct = graded.filter(is_correct=True).count()
-                        week_incorrect = graded.filter(is_correct=False).count()
-                        week_ties = graded.filter(is_correct__isnull=True).count()
-                        week_correct_key = graded.filter(
+                        graded = period_picks.filter(game__is_final=True)
+                        period_correct = graded.filter(is_correct=True).count()
+                        period_incorrect = graded.filter(is_correct=False).count()
+                        period_ties = graded.filter(is_correct__isnull=True).count()
+                        period_correct_key = graded.filter(
                             is_key_pick=True, is_correct=True
                         ).count()
 
@@ -350,17 +350,17 @@ def home_view(request):
                 ).first()
 
             context.update({
-                "current_week": current_week,
-                "week_picks_count": week_picks_count,
-                "week_games_count": week_games_count,
+                "current_period": current_period,
+                "period_picks_count": period_picks_count,
+                "period_games_count": period_games_count,
                 "open_picks_count": open_picks_count,
-                "week_games_final": week_games_final,
-                "week_correct": week_correct,
-                "week_incorrect": week_incorrect,
-                "week_ties": week_ties,
-                "week_points": week_points,
-                "week_rank": week_rank,
-                "week_correct_key": week_correct_key,
+                "period_games_final": period_games_final,
+                "period_correct": period_correct,
+                "period_incorrect": period_incorrect,
+                "period_ties": period_ties,
+                "period_points": period_points,
+                "period_rank": period_rank,
+                "period_correct_key": period_correct_key,
                 "win_rate": win_rate,
                 "user_rank": user_rank,
                 "total_players": league.memberships.filter(is_active=True).count(),
@@ -376,12 +376,12 @@ def picks_view(request):
     
     if not league:
         # No league - show message instead of redirecting
-        current_week = services.schedule.get_display_week_for_league(league)
+        current_period = services.schedule.get_display_period_for_league(league)
         context = {
             "games_with_picks": [],
             "current_league": None,
             "user_leagues": user_leagues,
-            "current_week": current_week,
+            "current_period": current_period,
         }
         return render(request, "cfb/picks.html", context)
     
@@ -413,8 +413,8 @@ def picks_view(request):
         from django.utils import timezone
         from datetime import timedelta
         
-        # Get current week and its date range
-        current_week = services.schedule.get_display_week_for_league(league)
+        # Get current schedule_period and its date range
+        current_period = services.schedule.get_display_period_for_league(league)
         
         # Get active season and league rules
         active_season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
@@ -425,26 +425,26 @@ def picks_view(request):
                 # Create default rules if none exist
                 league_rules = LeagueRules.objects.create(league=league, season=active_season)
         
-        # Count current key picks for this week. Only picks for games that have
+        # Count current key picks for this schedule_period. Only picks for games that have
         # not started can be replaced by this submission; started picks remain
         # locked and must always consume a key-pick slot.
         current_key_picks = Pick.objects.none()
         editable_game_ids = set()
-        if current_week:
-            start, end = services.schedule.get_week_datetime_range(current_week)
+        if current_period:
+            start, end = services.schedule.get_period_datetime_range(current_period)
             current_key_picks = Pick.objects.filter(
                 user=request.user,
                 league=league,
                 is_key_pick=True,
-                game__kickoff__range=(start, end)
+                **services.schedule.period_game_filters(current_period)
             )
             editable_game_ids = set(
                 LeagueGame.objects.filter(
                     league=league,
                     is_active=True,
                     game_id__in=game_ids,
-                    game__kickoff__range=(start, end),
-                    game__kickoff__gt=timezone.now(),
+                    **services.schedule.period_game_filters(current_period),
+                    game__start_time__gt=timezone.now(),
                 ).values_list("game_id", flat=True)
             )
         current_key_picks_count = current_key_picks.exclude(
@@ -462,7 +462,7 @@ def picks_view(request):
         if league_rules and league_rules.key_picks_enabled:
             total_key_picks = current_key_picks_count + new_key_picks_count
             if total_key_picks > league_rules.number_of_key_picks:
-                errors.append(f"You can only select {league_rules.number_of_key_picks} key pick{'s' if league_rules.number_of_key_picks != 1 else ''} per week. You currently have {current_key_picks_count} and are trying to add {new_key_picks_count} more.")
+                errors.append(f"You can only select {league_rules.number_of_key_picks} key pick{'s' if league_rules.number_of_key_picks != 1 else ''} per schedule_period. You currently have {current_key_picks_count} and are trying to add {new_key_picks_count} more.")
 
         # Key-pick limits are a submission-level constraint. Do not partially
         # save the form after determining that the submitted state is invalid.
@@ -483,7 +483,7 @@ def picks_view(request):
                     "league_name": league.name,
                     "error_count": len(errors),
                     "reason": "key_pick_limit",
-                    "week_number": getattr(current_week, "number", None),
+                    "period_number": getattr(current_period, "number", None),
                     "season_year": getattr(active_season, "year", None),
                 },
             )
@@ -598,7 +598,7 @@ def picks_view(request):
                     "picks_updated": updated_count,
                     "picks_unchanged": unchanged_count,
                     "key_picks_submitted": new_key_picks_count,
-                    "week_number": getattr(current_week, "number", None),
+                    "period_number": getattr(current_period, "number", None),
                     "season_year": getattr(active_season, "year", None),
                     "error_count": len(errors),
                     "had_tiebreaker": bool(
@@ -635,7 +635,7 @@ def picks_view(request):
                     "league_id": league.id,
                     "league_name": league.name,
                     "error_count": len(errors),
-                    "week_number": getattr(current_week, "number", None),
+                    "period_number": getattr(current_period, "number", None),
                     "season_year": getattr(active_season, "year", None),
                 },
             )
@@ -644,10 +644,10 @@ def picks_view(request):
     from django.utils import timezone
     from datetime import timedelta
     
-    # Get current week and its date range
-    current_week = services.schedule.get_display_week_for_league(league)
+    # Get current schedule_period and its date range
+    current_period = services.schedule.get_display_period_for_league(league)
     
-    # Get league games for this league - current week of the active season only
+    # Get league games for this league - current schedule_period of the active season only
     active_season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
     league_games = LeagueGame.objects.filter(
         league=league, 
@@ -656,14 +656,14 @@ def picks_view(request):
     if active_season:
         league_games = league_games.filter(game__season=active_season)
     
-    # Filter to only show games from the current week; do not fall back to other seasons
-    if current_week:
-        start, end = services.schedule.get_week_datetime_range(current_week)
-        league_games = league_games.filter(game__kickoff__range=(start, end))
+    # Filter to only show games from the current schedule_period; do not fall back to other seasons
+    if current_period:
+        start, end = services.schedule.get_period_datetime_range(current_period)
+        league_games = league_games.filter(**services.schedule.period_game_filters(current_period))
     else:
         league_games = league_games.none()
     
-    league_games = league_games.order_by("game__kickoff")
+    league_games = league_games.order_by("game__start_time")
     
     # Get existing picks for this user in this league
     existing_picks_by_game_id = {
@@ -679,31 +679,31 @@ def picks_view(request):
             # Create default rules if none exist
             league_rules = LeagueRules.objects.create(league=league, season=active_season)
     
-    # Count current key picks for this week
+    # Count current key picks for this schedule_period
     current_key_picks_count = 0
-    if current_week:
-        start, end = services.schedule.get_week_datetime_range(current_week)
+    if current_period:
+        start, end = services.schedule.get_period_datetime_range(current_period)
         current_key_picks_count = Pick.objects.filter(
             user=request.user,
             league=league,
             is_key_pick=True,
-            game__kickoff__range=(start, end)
+            **services.schedule.period_game_filters(current_period)
         ).count()
     
     # Combine league_games with picks
     games_with_picks = [(lg, existing_picks_by_game_id.get(lg.game.id)) for lg in league_games]
     
-    # Get total points game if tiebreaker is enabled - only if it's in the current week
+    # Get total points game if tiebreaker is enabled - only if it's in the current schedule_period
     total_points_game = None
     total_points_pick = None
-    if league_rules and league_rules.tiebreaker == 2 and current_week:
-        start, end = services.schedule.get_week_datetime_range(current_week)
-        # Find the game marked as total points game for this league in the current week
+    if league_rules and league_rules.tiebreaker == 2 and current_period:
+        start, end = services.schedule.get_period_datetime_range(current_period)
+        # Find the game marked as total points game for this league in the current schedule_period
         total_points_league_game = LeagueGame.objects.filter(
             league=league,
             is_total_points_game=True,
             is_active=True,
-            game__kickoff__range=(start, end)
+            **services.schedule.period_game_filters(current_period)
         ).select_related('game__home_team', 'game__away_team').first()
         
         if total_points_league_game:
@@ -715,13 +715,13 @@ def picks_view(request):
                 game=total_points_game
             ).first()
     
-    # Get AP poll rankings for teams (current week)
+    # Get AP poll rankings for teams (current schedule_period)
     team_rankings = {}
-    if active_season and current_week:
-        # Fetch AP poll rankings for current week
+    if active_season and current_period:
+        # Fetch AP poll rankings for current schedule_period
         rankings = Ranking.objects.filter(
             season=active_season,
-            week=current_week,
+            schedule_period=current_period,
             poll='AP Top 25'
         ).select_related('team')
 
@@ -767,7 +767,7 @@ def picks_view(request):
             away_score__isnull=False,
         ).filter(
             Q(home_team_id__in=game_teams) | Q(away_team_id__in=game_teams)
-        ).select_related("home_team", "away_team").order_by("-kickoff", "-id")
+        ).select_related("home_team", "away_team").order_by("-start_time", "-id")
 
         for completed in completed_games:
             for team_id, opponent, scored, conceded in (
@@ -818,7 +818,7 @@ def picks_view(request):
         "team_rankings": team_rankings,
         "team_records": team_records,
         "team_stats": team_stats,
-        "current_week": current_week,
+        "current_period": current_period,
         "membership_is_active": _user_is_active_member(league, request.user),
     }
     return render(request, "cfb/picks.html", context)
@@ -837,20 +837,20 @@ def live_view(request):
         }
         return render(request, "cfb/live.html", context)
     
-    # Keep last week's results until the first kickoff in this league's slate.
-    current_week = services.schedule.get_live_week(league)
+    # Keep last schedule_period's results until the first start_time in this league's slate.
+    current_period = services.schedule.get_live_period(league)
     
     # Get league games that are active
     league_games = []
     picks = []
     
-    if current_week:
-        start, end = services.schedule.get_week_datetime_range(current_week)
+    if current_period:
+        start, end = services.schedule.get_period_datetime_range(current_period)
         league_games = LeagueGame.objects.filter(
             league=league,
             is_active=True,
-            game__season=current_week.season,
-            game__kickoff__range=(start, end)
+            game__season=current_period.season,
+            **services.schedule.period_game_filters(current_period)
         ).values_list('game_id', flat=True)
         
         # Get picks for these games
@@ -858,8 +858,8 @@ def live_view(request):
             user=request.user,
             league=league,
             game_id__in=league_games,
-            game__season=current_week.season,
-            game__kickoff__range=(start, end)
+            game__season=current_period.season,
+            **services.schedule.period_game_filters(current_period)
         ).select_related("game__home_team", "game__away_team", "picked_team")
     
     # Get league_game data for spreads
@@ -875,10 +875,10 @@ def live_view(request):
         picks_with_league_game.append((pick, league_game))
     
     # Sort games by status priority: Live > Final > Scheduled
-    # Within each group, sort by kickoff time (earliest first)
+    # Within each group, sort by start_time time (earliest first)
     def get_game_status(game):
         """Helper to determine game status"""
-        if not game.is_final and game.quarter and game.quarter > 0:
+        if not game.is_final and game.period and game.period > 0:
             return 'live'
         elif game.is_final:
             return 'final'
@@ -893,8 +893,8 @@ def live_view(request):
         # Status priority: live=0, final=1, scheduled=2
         status_priority = {'live': 0, 'final': 1, 'scheduled': 2}[status]
         
-        # Return tuple: (status_priority, kickoff_time)
-        return (status_priority, game.kickoff)
+        # Return tuple: (status_priority, start_time_time)
+        return (status_priority, game.start_time)
     
     picks_with_league_game.sort(key=get_game_sort_key)
     
@@ -954,13 +954,13 @@ def live_view(request):
     if active_season:
         league_rules = LeagueRules.objects.filter(league=league, season=active_season).first()
     
-    # Get AP poll rankings for teams (current week)
+    # Get AP poll rankings for teams (current schedule_period)
     team_rankings = {}
-    if active_season and current_week:
-        # Fetch AP poll rankings for current week
+    if active_season and current_period:
+        # Fetch AP poll rankings for current schedule_period
         rankings = Ranking.objects.filter(
             season=active_season,
-            week=current_week,
+            schedule_period=current_period,
             poll='AP Top 25'
         ).select_related('team')
         
@@ -988,7 +988,7 @@ def live_view(request):
             for team in teams_with_records
         }
     
-    live_standing = _live_standing_payload(league, request.user, week=current_week)
+    live_standing = _live_standing_payload(league, request.user, schedule_period=current_period)
     context = {
         "picks_with_league_game": picks_with_league_game,  # Keep for backward compatibility
         "picks_with_sections": picks_with_sections,  # New organized structure
@@ -998,20 +998,20 @@ def live_view(request):
         "team_rankings": team_rankings,
         "team_records": team_records,
         "live_standing": live_standing,
-        "live_week": current_week,
+        "live_period": current_period,
     }
     return render(request, "cfb/live.html", context)
 
 
-def _live_standing_payload(league, user, week=None):
-    """Week rank and points for the live bar, including in-progress games."""
+def _live_standing_payload(league, user, schedule_period=None):
+    """SchedulePeriod rank and points for the live bar, including in-progress games."""
     if not league:
         return None
-    snapshot = services.scoring.live_week_snapshot(league, user, week=week)
+    snapshot = services.scoring.live_period_snapshot(league, user, schedule_period=schedule_period)
     if not snapshot:
         return None
     snapshot["standings_url"] = (
-        f"{reverse('standings')}?league_id={league.id}&week={snapshot['week_id']}"
+        f"{reverse('standings')}?league_id={league.id}&schedule_period={snapshot['schedule_period_id']}"
     )
     return snapshot
 
@@ -1019,49 +1019,49 @@ def _live_standing_payload(league, user, week=None):
 @login_required
 @require_GET
 def live_standing_api(request):
-    """Current user's week standing, updated while games are in progress."""
+    """Current user's schedule_period standing, updated while games are in progress."""
     league, _user_leagues = _resolve_user_league(request)
-    week = services.schedule.get_live_week(league) if league else None
-    snapshot = _live_standing_payload(league, request.user, week=week)
-    # Week selection must be available even before scores/standings exist.
-    response = JsonResponse({"standing": snapshot, "week_id": week.id if week else None})
+    schedule_period = services.schedule.get_live_period(league) if league else None
+    snapshot = _live_standing_payload(league, request.user, schedule_period=schedule_period)
+    # SchedulePeriod selection must be available even before scores/standings exist.
+    response = JsonResponse({"standing": snapshot, "schedule_period_id": schedule_period.id if schedule_period else None})
     response["Cache-Control"] = "no-store"
     return response
 
 
-def _get_display_week_pick_status(league, season):
+def _get_display_period_pick_status(league, season):
     """
-    Pick counts (not choices) for the display week when league games are set.
-    Returns None if the display week has no pickable games for this league,
-    or if we are still too far before that week starts.
+    Pick counts (not choices) for the display schedule_period when league games are set.
+    Returns None if the display schedule_period has no pickable games for this league,
+    or if we are still too far before that schedule_period starts.
     """
     from datetime import timedelta
 
-    display_week = services.schedule.get_display_week(season)
-    if not display_week:
+    display_period = services.schedule.get_display_period(season)
+    if not display_period:
         return None
 
     now = timezone.now()
-    current_week = services.schedule.get_current_week(season, now=now)
-    if not current_week:
-        days_until_week = (display_week.start_date - now.date()).days
-        if days_until_week > 7:
+    current_period = services.schedule.get_current_period(season, now=now)
+    if not current_period:
+        days_until_period = (display_period.start_date - now.date()).days
+        if days_until_period > 7:
             return None
 
-    start, end = services.schedule.get_week_datetime_range(display_week)
-    week_game_ids = list(
+    start, end = services.schedule.get_period_datetime_range(display_period)
+    period_game_ids = list(
         LeagueGame.objects.filter(
             league=league,
             is_active=True,
-            game__week=display_week,
+            game__schedule_period=display_period,
             game__season=season,
-            game__kickoff__range=(start, end),
+            game__start_time__range=(start, end),
         ).values_list("game_id", flat=True)
     )
-    if not week_game_ids:
+    if not period_game_ids:
         return None
 
-    picks_total = len(week_game_ids)
+    picks_total = len(period_game_ids)
     members = User.objects.filter(
         id__in=_active_member_user_ids(league),
     ).order_by("username")
@@ -1070,7 +1070,7 @@ def _get_display_week_pick_status(league, season):
         row["user_id"]: row["count"]
         for row in Pick.objects.filter(
             league=league,
-            game_id__in=week_game_ids,
+            game_id__in=period_game_ids,
         )
         .values("user_id")
         .annotate(count=Count("id"))
@@ -1079,20 +1079,20 @@ def _get_display_week_pick_status(league, season):
     members_data = [
         {
             "user": member,
-            "week_picks_made": pick_counts.get(member.id, 0),
-            "week_picks_total": picks_total,
+            "period_picks_made": pick_counts.get(member.id, 0),
+            "period_picks_total": picks_total,
         }
         for member in members
     ]
 
     return {
-        "week": display_week,
+        "schedule_period": display_period,
         "picks_total": picks_total,
         "members": members_data,
     }
 
 
-def _empty_standing_row(user, week_picks_made=0, week_picks_total=0):
+def _empty_standing_row(user, period_picks_made=0, period_picks_total=0):
     return {
         "user": user,
         "wins": 0,
@@ -1107,15 +1107,15 @@ def _empty_standing_row(user, week_picks_made=0, week_picks_total=0):
         "key_picks_made": 0,
         "key_pick_pct": 0,
         "display_rank": 999,
-        "week_picks_made": week_picks_made,
-        "week_picks_total": week_picks_total,
+        "period_picks_made": period_picks_made,
+        "period_picks_total": period_picks_total,
         "points_guess": None,
         "points_actual": None,
         "tiebreak_abs_diff": None,
     }
 
 
-def _finished_key_picks_made_by_user(league, *, week=None, season=None, exclude_week_ids=None):
+def _finished_key_picks_made_by_user(league, *, schedule_period=None, season=None, exclude_schedule_period_ids=None):
     """Map user_id -> count of key picks on finished games (display only)."""
     qs = Pick.objects.filter(
         league=league,
@@ -1124,12 +1124,12 @@ def _finished_key_picks_made_by_user(league, *, week=None, season=None, exclude_
         game__league_selections__league=league,
         game__league_selections__is_active=True,
     )
-    if week is not None:
-        qs = qs.filter(game__week=week)
+    if schedule_period is not None:
+        qs = qs.filter(game__schedule_period=schedule_period)
     if season is not None:
         qs = qs.filter(game__season=season)
-    if exclude_week_ids:
-        qs = qs.exclude(game__week_id__in=exclude_week_ids)
+    if exclude_schedule_period_ids:
+        qs = qs.exclude(game__schedule_period_id__in=exclude_schedule_period_ids)
     return dict(
         qs.values("user_id")
         .annotate(c=Count("id", distinct=True))
@@ -1137,8 +1137,8 @@ def _finished_key_picks_made_by_user(league, *, week=None, season=None, exclude_
     )
 
 
-def _finished_key_picks_by_user_week(league, season):
-    """Map user_id -> {week_id: count} for finished key picks (display only)."""
+def _finished_key_picks_by_user_period(league, season):
+    """Map user_id -> {schedule_period_id: count} for finished key picks (display only)."""
     rows = (
         Pick.objects.filter(
             league=league,
@@ -1148,66 +1148,66 @@ def _finished_key_picks_by_user_week(league, season):
             game__league_selections__league=league,
             game__league_selections__is_active=True,
         )
-        .values("user_id", "game__week_id")
+        .values("user_id", "game__schedule_period_id")
         .annotate(c=Count("id", distinct=True))
     )
     by_user = {}
     for row in rows:
-        by_user.setdefault(row["user_id"], {})[row["game__week_id"]] = row["c"]
+        by_user.setdefault(row["user_id"], {})[row["game__schedule_period_id"]] = row["c"]
     return by_user
 
 
-def _dropped_week_ids_for_season_display(league, season, league_rules, user_ids):
+def _dropped_schedule_period_ids_for_season_display(league, season, league_rules, user_ids):
     """
-    Per-user week ids dropped from adjusted season standings (same rules as scoring).
-    Returns {user_id: set(week_id, ...)}.
+    Per-user schedule_period ids dropped from adjusted season standings (same rules as scoring).
+    Returns {user_id: set(schedule_period_id, ...)}.
     """
-    if not league_rules or league_rules.drop_weeks <= 0 or not user_ids:
+    if not league_rules or league_rules.drop_periods <= 0 or not user_ids:
         return {}
 
     from .models import LeagueGame
 
-    weeks_with_finalized = set(
+    periods_with_finalized = set(
         LeagueGame.objects.filter(
             league=league,
             game__season=season,
             game__is_final=True,
             is_active=True,
-        ).values_list("game__week_id", flat=True).distinct()
+        ).values_list("game__schedule_period_id", flat=True).distinct()
     )
-    if not weeks_with_finalized:
+    if not periods_with_finalized:
         return {}
 
-    member_weeks = MemberWeek.objects.filter(
+    member_periods = MemberPeriod.objects.filter(
         league=league,
-        week__season=season,
+        schedule_period__season=season,
         user_id__in=user_ids,
-        week_id__in=weeks_with_finalized,
+        schedule_period_id__in=periods_with_finalized,
     )
     by_user = {}
-    for mw in member_weeks:
+    for mw in member_periods:
         by_user.setdefault(mw.user_id, []).append(mw)
 
     dropped = {}
-    for user_id, weeks in by_user.items():
-        if len(weeks) <= league_rules.drop_weeks:
+    for user_id, schedule_periods in by_user.items():
+        if len(schedule_periods) <= league_rules.drop_periods:
             continue
 
-        def sort_key(week):
+        def sort_key(schedule_period):
             if league_rules.tiebreaker == 1:
-                return (week.points, week.correct_key)
-            return (week.points, week.correct)
+                return (schedule_period.points, schedule_period.correct_key)
+            return (schedule_period.points, schedule_period.correct)
 
-        weeks_sorted = sorted(weeks, key=sort_key)
-        dropped[user_id] = {w.week_id for w in weeks_sorted[: league_rules.drop_weeks]}
+        periods_sorted = sorted(schedule_periods, key=sort_key)
+        dropped[user_id] = {w.schedule_period_id for w in periods_sorted[: league_rules.drop_periods]}
     return dropped
 
 
-def _key_picks_made_for_user(by_user_week, user_id, exclude_week_ids=None):
-    week_counts = by_user_week.get(user_id) or {}
-    if not exclude_week_ids:
-        return sum(week_counts.values())
-    return sum(c for wid, c in week_counts.items() if wid not in exclude_week_ids)
+def _key_picks_made_for_user(by_user_period, user_id, exclude_schedule_period_ids=None):
+    period_counts = by_user_period.get(user_id) or {}
+    if not exclude_schedule_period_ids:
+        return sum(period_counts.values())
+    return sum(c for wid, c in period_counts.items() if wid not in exclude_schedule_period_ids)
 
 
 def _key_pick_pct(correct_key, key_picks_made):
@@ -1216,8 +1216,8 @@ def _key_pick_pct(correct_key, key_picks_made):
     return 0
 
 
-def _apply_display_week_pick_status(standings, pick_status):
-    """Merge display-week pick counts into season standings rows."""
+def _apply_display_period_pick_status(standings, pick_status):
+    """Merge display-schedule_period pick counts into season standings rows."""
     counts_by_user = {m["user"].id: m for m in pick_status["members"]}
     existing_user_ids = set()
 
@@ -1225,15 +1225,15 @@ def _apply_display_week_pick_status(standings, pick_status):
         existing_user_ids.add(standing["user"].id)
         member_data = counts_by_user.get(standing["user"].id)
         if member_data:
-            standing["week_picks_made"] = member_data["week_picks_made"]
-            standing["week_picks_total"] = member_data["week_picks_total"]
+            standing["period_picks_made"] = member_data["period_picks_made"]
+            standing["period_picks_total"] = member_data["period_picks_total"]
 
     for member_data in pick_status["members"]:
         if member_data["user"].id not in existing_user_ids:
             standings.append(_empty_standing_row(
                 member_data["user"],
-                member_data["week_picks_made"],
-                member_data["week_picks_total"],
+                member_data["period_picks_made"],
+                member_data["period_picks_total"],
             ))
 
     return standings
@@ -1250,7 +1250,7 @@ def _season_rank_by_user(league, season, league_rules, show_full_standings=False
     for member_season in member_seasons:
         if show_full_standings:
             ranks[member_season.user_id] = member_season.rank or 999
-        elif league_rules and league_rules.drop_weeks > 0 and member_season.rank_with_drops:
+        elif league_rules and league_rules.drop_periods > 0 and member_season.rank_with_drops:
             ranks[member_season.user_id] = member_season.rank_with_drops
         else:
             ranks[member_season.user_id] = member_season.rank or 999
@@ -1258,7 +1258,7 @@ def _season_rank_by_user(league, season, league_rules, show_full_standings=False
 
 
 def _season_incorrect_by_user(league, season, league_rules, show_full_standings=False):
-    """Count all incorrect season picks for last-place prizes, including dropped weeks."""
+    """Count all incorrect season picks for last-place prizes, including dropped schedule_periods."""
     return {
         member_season.user_id: member_season.incorrect
         for member_season in MemberSeason.objects.filter(
@@ -1269,23 +1269,23 @@ def _season_incorrect_by_user(league, season, league_rules, show_full_standings=
     }
 
 
-def _week_rank_by_user(league, week):
-    """Map user_id -> display rank for a week's standings."""
-    if not week:
+def _period_rank_by_user(league, schedule_period):
+    """Map user_id -> display rank for a schedule_period's standings."""
+    if not schedule_period:
         return {}
     return {
         mw.user_id: (mw.rank or 999)
-        for mw in MemberWeek.objects.filter(
+        for mw in MemberPeriod.objects.filter(
             league=league,
-            week=week,
+            schedule_period=schedule_period,
             user_id__in=_active_member_user_ids(league),
         )
     }
 
 
-def _league_slate_weeks(league, season):
-    """Weeks that have an active league slate, in season order."""
-    weeks = Week.objects.filter(season=season).order_by(
+def _league_slate_periods(league, season):
+    """Periods that have an active league slate, in season order."""
+    schedule_periods = SchedulePeriod.objects.filter(season=season).order_by(
         Case(
             When(season_type="regular", then=Value(0)),
             When(season_type="postseason", then=Value(1)),
@@ -1295,9 +1295,9 @@ def _league_slate_weeks(league, season):
         "number",
     )
     return [
-        week
-        for week in weeks
-        if services.payouts.league_week_slate(league, week).exists()
+        schedule_period
+        for schedule_period in schedule_periods
+        if services.payouts.league_period_slate(league, schedule_period).exists()
     ]
 
 
@@ -1311,14 +1311,14 @@ def _apply_standings_prizes(
     league_is_final=False,
     show_full_standings=False,
     season=None,
-    preferred_projected_week=None,
-    week_only=False,
+    preferred_projected_period=None,
+    period_only=False,
 ):
     """
     Money columns:
-    - Weeks won: sum of completed weekly payouts (default)
+    - Periods won: sum of completed period payouts (default)
     - Season: only when season is final (or projected season when toggle on)
-    - Projected toggle (hidden when season final): this-week projected + season projected + total
+    - Projected toggle (hidden when season final): this-schedule_period projected + season projected + total
     """
     if not league_rules or not season:
         return standings
@@ -1327,88 +1327,88 @@ def _apply_standings_prizes(
     payout_summary = services.payouts.build_payout_summary(league_rules, member_count)
     context["payout_summary"] = payout_summary
 
-    has_weekly = bool(payout_summary and payout_summary.get("has_weekly"))
+    has_period = bool(payout_summary and payout_summary.get("has_period"))
     has_season = bool(payout_summary and payout_summary.get("has_season"))
-    context["prizes_available"] = has_weekly or has_season
+    context["prizes_available"] = has_period or has_season
 
-    slate_weeks = _league_slate_weeks(league, season) if (has_weekly or has_season) else []
-    completed_weeks = [
-        week
-        for week in slate_weeks
-        if services.payouts.is_week_slate_final(league, week)
+    slate_periods = _league_slate_periods(league, season) if (has_period or has_season) else []
+    completed_periods = [
+        schedule_period
+        for schedule_period in slate_periods
+        if services.payouts.is_period_slate_final(league, schedule_period)
     ]
-    in_progress_week = None
-    if preferred_projected_week and preferred_projected_week in slate_weeks:
-        if not services.payouts.is_week_slate_final(league, preferred_projected_week):
-            in_progress_week = preferred_projected_week
-    if in_progress_week is None:
-        for week in reversed(slate_weeks):
-            if not services.payouts.is_week_slate_final(league, week):
-                in_progress_week = week
+    in_progress_period = None
+    if preferred_projected_period and preferred_projected_period in slate_periods:
+        if not services.payouts.is_period_slate_final(league, preferred_projected_period):
+            in_progress_period = preferred_projected_period
+    if in_progress_period is None:
+        for schedule_period in reversed(slate_periods):
+            if not services.payouts.is_period_slate_final(league, schedule_period):
+                in_progress_period = schedule_period
                 break
 
     # Avoid projecting an unstarted league slate, even when standings are tied.
-    def week_has_started(week):
-        return bool(week and services.payouts.league_week_slate(league, week).filter(
-            Q(kickoff__lte=timezone.now()) | Q(is_final=True)
+    def period_has_started(schedule_period):
+        return bool(schedule_period and services.payouts.league_period_slate(league, schedule_period).filter(
+            Q(start_time__lte=timezone.now()) | Q(is_final=True)
         ).exists())
 
-    if in_progress_week and not week_has_started(in_progress_week):
-        in_progress_week = None
+    if in_progress_period and not period_has_started(in_progress_period):
+        in_progress_period = None
 
     # Projected toggle does nothing once the season is final.
     project = bool(show_projected_prizes and not league_is_final)
 
-    if week_only and preferred_projected_week:
-        # Week standings should describe this week only. Do not carry forward
-        # winnings from earlier weeks or mix in season payouts.
-        selected_week_final = services.payouts.is_week_slate_final(
-            league, preferred_projected_week
+    if period_only and preferred_projected_period:
+        # SchedulePeriod standings should describe this schedule_period only. Do not carry forward
+        # winnings from earlier schedule_periods or mix in season payouts.
+        selected_period_final = services.payouts.is_period_slate_final(
+            league, preferred_projected_period
         )
-        include_weeks_won = bool(has_weekly and selected_week_final)
-        include_projected_week = bool(
-            project and has_weekly and not selected_week_final
-            and week_has_started(preferred_projected_week)
+        include_periods_won = bool(has_period and selected_period_final)
+        include_projected_period = bool(
+            project and has_period and not selected_period_final
+            and period_has_started(preferred_projected_period)
         )
         include_season = False
-        completed_weeks = [preferred_projected_week] if include_weeks_won else []
-        in_progress_week = (
-            preferred_projected_week if include_projected_week else None
+        completed_periods = [preferred_projected_period] if include_periods_won else []
+        in_progress_period = (
+            preferred_projected_period if include_projected_period else None
         )
     else:
-        include_weeks_won = bool(has_weekly and completed_weeks)
-        include_projected_week = bool(project and has_weekly and in_progress_week)
+        include_periods_won = bool(has_period and completed_periods)
+        include_projected_period = bool(project and has_period and in_progress_period)
         include_season = bool(has_season and (league_is_final or project))
-    show_prizes = include_weeks_won or include_projected_week or include_season
+    show_prizes = include_periods_won or include_projected_period or include_season
     include_total = bool(
         show_prizes
         and (
             league_is_final
             or project
-            or (include_weeks_won and include_season)
+            or (include_periods_won and include_season)
         )
     )
 
     context["show_prizes"] = show_prizes
-    context["show_weeks_won_col"] = include_weeks_won
-    context["show_projected_week_col"] = include_projected_week
+    context["show_periods_won_col"] = include_periods_won
+    context["show_projected_period_col"] = include_projected_period
     context["show_season_prize_col"] = include_season
     context["show_total_prize_col"] = include_total
-    context["prize_week"] = in_progress_week if include_projected_week else None
-    context["completed_prize_weeks"] = len(completed_weeks)
+    context["prize_period"] = in_progress_period if include_projected_period else None
+    context["completed_prize_periods"] = len(completed_periods)
     context["can_project_prizes"] = bool(
         not league_is_final
         and (
-            has_weekly
-            if week_only
+            has_period
+            if period_only
             else context["prizes_available"]
         )
         and (
-            not week_only
+            not period_only
             or (
-                preferred_projected_week
-                and not services.payouts.is_week_slate_final(
-                    league, preferred_projected_week
+                preferred_projected_period
+                and not services.payouts.is_period_slate_final(
+                    league, preferred_projected_period
                 )
             )
         )
@@ -1417,11 +1417,11 @@ def _apply_standings_prizes(
 
     if show_prizes:
         completed_ranks = [
-            _week_rank_by_user(league, week) for week in completed_weeks
-        ] if include_weeks_won else []
+            _period_rank_by_user(league, schedule_period) for schedule_period in completed_periods
+        ] if include_periods_won else []
         projected_ranks = (
-            _week_rank_by_user(league, in_progress_week)
-            if include_projected_week
+            _period_rank_by_user(league, in_progress_period)
+            if include_projected_period
             else {}
         )
         season_ranks = (
@@ -1439,12 +1439,12 @@ def _apply_standings_prizes(
         services.payouts.apply_standings_money_columns(
             standings,
             payout_summary,
-            completed_week_ranks=completed_ranks,
-            projected_week_ranks=projected_ranks,
+            completed_period_ranks=completed_ranks,
+            projected_period_ranks=projected_ranks,
             season_ranks=season_ranks,
             season_incorrect=season_incorrect,
-            include_weeks_won=include_weeks_won,
-            include_projected_week=include_projected_week,
+            include_periods_won=include_periods_won,
+            include_projected_period=include_projected_period,
             include_season=include_season,
         )
 
@@ -1455,25 +1455,25 @@ def _apply_standings_prizes(
 def standings_view(request):
     league, user_leagues = _resolve_user_league(request)
     
-    # Check if user wants to see full standings (not adjusted for dropped weeks)
+    # Check if user wants to see full standings (not adjusted for dropped schedule_periods)
     show_full_standings = request.GET.get('full', 'false').lower() == 'true'
     
-    # Check if user wants to see week standings or league picks
-    week_id = request.GET.get('week')
+    # Check if user wants to see schedule_period standings or league picks
+    schedule_period_id = request.GET.get('schedule_period')
     show_league_picks = request.GET.get('league_picks', 'false').lower() == 'true'
     show_what_if = request.GET.get('what_if', 'false').lower() in ('true', '1', 'on')
     show_unstarted_picks = request.GET.get('show_unstarted', 'false').lower() == 'true'
     show_projected_prizes = request.GET.get('prizes', 'false').lower() in ('true', '1', 'on')
-    selected_week = None
+    selected_period = None
     
     context = {
         'current_league': league,
         'user_leagues': user_leagues,
         'standings': [],
         'show_full_standings': show_full_standings,
-        'selected_week': selected_week,
-        'available_weeks': [],
-        'show_week_standings': False,  # Will be set later based on logic
+        'selected_period': selected_period,
+        'available_periods': [],
+        'show_period_standings': False,  # Will be set later based on logic
         'show_league_picks': show_league_picks,
         'show_what_if': show_what_if,
         'can_show_what_if': False,
@@ -1487,21 +1487,21 @@ def standings_view(request):
         'show_total_points_tiebreak': False,
         'show_points_possible': False,
         'tiebreak_points_actual': None,
-        'show_week_pick_status': False,
+        'show_period_pick_status': False,
         'show_pick_status_only': False,
-        'pick_status_week': None,
+        'pick_status_period': None,
         'league_is_final': False,
-        'week_is_final': False,
+        'period_is_final': False,
         'show_prizes': False,
         'prizes_available': False,
         'prizes_are_projected': False,
         'can_project_prizes': False,
-        'show_weeks_won_col': False,
-        'show_projected_week_col': False,
+        'show_periods_won_col': False,
+        'show_projected_period_col': False,
         'show_season_prize_col': False,
         'show_total_prize_col': False,
-        'prize_week': None,
-        'completed_prize_weeks': 0,
+        'prize_period': None,
+        'completed_prize_periods': 0,
         'payout_summary': None,
     }
     
@@ -1510,15 +1510,15 @@ def standings_view(request):
         active_season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
         
         if active_season:
-            # Get league rules to check drop_weeks setting
+            # Get league rules to check drop_periods setting
             try:
                 league_rules = LeagueRules.objects.get(league=league, season=active_season)
             except LeagueRules.DoesNotExist:
                 league_rules = None
             
-            # Get available weeks (weeks with live games or all games completed)
-            available_weeks = []
-            all_weeks = Week.objects.filter(season=active_season).order_by(
+            # Get available schedule_periods (schedule_periods with live games or all games completed)
+            available_periods = []
+            all_periods = SchedulePeriod.objects.filter(season=active_season).order_by(
                 Case(
                     When(season_type='regular', then=Value(0)),
                     When(season_type='postseason', then=Value(1)),
@@ -1529,51 +1529,51 @@ def standings_view(request):
             )
             
             now = timezone.now()
-            for week in all_weeks:
-                # Check if this week has games in this league
-                week_games = Game.objects.filter(
-                    week=week,
+            for schedule_period in all_periods:
+                # Check if this schedule_period has games in this league
+                period_games = Game.objects.filter(
+                    schedule_period=schedule_period,
                     league_selections__league=league,
                     league_selections__is_active=True
                 )
                 
-                if week_games.exists():
+                if period_games.exists():
                     # Check game status
-                    live_games = week_games.filter(is_final=False, home_score__isnull=False)
-                    started_unfinished = week_games.filter(
-                        is_final=False, kickoff__lte=now
+                    live_games = period_games.filter(is_final=False, home_score__isnull=False)
+                    started_unfinished = period_games.filter(
+                        is_final=False, start_time__lte=now
                     )
-                    all_final = not week_games.exclude(is_final=True).exists()
-                    # Keep any week with a started/finished game available even
+                    all_final = not period_games.exclude(is_final=True).exists()
+                    # Keep any schedule_period with a started/finished game available even
                     # when another selected game is delayed and has no score.
                     # Do not require What If mode or an active live score.
-                    include_week = live_games.exists() or week_games.filter(
-                        Q(kickoff__lte=now) | Q(is_final=True)
+                    include_period = live_games.exists() or period_games.filter(
+                        Q(start_time__lte=now) | Q(is_final=True)
                     ).exists()
                     
-                    if include_week:
-                        available_weeks.append({
-                            'week': week,
+                    if include_period:
+                        available_periods.append({
+                            'schedule_period': schedule_period,
                             'has_live_games': live_games.exists() or started_unfinished.exists(),
                             'all_games_final': all_final,
-                            'game_count': week_games.count()
+                            'game_count': period_games.count()
                         })
             
-            context['available_weeks'] = available_weeks
+            context['available_periods'] = available_periods
 
-            # What If is only useful for the calendar-active week while at
+            # What If is only useful for the calendar-active schedule_period while at
             # least one league game has started and is still unfinished.
-            active_week = services.schedule.get_current_week(
+            active_period = services.schedule.get_current_period(
                 season=active_season, now=now
             )
             can_show_what_if = bool(
-                active_week
+                active_period
                 and LeagueGame.objects.filter(
                     league=league,
                     is_active=True,
-                    game__week=active_week,
+                    game__schedule_period=active_period,
                     game__season=active_season,
-                    game__kickoff__lte=now,
+                    game__start_time__lte=now,
                     game__is_final=False,
                 ).exists()
             )
@@ -1582,51 +1582,51 @@ def standings_view(request):
             # Ignore stale/manual What If URLs outside its live window.
             if show_what_if:
                 if can_show_what_if:
-                    week_id = active_week.id
+                    schedule_period_id = active_period.id
                 else:
                     show_what_if = False
                     context['show_what_if'] = False
-                    week_id = None
+                    schedule_period_id = None
             
-            # Handle 'latest' week parameter or validate week exists
-            if week_id == 'latest' and available_weeks:
-                # Prefer latest week that still has unfinished started games for What If
+            # Handle 'latest' schedule_period parameter or validate schedule_period exists
+            if schedule_period_id == 'latest' and available_periods:
+                # Prefer latest schedule_period that still has unfinished started games for What If
                 if show_what_if:
                     unfinished = [
-                        w for w in available_weeks if not w['all_games_final']
+                        w for w in available_periods if not w['all_games_final']
                     ]
-                    latest_week_data = unfinished[-1] if unfinished else available_weeks[-1]
+                    latest_period_data = unfinished[-1] if unfinished else available_periods[-1]
                 else:
-                    latest_week_data = available_weeks[-1]
-                week_id = latest_week_data['week'].id
-            elif week_id and available_weeks:
-                # Validate that the requested week exists and is available
+                    latest_period_data = available_periods[-1]
+                schedule_period_id = latest_period_data['schedule_period'].id
+            elif schedule_period_id and available_periods:
+                # Validate that the requested schedule_period exists and is available
                 try:
-                    week_exists = any(w['week'].id == int(week_id) for w in available_weeks)
-                    if not week_exists:
-                        # Week doesn't exist or not available, default to latest
-                        latest_week_data = available_weeks[-1]
-                        week_id = latest_week_data['week'].id
+                    period_exists = any(w['schedule_period'].id == int(schedule_period_id) for w in available_periods)
+                    if not period_exists:
+                        # SchedulePeriod doesn't exist or not available, default to latest
+                        latest_period_data = available_periods[-1]
+                        schedule_period_id = latest_period_data['schedule_period'].id
                 except (ValueError, TypeError):
-                    # Invalid week_id, default to latest
-                    latest_week_data = available_weeks[-1]
-                    week_id = latest_week_data['week'].id
+                    # Invalid schedule_period_id, default to latest
+                    latest_period_data = available_periods[-1]
+                    schedule_period_id = latest_period_data['schedule_period'].id
 
 
-            # Handle week standings vs season standings vs league picks vs what-if
-            if week_id:
-                # Get week standings
+            # Handle schedule_period standings vs season standings vs league picks vs what-if
+            if schedule_period_id:
+                # Get schedule_period standings
                 try:
-                    selected_week = Week.objects.get(id=week_id, season=active_season)
-                    context['selected_week'] = selected_week
+                    selected_period = SchedulePeriod.objects.get(id=schedule_period_id, season=active_season)
+                    context['selected_period'] = selected_period
                     
                     if show_what_if:
                         context['show_what_if'] = True
-                        context['show_week_standings'] = False
+                        context['show_period_standings'] = False
                         context['show_league_picks'] = False
                         if league_rules:
                             context['what_if_games'] = services.whatif.get_simulatable_games(
-                                league, selected_week, league_rules
+                                league, selected_period, league_rules
                             )
                             context['what_if_allows_push'] = bool(
                                 league_rules.against_the_spread_enabled
@@ -1646,63 +1646,63 @@ def standings_view(request):
                         except LeagueMembership.DoesNotExist:
                             pass
                         
-                        # Show league picks for this week
+                        # Show league picks for this schedule_period
                         context['show_league_picks'] = True
                         context['is_league_manager'] = is_manager
-                        context['league_picks_data'] = get_league_picks_data(league, selected_week, show_unstarted_picks)
+                        context['league_picks_data'] = get_league_picks_data(league, selected_period, show_unstarted_picks)
                     else:
-                        # Show week standings
-                        context['show_week_standings'] = True
+                        # Show schedule_period standings
+                        context['show_period_standings'] = True
                         
-                        # Get member weeks for this week
-                        member_weeks = MemberWeek.objects.filter(
+                        # Get member schedule_periods for this schedule_period
+                        member_periods = MemberPeriod.objects.filter(
                             league=league,
-                            week=selected_week,
+                            schedule_period=selected_period,
                             user_id__in=_active_member_user_ids(league),
-                        ).select_related('user', 'week')
+                        ).select_related('user', 'schedule_period')
                         
                         standings = []
                         key_made_by_user = _finished_key_picks_made_by_user(
-                            league, week=selected_week
+                            league, schedule_period=selected_period
                         )
                         remaining_by_user = services.scoring.remaining_points_by_user(
-                            league, league_rules, week=selected_week
+                            league, league_rules, schedule_period=selected_period
                         )
                         
-                        for member_week in member_weeks:
-                            total = member_week.correct + member_week.incorrect + member_week.ties
-                            win_pct = round((member_week.correct / total * 100) if total > 0 else 0, 1)
+                        for member_period in member_periods:
+                            total = member_period.correct + member_period.incorrect + member_period.ties
+                            win_pct = round((member_period.correct / total * 100) if total > 0 else 0, 1)
                             
                             # Finished key picks only (not max allowed / unstarted games)
-                            key_picks_made = key_made_by_user.get(member_week.user_id, 0)
-                            key_pick_pct = _key_pick_pct(member_week.correct_key, key_picks_made)
-                            points = member_week.points
+                            key_picks_made = key_made_by_user.get(member_period.user_id, 0)
+                            key_pick_pct = _key_pick_pct(member_period.correct_key, key_picks_made)
+                            points = member_period.points
                             
                             standings.append({
-                                'user': member_week.user,
-                                'wins': member_week.correct,
-                                'losses': member_week.incorrect,
-                                'ties': member_week.ties,
+                                'user': member_period.user,
+                                'wins': member_period.correct,
+                                'losses': member_period.incorrect,
+                                'ties': member_period.ties,
                                 'total': total,
-                                'picks_made': member_week.picks_made,
+                                'picks_made': member_period.picks_made,
                                 'win_pct': win_pct,
                                 'points': points,
                                 'points_possible': points + remaining_by_user.get(
-                                    member_week.user_id, 0
+                                    member_period.user_id, 0
                                 ),
-                                'correct_key': member_week.correct_key,
+                                'correct_key': member_period.correct_key,
                                 'key_picks_made': key_picks_made,
                                 'key_pick_pct': key_pick_pct,
-                                'display_rank': member_week.rank or 999,
-                                'points_guess': member_week.points_guess,
-                                'points_actual': member_week.points_actual,
-                                'tiebreak_abs_diff': member_week.tiebreak_abs_diff,
+                                'display_rank': member_period.rank or 999,
+                                'points_guess': member_period.points_guess,
+                                'points_actual': member_period.points_actual,
+                                'tiebreak_abs_diff': member_period.tiebreak_abs_diff,
                             })
                         
                         # Sort by rank (ascending)
                         standings.sort(key=lambda x: x['display_rank'])
 
-                        # Points behind the week leader (same pts as leader => —)
+                        # Points behind the schedule_period leader (same pts as leader => —)
                         leader_points = (
                             standings[0]['points'] if standings else 0
                         )
@@ -1710,25 +1710,25 @@ def standings_view(request):
                             behind = leader_points - row['points']
                             row['points_behind'] = behind if behind > 0 else None
 
-                        # Only show points possible while this week's slate has a
+                        # Only show points possible while this schedule_period's slate has a
                         # started game that is not final. Future games should not expose
                         # the projection column before live play begins.
                         context['show_points_possible'] = LeagueGame.objects.filter(
                             league=league,
                             is_active=True,
-                            game__week=selected_week,
+                            game__schedule_period=selected_period,
                             game__season=active_season,
-                            game__kickoff__lte=now,
+                            game__start_time__lte=now,
                             game__is_final=False,
                         ).exists()
 
-                        week_is_final = services.payouts.is_week_slate_final(
-                            league, selected_week
+                        period_is_final = services.payouts.is_period_slate_final(
+                            league, selected_period
                         )
                         league_is_final = services.payouts.is_league_season_final(
                             league, league_rules
                         )
-                        context['week_is_final'] = week_is_final
+                        context['period_is_final'] = period_is_final
                         context['league_is_final'] = league_is_final
                         _apply_standings_prizes(
                             context,
@@ -1739,8 +1739,8 @@ def standings_view(request):
                             league_is_final=league_is_final,
                             show_full_standings=show_full_standings,
                             season=active_season,
-                            preferred_projected_week=selected_week,
-                            week_only=True,
+                            preferred_projected_period=selected_period,
+                            period_only=True,
                         )
 
                         context['standings'] = standings
@@ -1757,12 +1757,12 @@ def standings_view(request):
                                 None,
                             )
                     
-                except Week.DoesNotExist:
-                    context['show_week_standings'] = False
-                    context['selected_week'] = None
+                except SchedulePeriod.DoesNotExist:
+                    context['show_period_standings'] = False
+                    context['selected_period'] = None
             
-            # Default to season standings if no week selected
-            if not week_id:
+            # Default to season standings if no schedule_period selected
+            if not schedule_period_id:
                 # Get all member seasons for this league/season
                 member_seasons = MemberSeason.objects.filter(
                     league=league,
@@ -1773,13 +1773,13 @@ def standings_view(request):
                 standings = []
                 member_seasons = list(member_seasons)
                 user_ids = [ms.user_id for ms in member_seasons]
-                key_by_user_week = _finished_key_picks_by_user_week(league, active_season)
+                key_by_user_period = _finished_key_picks_by_user_period(league, active_season)
                 remaining_by_user = services.scoring.remaining_points_by_user(
                     league, league_rules, season=active_season
                 )
-                dropped_weeks_by_user = {}
-                if not show_full_standings and league_rules and league_rules.drop_weeks > 0:
-                    dropped_weeks_by_user = _dropped_week_ids_for_season_display(
+                dropped_periods_by_user = {}
+                if not show_full_standings and league_rules and league_rules.drop_periods > 0:
+                    dropped_periods_by_user = _dropped_schedule_period_ids_for_season_display(
                         league, active_season, league_rules, user_ids
                     )
                 
@@ -1795,10 +1795,10 @@ def standings_view(request):
                         total = correct + incorrect + ties
                         display_rank = member_season.rank or 999
                         key_picks_made = _key_picks_made_for_user(
-                            key_by_user_week, member_season.user_id
+                            key_by_user_period, member_season.user_id
                         )
                     else:
-                        # Show adjusted stats (default - with dropped weeks)
+                        # Show adjusted stats (default - with dropped schedule_periods)
                         points = member_season.points - member_season.points_dropped
                         correct = member_season.correct - member_season.correct_dropped
                         correct_key = member_season.correct_key - member_season.correct_key_dropped
@@ -1806,15 +1806,15 @@ def standings_view(request):
                         ties = member_season.ties - member_season.ties_dropped
                         picks_made = member_season.picks_made - member_season.picks_made_dropped
                         total = correct + incorrect + ties
-                        # Use rank_with_drops if available and drop_weeks > 0, otherwise use regular rank
-                        if league_rules and league_rules.drop_weeks > 0 and member_season.rank_with_drops:
+                        # Use rank_with_drops if available and drop_periods > 0, otherwise use regular rank
+                        if league_rules and league_rules.drop_periods > 0 and member_season.rank_with_drops:
                             display_rank = member_season.rank_with_drops
                         else:
                             display_rank = member_season.rank or 999
                         key_picks_made = _key_picks_made_for_user(
-                            key_by_user_week,
+                            key_by_user_period,
                             member_season.user_id,
-                            exclude_week_ids=dropped_weeks_by_user.get(member_season.user_id),
+                            exclude_schedule_period_ids=dropped_periods_by_user.get(member_season.user_id),
                         )
                     
                     win_pct = round((correct / total * 100) if total > 0 else 0, 1)
@@ -1842,7 +1842,7 @@ def standings_view(request):
                 standings.sort(key=lambda x: x['display_rank'])
 
                 # Points behind the season leader use the same displayed points
-                # (including any configured drop-week adjustment).
+                # (including any configured drop-schedule_period adjustment).
                 leader_points = standings[0]['points'] if standings else 0
                 for row in standings:
                     behind = leader_points - row['points']
@@ -1854,7 +1854,7 @@ def standings_view(request):
                     league=league,
                     is_active=True,
                     game__season=active_season,
-                    game__kickoff__lte=now,
+                    game__start_time__lte=now,
                     game__is_final=False,
                 ).exists()
 
@@ -1874,21 +1874,21 @@ def standings_view(request):
 
                 context['standings'] = standings
 
-            if not week_id and not show_league_picks:
-                pick_status = _get_display_week_pick_status(league, active_season)
+            if not schedule_period_id and not show_league_picks:
+                pick_status = _get_display_period_pick_status(league, active_season)
                 if pick_status:
-                    context['show_week_pick_status'] = True
-                    context['pick_status_week'] = pick_status['week']
+                    context['show_period_pick_status'] = True
+                    context['pick_status_period'] = pick_status['schedule_period']
                     if context['standings']:
                         context['show_pick_status_only'] = False
-                        _apply_display_week_pick_status(context['standings'], pick_status)
+                        _apply_display_period_pick_status(context['standings'], pick_status)
                     else:
                         context['show_pick_status_only'] = True
                         context['standings'] = [
                             _empty_standing_row(
                                 member_data['user'],
-                                member_data['week_picks_made'],
-                                member_data['week_picks_total'],
+                                member_data['period_picks_made'],
+                                member_data['period_picks_total'],
                             )
                             for member_data in pick_status['members']
                         ]
@@ -1995,8 +1995,8 @@ def standings_view(request):
 @require_POST
 def standings_what_if_view(request):
     """
-    JSON endpoint: simulate week/season standings for assumed game outcomes.
-    Never writes MemberWeek / MemberSeason / Pick.
+    JSON endpoint: simulate schedule_period/season standings for assumed game outcomes.
+    Never writes MemberPeriod / MemberSeason / Pick.
     """
     import json
 
@@ -2025,14 +2025,14 @@ def standings_what_if_view(request):
     except LeagueRules.DoesNotExist:
         return JsonResponse({"ok": False, "error": "League rules not found"}, status=400)
 
-    week_id = body.get("week_id") or request.GET.get("week")
-    if not week_id:
-        return JsonResponse({"ok": False, "error": "week_id is required"}, status=400)
+    schedule_period_id = body.get("schedule_period_id") or request.GET.get("schedule_period")
+    if not schedule_period_id:
+        return JsonResponse({"ok": False, "error": "schedule_period_id is required"}, status=400)
 
     try:
-        week = Week.objects.get(id=int(week_id), season=active_season)
-    except (Week.DoesNotExist, TypeError, ValueError):
-        return JsonResponse({"ok": False, "error": "Invalid week"}, status=400)
+        schedule_period = SchedulePeriod.objects.get(id=int(schedule_period_id), season=active_season)
+    except (SchedulePeriod.DoesNotExist, TypeError, ValueError):
+        return JsonResponse({"ok": False, "error": "Invalid schedule_period"}, status=400)
 
     raw_outcomes = body.get("outcomes") or {}
     if isinstance(raw_outcomes, list):
@@ -2052,7 +2052,7 @@ def standings_what_if_view(request):
     try:
         result = services.whatif.simulate_standings(
             league,
-            week,
+            schedule_period,
             league_rules,
             outcomes,
             use_season_drops=bool(use_drops),
@@ -2064,11 +2064,11 @@ def standings_what_if_view(request):
         {
             "ok": True,
             "league_id": league.id,
-            "week_id": week.id,
+            "schedule_period_id": schedule_period.id,
             "against_the_spread": result.against_the_spread,
             "allows_push": result.allows_push,
             "games": result.games,
-            "week_standings": result.week_standings,
+            "period_standings": result.period_standings,
             "season_standings": result.season_standings,
         }
     )
@@ -2267,23 +2267,23 @@ def settings_view(request):
                     entry_fee = request.POST.get("entry_fee", "").strip()
                     entry_fee_value = Decimal(entry_fee) if entry_fee else None
                     
-                    weekly_payout_percent = request.POST.get("weekly_payout_percent", "").strip()
-                    weekly_payout_percent_value = Decimal(weekly_payout_percent) if weekly_payout_percent else None
+                    period_payout_percent = request.POST.get("period_payout_percent", "").strip()
+                    period_payout_percent_value = Decimal(period_payout_percent) if period_payout_percent else None
                     
                     season_payout_percent = request.POST.get("season_payout_percent", "").strip()
                     season_payout_percent_value = Decimal(season_payout_percent) if season_payout_percent else None
                     
-                    # Parse weekly payout structure
-                    weekly_payout_structure = {}
-                    weekly_spots = request.POST.get("weekly_payout_spots", "").strip()
-                    if weekly_spots:
+                    # Parse period payout structure
+                    period_payout_structure = {}
+                    period_spots = request.POST.get("period_payout_spots", "").strip()
+                    if period_spots:
                         try:
-                            num_spots = int(weekly_spots)
+                            num_spots = int(period_spots)
                             for i in range(1, num_spots + 1):
-                                spot_key = f"weekly_spot_{i}_percent"
+                                spot_key = f"period_spot_{i}_percent"
                                 spot_value = request.POST.get(spot_key, "").strip()
                                 if spot_value:
-                                    weekly_payout_structure[str(i)] = float(spot_value)
+                                    period_payout_structure[str(i)] = float(spot_value)
                         except (ValueError, TypeError):
                             pass
                     
@@ -2304,12 +2304,12 @@ def settings_view(request):
                     season_payout_last_percent = request.POST.get("season_payout_last_percent", "").strip()
                     season_payout_last_percent_value = Decimal(season_payout_last_percent) if season_payout_last_percent else None
 
-                    season_end_week = None
-                    season_end_week_id = request.POST.get("season_end_week", "").strip()
-                    if season_end_week_id:
-                        season_end_week = get_object_or_404(
-                            Week,
-                            pk=season_end_week_id,
+                    season_end_period = None
+                    season_end_period_id = request.POST.get("season_end_period", "").strip()
+                    if season_end_period_id:
+                        season_end_period = get_object_or_404(
+                            SchedulePeriod,
+                            pk=season_end_period_id,
                             season=target_season,
                         )
                     
@@ -2319,23 +2319,23 @@ def settings_view(request):
                         defaults={
                             'points_per_correct_pick': int(request.POST.get("points_per_correct_pick", 1)),
                             'key_pick_extra_points': int(request.POST.get("key_pick_extra_points", 1)),
-                            'drop_weeks': int(request.POST.get("drop_weeks", 0)),
+                            'drop_periods': int(request.POST.get("drop_periods", 0)),
                             'against_the_spread_enabled': request.POST.get("against_the_spread_enabled") == "on",
                             'force_hooks': request.POST.get("force_hooks") == "on",
                             'spread_lock_weekday': int(request.POST.get("spread_lock_weekday", 2)),
-                            'pickable_games_per_week': int(request.POST.get("pickable_games_per_week", 10)),
-                            'picks_per_week': int(request.POST.get("picks_per_week", 0)),
+                            'pickable_games_per_period': int(request.POST.get("pickable_games_per_period", 10)),
+                            'picks_per_period': int(request.POST.get("picks_per_period", 0)),
                             'key_picks_enabled': request.POST.get("key_picks_enabled") == "on",
                             'number_of_key_picks': int(request.POST.get("number_of_key_picks", 1)),
                             'pick_reminder_emails_enabled': request.POST.get("pick_reminder_emails_enabled") == "on",
                             'tiebreaker': int(request.POST.get("tiebreaker", 0)),
                             'entry_fee': entry_fee_value,
-                            'weekly_payout_percent': weekly_payout_percent_value,
+                            'period_payout_percent': period_payout_percent_value,
                             'season_payout_percent': season_payout_percent_value,
-                            'weekly_payout_structure': weekly_payout_structure,
+                            'period_payout_structure': period_payout_structure,
                             'season_payout_structure': season_payout_structure,
                             'season_payout_last_percent': season_payout_last_percent_value,
-                            'season_end_week': season_end_week,
+                            'season_end_period': season_end_period,
                         }
                     )
                     
@@ -2343,23 +2343,23 @@ def settings_view(request):
                         # Update existing rules
                         league_rules.points_per_correct_pick = int(request.POST.get("points_per_correct_pick", 1))
                         league_rules.key_pick_extra_points = int(request.POST.get("key_pick_extra_points", 1))
-                        league_rules.drop_weeks = int(request.POST.get("drop_weeks", 0))
+                        league_rules.drop_periods = int(request.POST.get("drop_periods", 0))
                         league_rules.against_the_spread_enabled = request.POST.get("against_the_spread_enabled") == "on"
                         league_rules.force_hooks = request.POST.get("force_hooks") == "on"
                         league_rules.spread_lock_weekday = int(request.POST.get("spread_lock_weekday", 2))
-                        league_rules.pickable_games_per_week = int(request.POST.get("pickable_games_per_week", 10))
-                        league_rules.picks_per_week = int(request.POST.get("picks_per_week", 0))
+                        league_rules.pickable_games_per_period = int(request.POST.get("pickable_games_per_period", 10))
+                        league_rules.picks_per_period = int(request.POST.get("picks_per_period", 0))
                         league_rules.key_picks_enabled = request.POST.get("key_picks_enabled") == "on"
                         league_rules.number_of_key_picks = int(request.POST.get("number_of_key_picks", 1))
                         league_rules.pick_reminder_emails_enabled = request.POST.get("pick_reminder_emails_enabled") == "on"
                         league_rules.tiebreaker = int(request.POST.get("tiebreaker", 0))
                         league_rules.entry_fee = entry_fee_value
-                        league_rules.weekly_payout_percent = weekly_payout_percent_value
+                        league_rules.period_payout_percent = period_payout_percent_value
                         league_rules.season_payout_percent = season_payout_percent_value
-                        league_rules.weekly_payout_structure = weekly_payout_structure
+                        league_rules.period_payout_structure = period_payout_structure
                         league_rules.season_payout_structure = season_payout_structure
                         league_rules.season_payout_last_percent = season_payout_last_percent_value
-                        league_rules.season_end_week = season_end_week
+                        league_rules.season_end_period = season_end_period
                         league_rules.save()
                     
                     action_word = "created" if created else "updated"
@@ -2504,9 +2504,9 @@ def settings_view(request):
                     selected_games.append(game_id)
             
             # Check pick limit
-            if league_rules and league_rules.pickable_games_per_week > 0:
-                if len(selected_games) > league_rules.pickable_games_per_week:
-                    messages.error(request, f"You can only select up to {league_rules.pickable_games_per_week} games for this league. You selected {len(selected_games)} games.")
+            if league_rules and league_rules.pickable_games_per_period > 0:
+                if len(selected_games) > league_rules.pickable_games_per_period:
+                    messages.error(request, f"You can only select up to {league_rules.pickable_games_per_period} games for this league. You selected {len(selected_games)} games.")
                     return redirect(f"/settings/?league_id={league.id}")
             
             selected_count = 0
@@ -2606,24 +2606,24 @@ def settings_view(request):
             
             return redirect(f"/settings/?league_id={league.id}")
 
-    # Get current week and its date range
-    current_week = services.schedule.get_display_week_for_league(league)
+    # Get current schedule_period and its date range
+    current_period = services.schedule.get_display_period_for_league(league)
     start, end = None, None
     games = Game.objects.none()
     
-    if current_week:
-        start, end = services.schedule.get_week_datetime_range(current_week)
+    if current_period:
+        start, end = services.schedule.get_period_datetime_range(current_period)
         games = Game.objects.filter(
-            season=current_week.season,
-            kickoff__range=(start, end)
-        ).select_related("home_team", "away_team").order_by("kickoff")
+            season=current_period.season,
+            **services.schedule.period_game_filters(current_period, prefix="")
+        ).select_related("home_team", "away_team").order_by("start_time")
         if league.sport_id == DEFAULT_SPORT:
             games = games.filter(Q(home_team__classification="fbs") | Q(away_team__classification="fbs"))
     
-    # Get existing league games for this week's games (kickoff already scoped above).
-    # Do not filter on selected_at — admins often save the slate before the week starts.
+    # Get existing league games for this schedule_period's games (start_time already scoped above).
+    # Do not filter on selected_at — admins often save the slate before the schedule_period starts.
     league_games_dict = {}
-    if current_week and games.exists():
+    if current_period and games.exists():
         league_games_dict = {
             lg.game_id: lg 
             for lg in LeagueGame.objects.filter(
@@ -2652,13 +2652,13 @@ def settings_view(request):
                 season=active_season
             )
     
-    # Get AP poll rankings for teams (current week)
+    # Get AP poll rankings for teams (current schedule_period)
     team_rankings = {}
-    if active_season and current_week:
-        # Fetch AP poll rankings for current week
+    if active_season and current_period:
+        # Fetch AP poll rankings for current schedule_period
         rankings = Ranking.objects.filter(
             season=active_season,
-            week=current_week,
+            schedule_period=current_period,
             poll='AP Top 25'
         ).select_related('team')
         
@@ -2687,12 +2687,12 @@ def settings_view(request):
         }
     
     # Serialize JSON fields for template
-    weekly_payout_structure_json = "{}"
+    period_payout_structure_json = "{}"
     season_payout_structure_json = "{}"
     if league_rules:
         import json
-        if league_rules.weekly_payout_structure:
-            weekly_payout_structure_json = json.dumps(league_rules.weekly_payout_structure)
+        if league_rules.period_payout_structure:
+            period_payout_structure_json = json.dumps(league_rules.period_payout_structure)
         if league_rules.season_payout_structure:
             season_payout_structure_json = json.dumps(league_rules.season_payout_structure)
     
@@ -2707,10 +2707,10 @@ def settings_view(request):
             .order_by("-created_at")[:50]
         )
 
-    season_weeks = []
+    season_periods = []
     if active_season:
-        season_weeks = list(
-            Week.objects.filter(season=active_season).order_by(
+        season_periods = list(
+            SchedulePeriod.objects.filter(season=active_season).order_by(
                 Case(
                     When(season_type='regular', then=Value(0)),
                     When(season_type='postseason', then=Value(1)),
@@ -2729,8 +2729,8 @@ def settings_view(request):
         "league_rules": league_rules,
         "all_seasons": all_seasons,
         "active_season": active_season,
-        "season_weeks": season_weeks,
-        "weekly_payout_structure_json": weekly_payout_structure_json,
+        "season_periods": season_periods,
+        "period_payout_structure_json": period_payout_structure_json,
         "season_payout_structure_json": season_payout_structure_json,
         "league_member_count": league_member_count,
         "league_announcement_list": league_announcement_list,
@@ -2739,7 +2739,7 @@ def settings_view(request):
         "team_rankings": team_rankings,
         "team_records": team_records,
         "cfbd_enabled": bool(settings.CFBD_API_KEY),
-        "pick_reminder_hours_before_kickoff": settings.PICK_REMINDER_HOURS_BEFORE_KICKOFF,
+        "pick_reminder_hours_before_start_time": settings.PICK_REMINDER_HOURS_BEFORE_KICKOFF,
     }
     return render(request, "cfb/settings.html", context)
 
@@ -2897,9 +2897,9 @@ def picked_team_id_not_in_game(picked_team_id: int, game: Game) -> bool:
     return picked_team_id not in (game.home_team_id, game.away_team_id)
 
 
-def get_league_picks_data(league, week, show_unstarted_picks=False):
+def get_league_picks_data(league, schedule_period, show_unstarted_picks=False):
     """
-    Get league picks data for a specific week.
+    Get league picks data for a specific schedule_period.
     Returns data structure for the league picks table.
     """
     from django.contrib.auth import get_user_model
@@ -2911,23 +2911,23 @@ def get_league_picks_data(league, week, show_unstarted_picks=False):
         league_memberships__is_active=True,
     ).distinct()
     
-    # Get games for this week that are selected for this league
-    start, end = services.schedule.get_week_datetime_range(week)
+    # Get games for this schedule_period that are selected for this league
+    start, end = services.schedule.get_period_datetime_range(schedule_period)
     league_games = LeagueGame.objects.filter(
         league=league,
         is_active=True,
-        game__week=week,
-        game__kickoff__range=(start, end)
-    ).select_related('game__home_team', 'game__away_team').order_by('game__kickoff')
+        game__schedule_period=schedule_period,
+        game__start_time__range=(start, end)
+    ).select_related('game__home_team', 'game__away_team').order_by('game__start_time')
     
     # Get all games (not just started/finished ones)
     games = [lg.game for lg in league_games]
     
-    # Get all picks for this week and league
+    # Get all picks for this schedule_period and league
     picks = Pick.objects.filter(
         league=league,
         game__in=games
-    ).select_related('user', 'picked_team', 'game').order_by('user__username', 'game__kickoff')
+    ).select_related('user', 'picked_team', 'game').order_by('user__username', 'game__start_time')
     
     # Organize picks by user
     picks_by_user = {}
@@ -2953,22 +2953,28 @@ def get_league_picks_data(league, week, show_unstarted_picks=False):
 
 
 @user_passes_test(lambda u: u.is_staff)
+@require_POST
 def admin_import_schedule(request):
-    """Import schedule for the current season using CFBD API."""
-    from .tasks import pull_season_games
-    
-    # Get active season
-    active_season = get_active_season(DEFAULT_SPORT)
-    if not active_season:
-        return JsonResponse({"ok": False, "error": "No active season found"})
-    
-    # Trigger task to pull ALL games for the season
-    pull_season_games(force=True)
-    
-    # Count total games in the season
-    count = Game.objects.filter(season=active_season).count()
-    
-    return JsonResponse({"ok": True, "imported": count, "season": active_season.year})
+    """Explicit, bounded import; never fall back to another sport's provider."""
+    from datetime import date
+    from .services.imports import sync_sport_data
+    from .services.providers import ProviderError
+    sport = get_object_or_404(Sport, pk=request.POST.get("sport", DEFAULT_SPORT), is_active=True)
+    season = get_active_season(sport)
+    if not season:
+        return JsonResponse({"ok": False, "error": "No active season for this sport"}, status=400)
+    try:
+        if sport.data_provider == "cfbd":
+            from .tasks import pull_season_games
+            pull_season_games(season_year=season.year, force=True)
+            result = {"games": season.games.count()}
+        else:
+            start = date.fromisoformat(request.POST.get("start_date", ""))
+            end = date.fromisoformat(request.POST.get("end_date", ""))
+            result = sync_sport_data(season, start=start, end=end, tournament=request.POST.get("tournament") or None, season_type=request.POST.get("season_type") or None, include_lines=request.POST.get("include_lines") == "on", max_requests=3)
+    except (ProviderError, ValidationError, ValueError, KeyError) as exc:
+        return JsonResponse({"ok": False, "error": str(exc)}, status=400)
+    return JsonResponse({"ok": True, "sport": sport.pk, "season": season.year, **result})
 
 
 @user_passes_test(lambda u: u.is_staff)

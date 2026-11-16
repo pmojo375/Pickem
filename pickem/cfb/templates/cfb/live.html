@@ -69,7 +69,7 @@
         }
     }
 
-    .live-week-bar {
+    .live-period-bar {
         position: fixed;
         z-index: 40;
         left: 0.75rem;
@@ -79,29 +79,29 @@
         text-decoration: none;
         color: inherit;
     }
-    .live-week-bar.is-updated {
+    .live-period-bar.is-updated {
         box-shadow: 0 0 0 2px oklch(var(--p)), 0 10px 30px oklch(0% 0 0 / 0.28);
     }
     @media (min-width: 768px) {
-        .live-week-bar {
+        .live-period-bar {
             left: 50%;
             right: auto;
             width: min(36rem, calc(100% - 2rem));
             transform: translateX(-50%);
             bottom: 1.25rem;
         }
-        body:has(.live-week-bar) .main-content {
+        body:has(.live-period-bar) .main-content {
             padding-bottom: 6rem;
         }
-        body:has(.live-week-bar) footer.footer {
+        body:has(.live-period-bar) footer.footer {
             margin-bottom: 5rem;
         }
     }
     @media (max-width: 767px) {
-        .live-week-bar {
+        .live-period-bar {
             z-index: 60; /* Above the bottom navigation (z-index: 50). */
         }
-        body:has(.live-week-bar) .main-content {
+        body:has(.live-period-bar) .main-content {
             padding-bottom: 11rem !important;
         }
     }
@@ -110,7 +110,7 @@
        bar joins that column instead, just above the nav. */
     @supports (-moz-appearance: none) {
         @media (max-width: 767px) {
-            .live-week-bar {
+            .live-period-bar {
                 position: relative;
                 left: auto;
                 right: auto;
@@ -124,7 +124,7 @@
             .btm-nav.bottom-nav {
                 order: 4;
             }
-            body:has(.live-week-bar) .main-content {
+            body:has(.live-period-bar) .main-content {
                 padding-bottom: 1rem !important;
             }
         }
@@ -134,8 +134,8 @@
 
 {% block content %}
 {% if current_league %}
-<div id="live-week-state" hidden
-     data-week-id="{{ live_week.id|default_if_none:'' }}"
+<div id="live-schedule_period-state" hidden
+     data-period-id="{{ live_period.id|default_if_none:'' }}"
      data-endpoint="{% url 'api_live_standing' %}?league_id={{ current_league.id }}"></div>
 {% endif %}
     <div class="mb-6">
@@ -145,8 +145,8 @@
                 <i class="fas fa-play-circle text-primary mr-2"></i>
                 Live Games
             </h1>
-            {% if live_week %}
-            <p class="text-sm text-base-content/60 mb-2">{{ live_week.display_name }}</p>
+            {% if live_period %}
+            <p class="text-sm text-base-content/60 mb-2">{{ live_period.display_name }}</p>
             {% endif %}
             <div class="flex items-center gap-3">
                 <p class="text-base-content/70">Track your picks in real-time</p>
@@ -218,7 +218,7 @@
                     {% team_covered_spread p.game.away_team p.game lg.locked_home_spread as away_covered %}
                     <div data-team-side="away" class="flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-t-lg md:rounded-l-lg md:rounded-tr-none w-full md:w-auto md:flex-1 border-b md:border-b-0 md:border-r-2 border-base-300 {% if p.game.is_final and p.picked_team_id == p.game.away_team.id and p.is_correct %}bg-success/10 ring-4 ring-green-500 z-20{% elif p.game.is_final and p.picked_team_id != p.game.away_team.id and away_covered %}bg-error/10 ring-4 ring-red-500 z-20{% elif p.picked_team_id == p.game.away_team.id %}bg-primary/20 ring-2 ring-primary z-10{% else %}bg-base-200{% endif %}">
                         {% if p.game.away_team|team_logo_url %}
-                        <img src="{% static p.game.away_team|team_logo_url %}" 
+                        <img src="{{ p.game.away_team|team_logo_url }}"
                              alt="{{ p.game.away_team.name }}" 
                              class="team-logo w-10 h-10 md:w-12 md:h-12 object-contain flex-shrink-0" />
                         {% endif %}
@@ -262,10 +262,10 @@
                         {% if p.game.is_final %}
                             <div class="text-center">
                                 <div class="text-2xl md:text-3xl font-bold text-success mb-1">FINAL</div>
-                                <div class="text-xs text-base-content/60">{{ p.game.kickoff|eastern_time }}</div>
+                                <div class="text-xs text-base-content/60">{{ p.game.start_time|eastern_time }}</div>
                             </div>
                         {% else %}
-                            {% if p.game.quarter %}
+                            {% if p.game.period %}
                                 <div class="text-center">
                                     <div class="text-xl md:text-2xl font-bold text-warning animate-pulse mb-1">
                                         {{ p.game.period_display }}
@@ -278,12 +278,12 @@
                                             {{ p.game.down_distance_text }}{% if p.game.ball_on %}<span class="text-base-content/50 font-normal"> · {{ p.game.ball_on }}</span>{% endif %}
                                         {% endif %}
                                     </div>
-                                    <div class="text-xs text-base-content/60 mt-1">{{ p.game.kickoff|eastern_time }}</div>
+                                    <div class="text-xs text-base-content/60 mt-1">{{ p.game.start_time|eastern_time }}</div>
                                 </div>
                             {% else %}
                                 <div class="text-center">
-                                    {% if p.game.kickoff %}
-                                        <div class="text-base md:text-lg font-semibold text-base-content/70 mb-1">{{ p.game.kickoff|eastern_time|default:p.game.kickoff }}</div>
+                                    {% if p.game.start_time %}
+                                        <div class="text-base md:text-lg font-semibold text-base-content/70 mb-1">{{ p.game.start_time|eastern_time|default:p.game.start_time }}</div>
                                         <div class="text-xs text-base-content/50">Scheduled</div>
                                     {% else %}
                                         <div class="text-base md:text-lg font-semibold text-base-content/50">Time TBD</div>
@@ -315,7 +315,7 @@
                     {% team_covered_spread p.game.home_team p.game lg.locked_home_spread as home_covered %}
                     <div data-team-side="home" class="flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-b-lg md:rounded-r-lg md:rounded-bl-none w-full md:w-auto md:flex-1 {% if p.game.is_final and p.picked_team_id == p.game.home_team.id and p.is_correct %}bg-success/10 ring-4 ring-green-500 z-20{% elif p.game.is_final and p.picked_team_id != p.game.home_team.id and home_covered %}bg-error/10 ring-4 ring-red-500 z-20{% elif p.picked_team_id == p.game.home_team.id %}bg-primary/20 ring-2 ring-primary z-10{% else %}bg-base-200{% endif %}">
                         {% if p.game.home_team|team_logo_url %}
-                        <img src="{% static p.game.home_team|team_logo_url %}" 
+                        <img src="{{ p.game.home_team|team_logo_url }}"
                              alt="{{ p.game.home_team.name }}" 
                              class="team-logo w-10 h-10 md:w-12 md:h-12 object-contain flex-shrink-0" />
                         {% endif %}
@@ -385,7 +385,7 @@
         <div class="card-body items-center text-center py-16">
             <i class="fas fa-clipboard-list text-6xl text-base-300 mb-4"></i>
             <h2 class="card-title text-2xl mb-2">No Picks Yet</h2>
-            <p class="text-base-content/70 mb-6">You haven't made any picks for this week.</p>
+            <p class="text-base-content/70 mb-6">You haven't made any picks for this period.</p>
             <a href="/picks/" class="btn btn-primary">
                 <i class="fas fa-hand-pointer mr-2"></i>
                 Make Your Picks
@@ -409,17 +409,17 @@
 
 {% block page_chrome %}
 {% if live_standing %}
-<a id="live-week-bar"
-   class="live-week-bar flex items-center justify-between gap-3 px-4 py-2.5 rounded-2xl bg-base-100/95 border border-base-300 shadow-2xl backdrop-blur-md"
+<a id="live-schedule_period-bar"
+   class="live-schedule_period-bar flex items-center justify-between gap-3 px-4 py-2.5 rounded-2xl bg-base-100/95 border border-base-300 shadow-2xl backdrop-blur-md"
    href="{{ live_standing.standings_url }}"
    data-endpoint="{% url 'api_live_standing' %}?league_id={{ current_league.id }}"
    data-live="{% if live_standing.has_live_games %}true{% else %}false{% endif %}"
    title="Projected standings use current scores; official standings use final games only"
    aria-live="polite"
-   aria-label="{{ live_standing.week_label }}, projected {{ live_standing.rank_label }} of {{ live_standing.field_size }} with {{ live_standing.points }} points; official {{ live_standing.official_rank_label }} with {{ live_standing.official_points }} points">
+   aria-label="{{ live_standing.period_label }}, projected {{ live_standing.rank_label }} of {{ live_standing.field_size }} with {{ live_standing.points }} points; official {{ live_standing.official_rank_label }} with {{ live_standing.official_points }} points">
     <span class="min-w-0">
         <span class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-base-content/60">
-            <span data-live-week-label>{{ live_standing.week_label }}</span>
+            <span data-live-period-label>{{ live_standing.period_label }}</span>
             <span data-live-note
                   class="text-success normal-case tracking-normal {% if not live_standing.has_live_games %}hidden{% endif %}">Projected</span>
         </span>
@@ -461,7 +461,7 @@
     }
 
     function applyLiveStanding(standing) {
-        var bar = document.getElementById('live-week-bar');
+        var bar = document.getElementById('live-schedule_period-bar');
         if (!bar || !standing) {
             return;
         }
@@ -474,7 +474,7 @@
             el.textContent = value;
             changed = true;
         }
-        setText('[data-live-week-label]', standing.week_label);
+        setText('[data-live-period-label]', standing.period_label);
         setText('[data-live-rank]', standing.rank_label);
         setText('[data-live-field]', 'of ' + standing.field_size);
         setText('[data-official-record]', standing.official_record);
@@ -493,7 +493,7 @@
         }
         bar.setAttribute(
             'aria-label',
-            standing.week_label + ', ' + standing.rank_label + ' of ' +
+            standing.period_label + ', ' + standing.rank_label + ' of ' +
             standing.field_size + ', ' + standing.points + ' projected points; official ' + standing.official_rank_label + ', ' + standing.official_record + ' record, ' + standing.official_points + ' points, ' + officialGapLabel(standing)
         );
         if (changed) {
@@ -505,7 +505,7 @@
     }
 
     function refreshLiveStanding() {
-        var state = document.getElementById('live-week-state');
+        var state = document.getElementById('live-schedule_period-state');
         if (!state) {
             return;
         }
@@ -528,16 +528,16 @@
             }
             return response.json();
         }).then(function(data) {
-            if (data && Object.prototype.hasOwnProperty.call(data, 'week_id')) {
-                var weekId = data.week_id == null ? '' : String(data.week_id);
-                if (weekId !== state.dataset.weekId) {
+            if (data && Object.prototype.hasOwnProperty.call(data, 'schedule_period_id')) {
+                var periodId = data.schedule_period_id == null ? '' : String(data.schedule_period_id);
+                if (periodId !== state.dataset.periodId) {
                     window.location.reload();
                     return;
                 }
             }
             if (data && data.standing) {
-                if (!document.getElementById('live-week-bar')) {
-                    // The first score can create a standing after kickoff.
+                if (!document.getElementById('live-schedule_period-bar')) {
+                    // The first score can create a standing after start_time.
                     window.location.reload();
                     return;
                 }
@@ -555,8 +555,8 @@
     }
 
     function scheduleLiveStanding() {
-        var bar = document.getElementById('live-week-bar');
-        if (!document.getElementById('live-week-state')) {
+        var bar = document.getElementById('live-schedule_period-bar');
+        if (!document.getElementById('live-schedule_period-state')) {
             return;
         }
         var delay = 30000;
@@ -571,7 +571,7 @@
         }, delay);
     }
 
-    if (document.getElementById('live-week-state')) {
+    if (document.getElementById('live-schedule_period-state')) {
         scheduleLiveStanding();
         document.addEventListener('visibilitychange', function() {
             if (!document.hidden) {
@@ -724,7 +724,7 @@
                 savedDown = existing.outerHTML;
             }
 
-            var kickoffTimeText = '';
+            var start_timeTimeText = '';
             var timeSelectors = [
                 '.text-base.md\\:text-lg',
                 '.text-xs.text-base-content\\/60'
@@ -732,14 +732,14 @@
             for (var i = 0; i < timeSelectors.length; i++) {
                 var timeElement = statusElement.querySelector(timeSelectors[i]);
                 if (timeElement && timeElement.textContent && timeElement.textContent.indexOf('Scheduled') === -1) {
-                    kickoffTimeText = timeElement.textContent.trim();
+                    start_timeTimeText = timeElement.textContent.trim();
                     break;
                 }
             }
-            if (!kickoffTimeText) {
+            if (!start_timeTimeText) {
                 var timeMatch = (statusElement.textContent || '').match(/(Mon|Tue|Wed|Thu|Fri|Sat|Sun),.*?ET/);
                 if (timeMatch) {
-                    kickoffTimeText = timeMatch[0];
+                    start_timeTimeText = timeMatch[0];
                 }
             }
 
@@ -759,20 +759,20 @@
                 statusHTML =
                     '<div class="text-center">' +
                     '<div class="text-2xl md:text-3xl font-bold text-success mb-1">FINAL</div>' +
-                    (kickoffTimeText ? '<div class="text-xs text-base-content/60">' + kickoffTimeText + '</div>' : '') +
+                    (start_timeTimeText ? '<div class="text-xs text-base-content/60">' + start_timeTimeText + '</div>' : '') +
                     '</div>' + spreadBadgeHTML;
-            } else if (game && game.quarter != null && game.quarter !== '') {
+            } else if (game && game.period != null && game.period !== '') {
                 statusHTML =
                     '<div class="text-center">' +
-                    '<div class="text-xl md:text-2xl font-bold text-warning animate-pulse mb-1">' + escapePeriod(game.period_display || ('Period ' + game.quarter)) + '</div>' +
+                    '<div class="text-xl md:text-2xl font-bold text-warning animate-pulse mb-1">' + escapePeriod(game.period_display || ('Period ' + game.period)) + '</div>' +
                     '<div class="text-sm md:text-base font-semibold text-warning">' + (game.clock || '') + '</div>' +
                     downMarkup(game, savedDown) +
-                    (kickoffTimeText ? '<div class="text-xs text-base-content/60 mt-1">' + kickoffTimeText + '</div>' : '') +
+                    (start_timeTimeText ? '<div class="text-xs text-base-content/60 mt-1">' + start_timeTimeText + '</div>' : '') +
                     '</div>' + spreadBadgeHTML;
             } else {
                 statusHTML =
                     '<div class="text-center">' +
-                    (kickoffTimeText ? '<div class="text-base md:text-lg font-semibold text-base-content/70 mb-1">' + kickoffTimeText + '</div>' : '') +
+                    (start_timeTimeText ? '<div class="text-base md:text-lg font-semibold text-base-content/70 mb-1">' + start_timeTimeText + '</div>' : '') +
                     '<div class="text-xs text-base-content/50">Scheduled</div>' +
                     downMarkup(game, savedDown) +
                     '</div>' + spreadBadgeHTML;

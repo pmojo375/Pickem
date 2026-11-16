@@ -19,7 +19,7 @@ def _home_spread_for_ats(game):
     return None
 
 
-def update_team_records(season_year, dry_run=False):
+def update_team_records(season_year, dry_run=False, sport_id="college-football"):
     """
     Update team win/loss and ATS records based on completed games for a given season.
     
@@ -41,7 +41,7 @@ def update_team_records(season_year, dry_run=False):
         ValueError: If no teams found for the season
     """
     try:
-        season = Season.objects.get(sport_id="college-football", year=season_year)
+        season = Season.objects.get(sport_id=sport_id, year=season_year)
     except Season.DoesNotExist:
         raise Season.DoesNotExist(f'Season {season_year} does not exist')
 
@@ -161,7 +161,7 @@ def update_team_records(season_year, dry_run=False):
     return result
 
 
-def get_team_record_summary(season_year, limit=10):
+def get_team_record_summary(season_year, limit=10, sport_id="college-football"):
     """
     Get a summary of team records for a given season.
     
@@ -173,7 +173,7 @@ def get_team_record_summary(season_year, limit=10):
         list: List of team objects with their records, ordered by wins descending
     """
     try:
-        season = Season.objects.get(sport_id="college-football", year=season_year)
+        season = Season.objects.get(sport_id=sport_id, year=season_year)
     except Season.DoesNotExist:
         raise Season.DoesNotExist(f'Season {season_year} does not exist')
     

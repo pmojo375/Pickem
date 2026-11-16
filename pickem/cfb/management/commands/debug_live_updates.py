@@ -50,9 +50,9 @@ class Command(BaseCommand):
         
         recent_games = Game.objects.filter(
             season=active_season,
-            kickoff__gte=yesterday,
-            kickoff__lte=tomorrow
-        ).order_by('kickoff')
+            start_time__gte=yesterday,
+            start_time__lte=tomorrow
+        ).order_by('start_time')
 
         self.stdout.write(f'   Games in window ({yesterday.date()} to {tomorrow.date()}): {recent_games.count()}')
 
@@ -60,13 +60,13 @@ class Command(BaseCommand):
             self.stdout.write('   Recent games:')
             for game in recent_games[:5]:
                 status = 'FINAL' if game.is_final else (
-                    f'Q{game.quarter} {game.clock}' if game.quarter else 'Not Started'
+                    f'Q{game.period} {game.clock}' if game.period else 'Not Started'
                 )
                 self.stdout.write(
                     f'     • {game.id}: {game.away_team.name} @ {game.home_team.name}'
                 )
                 self.stdout.write(
-                    f'       Kickoff: {game.kickoff.strftime("%Y-%m-%d %H:%M %Z")}'
+                    f'       Kickoff: {game.start_time.strftime("%Y-%m-%d %H:%M %Z")}'
                 )
                 self.stdout.write(
                     f'       Status: {status}, External ID: {game.external_id or "None"}'
@@ -75,15 +75,15 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING('   No recent games found!'))
             
             # Show the most recent game
-            latest = Game.objects.filter(season=active_season).order_by('-kickoff').first()
+            latest = Game.objects.filter(season=active_season).order_by('-start_time').first()
             if latest:
-                self.stdout.write(f'   Most recent game: {latest.kickoff.date()}')
+                self.stdout.write(f'   Most recent game: {latest.start_time.date()}')
 
         # 5. Check live games
         self.stdout.write('\n4. Checking for live games...')
         live_games = Game.objects.filter(
             season=active_season,
-            kickoff__lte=now,
+            start_time__lte=now,
             is_final=False
         ).exclude(
             home_score__isnull=True,
@@ -98,7 +98,7 @@ class Command(BaseCommand):
                     f'     - {game.away_team.abbreviation or game.away_team.name[:4]} '
                     f'{game.away_score or 0} @ '
                     f'{game.home_team.abbreviation or game.home_team.name[:4]} '
-                    f'{game.home_score or 0} - Q{game.quarter or 0}'
+                    f'{game.home_score or 0} - Q{game.period or 0}'
                 )
 
         # 6. Test API endpoint
@@ -110,7 +110,7 @@ class Command(BaseCommand):
         # Simulate what the API returns
         games_for_today = Game.objects.filter(
             season=active_season,
-            kickoff__date=today
+            start_time__date=today
         ).count()
         self.stdout.write(f'   Games scheduled for today: {games_for_today}')
 

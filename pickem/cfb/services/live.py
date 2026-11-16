@@ -60,7 +60,7 @@ def _situation_down_and_distance(competition, is_final: bool) -> tuple[str, str]
     Extract down & distance / ball spot from ESPN competition.situation.
 
     Returns (down_distance_text, ball_on), e.g. ("3rd & 5", "MSST 30").
-    Cleared when the game is final or ESPN has no active down (kickoff/XP/etc).
+    Cleared when the game is final or ESPN has no active down (start_time/XP/etc).
     """
     if is_final:
         return "", ""
@@ -68,7 +68,7 @@ def _situation_down_and_distance(competition, is_final: bool) -> tuple[str, str]
     if not situation:
         return "", ""
 
-    # ESPN uses down/distance of -1 between plays (extra points, kickoffs, etc.)
+    # ESPN uses down/distance of -1 between plays (extra points, start_times, etc.)
     down = situation.get("down")
     try:
         down_num = int(down) if down is not None and down != "" else 0
@@ -142,7 +142,7 @@ def _apply_event_to_game(game: Game, event: dict) -> bool:
     game.home_score = home_score
     game.away_score = away_score
     game.is_final = is_final
-    game.quarter = period
+    game.period = period
     game.clock = clock
     game.possession = possession
     game.down_distance_text = down_distance_text
@@ -152,14 +152,14 @@ def _apply_event_to_game(game: Game, event: dict) -> bool:
             "home_score",
             "away_score",
             "is_final",
-            "quarter",
+            "period",
             "clock",
             "possession",
             "down_distance_text",
             "ball_on",
         ]
     )
-    # Grading + MemberWeek updates happen in the Game post_save signal
+    # Grading + MemberPeriod updates happen in the Game post_save signal
     # (cfb.signals.game_finalized) when the game newly becomes final.
 
     return True
@@ -168,7 +168,7 @@ def _apply_event_to_game(game: Game, event: dict) -> bool:
 def fetch_single_game_score(game: Game) -> bool:
     """
     Fetch score for a single game from ESPN API.
-    Updates Game record with current score, quarter, clock, possession,
+    Updates Game record with current score, period, clock, possession,
     down/distance, and final status.
     
     Returns True if the game was updated, False otherwise.
@@ -180,7 +180,7 @@ def fetch_single_game_score(game: Game) -> bool:
     try:
         import pytz
         eastern = pytz.timezone("America/New_York")
-        game_date = game.kickoff.astimezone(eastern).date()
+        game_date = game.start_time.astimezone(eastern).date()
         params = {"dates": game_date.strftime("%Y%m%d"), "limit": 300}
 
         data = _fetch_scoreboard(params, sport=game.season.sport)
@@ -200,34 +200,34 @@ def fetch_single_game_score(game: Game) -> bool:
 
 def grade_picks_for_game(game: Game) -> int:
     """
-    Grade picks and refresh MemberWeek/MemberSeason for a completed game.
+    Grade picks and refresh MemberPeriod/MemberSeason for a completed game.
 
-    Delegates to scoring.update_member_week_for_game so ATS / force_hooks /
+    Delegates to scoring.update_member_period_for_game so ATS / force_hooks /
     push handling stays in one place.
     """
-    from .scoring import update_member_week_for_game
+    from .scoring import update_member_period_for_game
 
-    return update_member_week_for_game(game)
+    return update_member_period_for_game(game)
 
 
 def fetch_and_store_live_scores() -> int:
     """
     Fetch live scores from ESPN API for games that have started or finished.
-    Updates Game records with current scores, quarter, clock, possession,
+    Updates Game records with current scores, period, clock, possession,
     down/distance, and final status.
     """
     import pytz
 
     updated = 0
     
-    # Get all games from the current week that aren't finalized yet or need checking
+    # Get all games from the current schedule_period that aren't finalized yet or need checking
     now = timezone.now()
-    start_of_week = now - timedelta(days=7)
+    start_of_period = now - timedelta(days=7)
     
     # Get all games in current window for the active season
     games_qs = Game.objects.filter(
-        kickoff__gte=start_of_week,
-        kickoff__lte=now + timedelta(days=1)
+        start_time__gte=start_of_period,
+        start_time__lte=now + timedelta(days=1)
     ).filter(season__is_active=True).select_related('home_team', 'away_team', 'season__sport')
 
     games = list(games_qs)
@@ -243,7 +243,7 @@ def fetch_and_store_live_scores() -> int:
         if not sport.is_active or not sport.scoreboard_urls:
             continue
         events = events_by_sport[sport_id] = {}
-        sport_dates = {game.kickoff.astimezone(eastern).date() for game in games if game.season.sport_id == sport_id}
+        sport_dates = {game.start_time.astimezone(eastern).date() for game in games if game.season.sport_id == sport_id}
         for check_date in sorted(sport_dates):
             try:
                 params = {"dates": check_date.strftime("%Y%m%d"), "limit": 300}

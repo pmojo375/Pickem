@@ -14,7 +14,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth.models import User
 from django.db import transaction
 from cfb.models import (
-    League, Season, Week, Game, Team, GameSpread, LeagueGame, Pick
+    League, Season, SchedulePeriod, Game, Team, GameSpread, LeagueGame, Pick
 )
 
 logger = logging.getLogger(__name__)
@@ -198,7 +198,7 @@ class Command(BaseCommand):
                         defaults={
                             'home_spread': home_spread,
                             'away_spread': away_spread,
-                            'week': game.week,
+                            'schedule_period': game.schedule_period,
                         }
                     )
 
@@ -239,7 +239,7 @@ class Command(BaseCommand):
         with transaction.atomic():
             for pick_row in picks_data:
                 try:
-                    week_title = pick_row.get('week_title', '').strip()
+                    period_title = pick_row.get('period_title', '').strip()
                     player_name = pick_row.get('player', '').strip()
                     col_index = int(pick_row.get('col_index', -1))
                     picked_team_name = pick_row.get('picked_team_full', '').strip()
@@ -324,34 +324,34 @@ class Command(BaseCommand):
                             error_count += 1
                             continue
 
-                    # Find the game using col_index and week title
-                    # Extract week number from week_title (e.g., "Week 8 Winners" -> 8)
-                    week_num_str = ''.join(filter(str.isdigit, week_title.split()[1] if len(week_title.split()) > 1 else ''))
+                    # Find the game using col_index and schedule_period title
+                    # Extract schedule_period number from period_title (e.g., "SchedulePeriod 8 Winners" -> 8)
+                    period_num_str = ''.join(filter(str.isdigit, period_title.split()[1] if len(period_title.split()) > 1 else ''))
                     
-                    if not week_num_str:
+                    if not period_num_str:
                         self.stdout.write(
                             self.style.WARNING(
-                                f'Could not parse week number from: {week_title}'
+                                f'Could not parse schedule_period number from: {period_title}'
                             )
                         )
                         error_count += 1
                         continue
 
-                    week_num = int(week_num_str)
+                    period_num = int(period_num_str)
 
                     try:
-                        # Try to find week with specified season_type
-                        week = Week.objects.get(season=season, number=week_num, season_type=season_type)
-                    except Week.DoesNotExist:
+                        # Try to find schedule_period with specified season_type
+                        schedule_period = SchedulePeriod.objects.get(season=season, number=period_num, season_type=season_type)
+                    except SchedulePeriod.DoesNotExist:
                         # If specified season_type not found, try any season type
                         try:
-                            week = Week.objects.filter(season=season, number=week_num).first()
-                            if not week:
-                                raise Week.DoesNotExist
-                        except Week.DoesNotExist:
+                            schedule_period = SchedulePeriod.objects.filter(season=season, number=period_num).first()
+                            if not schedule_period:
+                                raise SchedulePeriod.DoesNotExist
+                        except SchedulePeriod.DoesNotExist:
                             self.stdout.write(
                                 self.style.WARNING(
-                                    f'Week {week_num} not found for season {season.year}'
+                                    f'SchedulePeriod {period_num} not found for season {season.year}'
                                 )
                             )
                             error_count += 1
@@ -359,20 +359,20 @@ class Command(BaseCommand):
                     except Exception as e:
                         self.stdout.write(
                             self.style.WARNING(
-                                f'Error finding week {week_num}: {str(e)}'
+                                f'Error finding schedule_period {period_num}: {str(e)}'
                             )
                         )
                         error_count += 1
                         continue
 
-                    # Find the game by matching the picked_team to a game in this week
+                    # Find the game by matching the picked_team to a game in this schedule_period
                     # This is more reliable than col_index which can vary in ordering
                     game = None
-                    week_games = week.games.select_related('home_team', 'away_team').all()
+                    period_games = schedule_period.games.select_related('home_team', 'away_team').all()
                     
                     picked_team_normalized = normalize_unicode(picked_team.name).lower()
                     
-                    for wg in week_games:
+                    for wg in period_games:
                         # Check if picked_team matches either home or away team
                         home_normalized = normalize_unicode(wg.home_team.name).lower()
                         away_normalized = normalize_unicode(wg.away_team.name).lower()
@@ -385,7 +385,7 @@ class Command(BaseCommand):
                     if not game:
                         self.stdout.write(
                             self.style.WARNING(
-                                f'Could not find game for {picked_team.name} in week {week_num} for {player_name}'
+                                f'Could not find game for {picked_team.name} in schedule_period {period_num} for {player_name}'
                             )
                         )
                         error_count += 1

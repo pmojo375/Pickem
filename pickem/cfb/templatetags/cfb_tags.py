@@ -10,10 +10,16 @@ register = template.Library()
 
 @register.filter
 def team_logo_url(team):
-    """Return the static URL for a team's logo based on CFBD ID"""
-    if team and team.cfbd_id:
-        return f'logos/{team.cfbd_id}.png'
+    """Use provider logos, with the existing local football assets as fallback."""
+    from django.templatetags.static import static
+    if not team:
+        return None
+    if team.logo_url and team.logo_url.startswith(("https://", "http://")):
+        return team.logo_url
+    if team.sport_id == "college-football" and team.cfbd_id:
+        return static(f"logos/{team.cfbd_id}.png")
     return None
+
 
 
 @register.filter
@@ -72,15 +78,15 @@ def has_started(game):
     """
     Check if a game has started.
     A game has started if:
-    - It has a quarter value (in progress or finished)
-    - OR the current time is past the kickoff time
+    - It has a period value (in progress or finished)
+    - OR the current time is past the start_time time
     """
-    if game.quarter is not None:
+    if game.period is not None:
         return True
     
-    if game.kickoff:
+    if game.start_time:
         now = timezone.now()
-        return now >= game.kickoff
+        return now >= game.start_time
     
     return False
 

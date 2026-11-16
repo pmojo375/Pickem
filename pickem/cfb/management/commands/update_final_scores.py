@@ -4,7 +4,7 @@ Useful for backfilling or ensuring all final games have updated scores.
 """
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
-from cfb.models import Season, Game, Week
+from cfb.models import Season, Game, SchedulePeriod
 from cfb.services.live import fetch_and_store_live_scores
 import logging
 
@@ -22,9 +22,9 @@ class Command(BaseCommand):
             default=None
         )
         parser.add_argument(
-            '--week',
+            '--period', '--week', dest='schedule_period',
             type=int,
-            help='Specific week to update (optional). If omitted, updates all weeks.',
+            help='Specific schedule_period to update (optional). If omitted, updates all schedule_periods.',
             default=None
         )
         parser.add_argument(
@@ -41,7 +41,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         season_year = options.get('season')
-        week = options.get('week')
+        schedule_period = options.get('schedule_period')
         days = options['days']
         dry_run = options['dry_run']
 
@@ -53,9 +53,9 @@ class Command(BaseCommand):
         lookback_date = now - timezone.timedelta(days=days)
 
         games_query = Game.objects.filter(
-            kickoff__gte=lookback_date,
-            kickoff__lte=now
-        ).select_related('home_team', 'away_team', 'week', 'season')
+            start_time__gte=lookback_date,
+            start_time__lte=now
+        ).select_related('home_team', 'away_team', 'schedule_period', 'season')
 
         # Apply season filter if provided
         if season_year:
@@ -65,16 +65,16 @@ class Command(BaseCommand):
             except Season.DoesNotExist:
                 raise CommandError(f'Season {season_year} does not exist')
         
-        # Apply week filter if provided
-        if week and season_year:
+        # Apply schedule_period filter if provided
+        if schedule_period and season_year:
             try:
-                week_obj = Week.objects.get(season=season, number=week, season_type='regular')
-                games_query = games_query.filter(week=week_obj)
-            except Week.DoesNotExist:
-                raise CommandError(f'Week {week} does not exist for season {season_year}')
+                period_obj = SchedulePeriod.objects.get(season=season, number=schedule_period, season_type='regular')
+                games_query = games_query.filter(schedule_period=period_obj)
+            except SchedulePeriod.DoesNotExist:
+                raise CommandError(f'SchedulePeriod {schedule_period} does not exist for season {season_year}')
 
         # Get games that have started
-        games = games_query.filter(kickoff__lte=now)
+        games = games_query.filter(start_time__lte=now)
         
         initial_count = games.count()
         

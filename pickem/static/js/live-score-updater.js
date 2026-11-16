@@ -211,7 +211,7 @@ class LiveScoreUpdater {
             }
             
             // Ask for the games rendered on this page. Fetching the first 500
-            // games in kickoff order can omit games later in the season.
+            // games in start_time order can omit games later in the season.
             const query = new URLSearchParams({
                 ids: gameIds.join(','),
                 limit: String(gameIds.length)
@@ -283,7 +283,7 @@ class LiveScoreUpdater {
             
             if (!existingGame) {
                 // First sight of this game: store state, but do NOT rebuild the status
-                // block. SSR already has quarter/clock/down-distance; a full
+                // block. SSR already has period/clock/down-distance; a full
                 // updateGameStatus here was wiping down/distance a second after load
                 // (especially with a stale cached live-score-updater.js).
                 this.state.gamesData.set(game.id, game);
@@ -308,7 +308,7 @@ class LiveScoreUpdater {
                     this.updateGameUI(game, initialChanges);
                 }
 
-                // If kickoff has passed and scores are still null, upgrade "—" → "0"
+                // If start_time has passed and scores are still null, upgrade "—" → "0"
                 if (
                     (game.home_score === null || game.away_score === null) &&
                     this.isGameStarted(game)
@@ -390,24 +390,24 @@ class LiveScoreUpdater {
      * Check if a game is currently live
      */
     isGameLive(game) {
-        return !game.is_final && game.quarter > 0;
+        return !game.is_final && game.period > 0;
     }
 
     /**
-     * Check if a game has started (kickoff passed or quarter set).
-     * Matches server-side has_started: any non-null quarter counts.
+     * Check if a game has started (start_time passed or period set).
+     * Matches server-side has_started: any non-null period counts.
      */
     isGameStarted(game) {
         if (!game) {
             return false;
         }
-        if (game.quarter != null) {
+        if (game.period != null) {
             return true;
         }
-        if (game.kickoff) {
-            const kickoff = new Date(game.kickoff);
-            if (!Number.isNaN(kickoff.getTime())) {
-                return kickoff <= new Date();
+        if (game.start_time) {
+            const start_time = new Date(game.start_time);
+            if (!Number.isNaN(start_time.getTime())) {
+                return start_time <= new Date();
             }
         }
         return false;
@@ -436,12 +436,12 @@ class LiveScoreUpdater {
             });
         }
         
-        // Check quarter/period changes
-        if (oldGame.quarter !== newGame.quarter) {
+        // Check period/period changes
+        if (oldGame.period !== newGame.period) {
             changes.push({
-                type: 'quarter',
-                old: oldGame.quarter,
-                new: newGame.quarter
+                type: 'period',
+                old: oldGame.period,
+                new: newGame.period
             });
         }
         
@@ -517,7 +517,7 @@ class LiveScoreUpdater {
                     this.updateScore(gameElement, 'away', game.away_score, game);
                     break;
                     
-                case 'quarter':
+                case 'period':
                 case 'clock':
                     this.updateGameStatus(gameElement, game);
                     break;
@@ -868,7 +868,7 @@ class LiveScoreUpdater {
                 return String(asNum);
             }
         }
-        // Missing score after kickoff → show 0; pregame → don't touch SSR
+        // Missing score after start_time → show 0; pregame → don't touch SSR
         if ((score === null || score === undefined || score === '') && this.isGameStarted(game)) {
             return '0';
         }
@@ -914,7 +914,7 @@ class LiveScoreUpdater {
     }
     
     /**
-     * Update game status (quarter, clock, final)
+     * Update game status (period, clock, final)
      */
     updateGameStatus(gameElement, game) {
         const statusElement = gameElement.querySelector('[data-game-status]');
@@ -924,9 +924,9 @@ class LiveScoreUpdater {
             return;
         }
         
-        // Get the kickoff time from the page (already formatted)
+        // Get the start_time time from the page (already formatted)
         // Try to extract from any existing time display
-        let kickoffTimeText = '';
+        let start_timeTimeText = '';
         
         // Look for the main time text (not the "Scheduled" label)
         // Try multiple selectors since the class varies by game state
@@ -938,17 +938,17 @@ class LiveScoreUpdater {
         for (const selector of timeSelectors) {
             const timeElement = statusElement.querySelector(selector);
             if (timeElement && timeElement.textContent && !timeElement.textContent.includes('Scheduled')) {
-                kickoffTimeText = timeElement.textContent.trim();
+                start_timeTimeText = timeElement.textContent.trim();
                 break;
             }
         }
         
         // Fallback: if no time found, look for ANY text that looks like a date/time
-        if (!kickoffTimeText) {
+        if (!start_timeTimeText) {
             const allText = statusElement.textContent;
             const timeMatch = allText.match(/(Mon|Tue|Wed|Thu|Fri|Sat|Sun),.*?ET/);
             if (timeMatch) {
-                kickoffTimeText = timeMatch[0];
+                start_timeTimeText = timeMatch[0];
             }
         }
         
@@ -978,10 +978,10 @@ class LiveScoreUpdater {
             statusHTML = `
 <div class="text-center">
     <div class="text-2xl md:text-3xl font-bold text-success mb-1">FINAL</div>
-    ${kickoffTimeText ? `<div class="text-xs text-base-content/60">${kickoffTimeText}</div>` : ''}
+    ${start_timeTimeText ? `<div class="text-xs text-base-content/60">${start_timeTimeText}</div>` : ''}
 </div>
 ${spreadBadgeHTML}`;
-        } else if (game.quarter != null && game.quarter !== '') {
+        } else if (game.period != null && game.period !== '') {
             const downText = game.down_distance_text || '';
             const ballOn = game.ball_on || '';
             let downHTML;
@@ -995,17 +995,17 @@ ${spreadBadgeHTML}`;
             statusHTML = `
 <div class="text-center">
     <div class="text-xl md:text-2xl font-bold text-warning animate-pulse mb-1">
-        ${this.escapeHTML(game.period_display || `Period ${game.quarter}`)}
+        ${this.escapeHTML(game.period_display || `Period ${game.period}`)}
     </div>
     <div class="text-sm md:text-base font-semibold text-warning">${game.clock || ''}</div>
     ${downHTML}
-    ${kickoffTimeText ? `<div class="text-xs text-base-content/60 mt-1">${kickoffTimeText}</div>` : ''}
+    ${start_timeTimeText ? `<div class="text-xs text-base-content/60 mt-1">${start_timeTimeText}</div>` : ''}
 </div>
 ${spreadBadgeHTML}`;
         } else {
             statusHTML = `
 <div class="text-center">
-    ${kickoffTimeText ? `<div class="text-base md:text-lg font-semibold text-base-content/70 mb-1">${kickoffTimeText}</div>` : ''}
+    ${start_timeTimeText ? `<div class="text-base md:text-lg font-semibold text-base-content/70 mb-1">${start_timeTimeText}</div>` : ''}
     <div class="text-xs text-base-content/50">Scheduled</div>
 </div>
 ${spreadBadgeHTML}`;

@@ -1,14 +1,14 @@
 """
-Management command to recalculate member week and season statistics.
+Management command to recalculate member schedule_period and season statistics.
 Useful for catching up after migrations or fixing scoring issues.
 """
 from django.core.management.base import BaseCommand, CommandError
 from cfb.models import Season, Game
-from cfb.services.scoring import recalculate_all_member_stats, update_member_week_for_game
+from cfb.services.scoring import recalculate_all_member_stats, update_member_period_for_game
 
 
 class Command(BaseCommand):
-    help = 'Recalculate member week and season statistics for a given season'
+    help = 'Recalculate member schedule_period and season statistics for a given season'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -61,7 +61,7 @@ class Command(BaseCommand):
             
             graded_count = 0
             for game in final_games:
-                result = update_member_week_for_game(game)
+                result = update_member_period_for_game(game)
                 if result > 0:
                     graded_count += result
                     self.stdout.write(
@@ -82,7 +82,7 @@ class Command(BaseCommand):
         # Display results
         self.stdout.write(self.style.SUCCESS('\n✓ Recalculation complete!'))
         self.stdout.write(f'  Leagues processed: {result["leagues_processed"]}')
-        self.stdout.write(f'  MemberWeek records updated: {result["member_weeks_updated"]}')
+        self.stdout.write(f'  MemberPeriod records updated: {result["member_periods_updated"]}')
         self.stdout.write(f'  MemberSeason records updated: {result["member_seasons_updated"]}')
 
         if result['errors']:

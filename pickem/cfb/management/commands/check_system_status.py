@@ -69,14 +69,14 @@ class Command(BaseCommand):
             
             recent_games = Game.objects.filter(
                 season=active_season,
-                kickoff__gte=now - timedelta(days=2),
-                kickoff__lte=now + timedelta(days=1)
-            ).order_by('kickoff')[:10]
+                start_time__gte=now - timedelta(days=2),
+                start_time__lte=now + timedelta(days=1)
+            ).order_by('start_time')[:10]
 
             if recent_games:
                 for game in recent_games:
                     status = 'FINAL' if game.is_final else (
-                        f'Q{game.quarter} {game.clock}' if game.quarter else 'Not Started'
+                        f'Q{game.period} {game.clock}' if game.period else 'Not Started'
                     )
                     score = f'{game.away_score or "-"} @ {game.home_score or "-"}'
                     self.stdout.write(

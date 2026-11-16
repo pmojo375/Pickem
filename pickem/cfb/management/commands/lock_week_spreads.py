@@ -1,5 +1,5 @@
 """
-Management command to lock the current (most updated) spreads for a week.
+Management command to lock the current (most updated) spreads for a schedule_period.
 
 Sets locked_home_spread / locked_away_spread on LeagueGame from each Game's
 current_home_spread / current_away_spread.
@@ -8,11 +8,11 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
 
-from cfb.models import LeagueGame, Season, Week
+from cfb.models import LeagueGame, Season, SchedulePeriod
 
 
 class Command(BaseCommand):
-    help = 'Lock current spreads onto league games for a given week'
+    help = 'Lock current spreads onto league games for a given schedule_period'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -21,9 +21,9 @@ class Command(BaseCommand):
             help='Season year (e.g., 2025)',
         )
         parser.add_argument(
-            'week',
+            'schedule_period',
             type=int,
-            help='Week number (e.g., 1, 2, 3...)',
+            help='SchedulePeriod number (e.g., 1, 2, 3...)',
         )
         parser.add_argument(
             '--season-type',
@@ -50,7 +50,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         season_year = options['season']
-        week_num = options['week']
+        period_num = options['schedule_period']
         season_type = options['season_type']
         league_name = options.get('league')
         force = options['force']
@@ -62,24 +62,24 @@ class Command(BaseCommand):
             raise CommandError(f'Season {season_year} does not exist')
 
         try:
-            week = Week.objects.get(
+            schedule_period = SchedulePeriod.objects.get(
                 season=season,
-                number=week_num,
+                number=period_num,
                 season_type=season_type,
             )
-        except Week.DoesNotExist:
+        except SchedulePeriod.DoesNotExist:
             raise CommandError(
-                f'Week {week_num} ({season_type}) does not exist for season {season_year}'
+                f'SchedulePeriod {period_num} ({season_type}) does not exist for season {season_year}'
             )
 
         self.stdout.write(
             self.style.SUCCESS(
-                f'Locking current spreads for {season_year} {season_type} week {week_num}'
+                f'Locking current spreads for {season_year} {season_type} schedule_period {period_num}'
             )
         )
 
         league_games = LeagueGame.objects.filter(
-            game__week=week,
+            game__schedule_period=schedule_period,
             is_active=True,
         ).select_related('game', 'game__home_team', 'game__away_team', 'league')
 

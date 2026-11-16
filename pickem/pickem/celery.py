@@ -40,6 +40,7 @@ def debug_task(self):
 # Dynamic Celery Beat schedule
 # The actual interval is determined by the live state in Redis
 app.conf.beat_schedule = {
+    "lock-active-sport-spreads": {"task": "cfb.tasks.lock_active_sport_spreads", "schedule": 600.0, "options": {"expires": 540}},
     'poll-espn-scores': {
         'task': 'cfb.tasks.poll_espn_scores',
         'schedule': 60.0,  # Run every minute by default, task will self-regulate
@@ -56,7 +57,7 @@ app.conf.beat_schedule = {
         'schedule': crontab(minute='*/15'),  # Every 15 minutes
         'options': {'expires': 600},
     },
-    # Sync all season games once weekly on Monday at 6 AM
+    # Sync all season games weekly on Monday at 6 AM
     'sync-season-games': {
         'task': 'cfb.tasks.pull_season_games',
         'schedule': crontab(day_of_week=1, hour=6, minute=0),  # Monday at 6 AM
@@ -81,7 +82,7 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour=9, minute=0),  # Daily at 9 AM
         'options': {'expires': 3600},
     },
-    # Incomplete-pick reminders relative to each league's first kickoff
+    # Incomplete-pick reminders relative to each league's first game start
     'send-pick-reminders': {
         'task': 'cfb.tasks.send_pick_reminders',
         'schedule': 600.0,  # Every 10 minutes

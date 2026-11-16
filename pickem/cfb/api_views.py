@@ -54,15 +54,19 @@ def _serialize_game(game: Game, include_cached_data: bool = True) -> Dict[str, A
         'sport': game.season.sport_id,
         'season_id': game.season_id,
         'provider_ids': game.provider_ids,
-        'start_time': game.kickoff.isoformat(),
-        'period': game.quarter,
+        'tournament': game.tournament,
+        'home_seed': game.home_seed,
+        'away_seed': game.away_seed,
+        'schedule_period': {'id': game.schedule_period_id, 'name': game.schedule_period.display_name, 'kind': game.schedule_period.kind} if game.schedule_period_id else None,
+        'start_time': game.start_time.isoformat(),
+        'period': game.period,
         'period_display': game.period_display,
         'home_team': _serialize_team(game.home_team, game.season.sport_id),
         'away_team': _serialize_team(game.away_team, game.season.sport_id),
-        'kickoff': game.kickoff.isoformat(),
+        'kickoff': game.start_time.isoformat(),
         'home_score': game.home_score,
         'away_score': game.away_score,
-        'quarter': game.quarter,
+        'quarter': game.period,
         'clock': game.clock,
         'has_possession': game.season.sport.has_possession,
         'has_downs': game.season.sport.has_downs,
@@ -71,8 +75,8 @@ def _serialize_game(game: Game, include_cached_data: bool = True) -> Dict[str, A
         'ball_on': game.ball_on or '',
         'is_final': game.is_final,
         'spread': {
-            'home': float(game.current_home_spread) if game.current_home_spread else None,
-            'away': float(game.current_away_spread) if game.current_away_spread else None,
+            'home': float(game.current_home_spread) if game.current_home_spread is not None else None,
+            'away': float(game.current_away_spread) if game.current_away_spread is not None else None,
         },
     }
 
@@ -120,8 +124,9 @@ def games_list(request):
         games = Game.objects.select_related(
             'home_team',
             'away_team',
-            'season__sport'
-        ).order_by('kickoff')
+            'season__sport',
+            'schedule_period'
+        ).order_by('start_time')
 
         # Filter by season
         if season_year:
@@ -144,7 +149,7 @@ def games_list(request):
 
         # Let polling clients request exactly the games rendered on the page.
         # This must happen before slicing so late-season games are not hidden by
-        # the endpoint's kickoff ordering and result limit.
+        # the endpoint's start_time ordering and result limit.
         if game_ids:
             try:
                 requested_ids = {
@@ -166,7 +171,7 @@ def games_list(request):
                     datetime.combine(target_date, datetime.min.time())
                 )
                 end_of_day = start_of_day + timedelta(days=1)
-                games = games.filter(kickoff__gte=start_of_day, kickoff__lt=end_of_day)
+                games = games.filter(start_time__gte=start_of_day, start_time__lt=end_of_day)
             except ValueError:
                 return JsonResponse({
                     'error': 'Invalid date format. Use YYYY-MM-DD'
@@ -177,7 +182,7 @@ def games_list(request):
             # Live games are those that have started but not finished
             now = timezone.now()
             games = games.filter(
-                kickoff__lte=now,
+                start_time__lte=now,
                 is_final=False
             ).exclude(
                 home_score__isnull=True,
@@ -239,7 +244,8 @@ def game_detail(request, game_id):
         game = Game.objects.select_related(
             'home_team',
             'away_team',
-            'season__sport'
+            'season__sport',
+            'schedule_period'
         ).get(id=game_id)
 
         game_data = _serialize_game(game, include_cached_data=True)
@@ -290,15 +296,16 @@ def live_games(request):
         live_games_qs = Game.objects.select_related(
             'home_team',
             'away_team',
-            'season__sport'
+            'season__sport',
+            'schedule_period'
         ).filter(
             season=active_season,
-            kickoff__lte=now,
+            start_time__lte=now,
             is_final=False
         ).exclude(
             home_score__isnull=True,
             away_score__isnull=True
-        ).order_by('kickoff')
+        ).order_by('start_time')
 
         game_list = [_serialize_game(game) for game in live_games_qs]
 
@@ -345,12 +352,13 @@ def upcoming_games(request):
         upcoming_games_qs = Game.objects.select_related(
             'home_team',
             'away_team',
-            'season__sport'
+            'season__sport',
+            'schedule_period'
         ).filter(
             season=active_season,
-            kickoff__gte=now,
-            kickoff__lte=end_date
-        ).order_by('kickoff')[:100]
+            start_time__gte=now,
+            start_time__lte=end_date
+        ).order_by('start_time')[:100]
 
         game_list = [_serialize_game(game) for game in upcoming_games_qs]
 
@@ -541,10 +549,10 @@ def game_spread_history(request, game_id):
                 'name': game.away_team.name,
                 'abbreviation': game.away_team.abbreviation or game.away_team.name[:4].upper()
             },
-            'kickoff': game.kickoff.isoformat(),
+            'start_time': game.start_time.isoformat(),
             'current_spread': {
-                'home': float(game.current_home_spread) if game.current_home_spread else None,
-                'away': float(game.current_away_spread) if game.current_away_spread else None
+                'home': float(game.current_home_spread) if game.current_home_spread is not None else None,
+                'away': float(game.current_away_spread) if game.current_away_spread is not None else None
             },
             'opening_spread': {
                 'home': float(game.opening_home_spread) if game.opening_home_spread else None,

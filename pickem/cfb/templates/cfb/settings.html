@@ -12,7 +12,7 @@
                 <i class="fas fa-cog text-primary mr-2"></i>
                 League Settings
             </h1>
-            <p class="text-base-content/70">Manage league rules and this week's pickable games</p>
+            <p class="text-base-content/70">Manage league rules and this period's pickable games</p>
         </div>
         
         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
@@ -119,21 +119,21 @@
                     </label>
                 </div>
                 
-                <!-- Drop Weeks -->
+                <!-- Drop Periods -->
                 <div class="form-control">
                     <label class="label">
                         <span class="label-text font-semibold">
                             <i class="fas fa-calendar-times text-info mr-1"></i>
-                            Drop Worst Weeks
+                            Drop Worst Periods
                         </span>
                     </label>
                     <input type="number" 
-                           name="drop_weeks" 
-                           value="{{ league_rules.drop_weeks }}" 
+                           name="drop_periods"
+                           value="{{ league_rules.drop_periods }}"
                            min="0"
                            class="input input-bordered" />
                     <label class="label">
-                        <span class="label-text-alt text-base-content/60">Number of worst weeks to drop from season standings (0 = drop none)</span>
+                        <span class="label-text-alt text-base-content/60">Number of worst periods to drop from season standings (0 = drop none)</span>
                     </label>
                 </div>
                 
@@ -194,35 +194,35 @@
                     </label>
                 </div>
                 
-                <!-- Pickable Games per Week -->
+                <!-- Pickable Games per Period -->
                 <div class="form-control">
                     <label class="label">
                         <span class="label-text font-semibold">
                             <i class="fas fa-football text-success mr-1"></i>
-                            Pickable Games per Week
+                            Pickable Games per Period
                         </span>
                     </label>
                     <input type="number" 
-                           name="pickable_games_per_week" 
-                           value="{{ league_rules.pickable_games_per_week }}" 
+                           name="pickable_games_per_period"
+                           value="{{ league_rules.pickable_games_per_period }}"
                            min="1"
                            class="input input-bordered" />
                     <label class="label">
-                        <span class="label-text-alt text-base-content/60">Max games available for picking weekly</span>
+                        <span class="label-text-alt text-base-content/60">Max games available for picking period</span>
                     </label>
                 </div>
                 
-                <!-- Picks per Week -->
+                <!-- Picks per Period -->
                 <div class="form-control">
                     <label class="label">
                         <span class="label-text font-semibold">
                             <i class="fas fa-list-check text-primary mr-1"></i>
-                            Required Picks per Week
+                            Required Picks per Period
                         </span>
                     </label>
                     <input type="number" 
-                           name="picks_per_week" 
-                           value="{{ league_rules.picks_per_week }}" 
+                           name="picks_per_period"
+                           value="{{ league_rules.picks_per_period }}"
                            min="0"
                            class="input input-bordered" />
                     <label class="label">
@@ -252,7 +252,7 @@
                     <label class="label">
                         <span class="label-text font-semibold">
                             <i class="fas fa-hashtag text-warning mr-1"></i>
-                            Key Picks per Week
+                            Key Picks per Period
                         </span>
                     </label>
                     <input type="number" 
@@ -261,7 +261,7 @@
                            min="0"
                            class="input input-bordered" />
                     <label class="label">
-                        <span class="label-text-alt text-base-content/60">Number of key picks allowed weekly</span>
+                        <span class="label-text-alt text-base-content/60">Number of key picks allowed period</span>
                     </label>
                 </div>
 
@@ -279,8 +279,8 @@
                             </span>
                             <p class="text-sm text-base-content/60">
                                 Email members who haven't finished their picks or key picks
-                                {{ pick_reminder_hours_before_kickoff }} hour{{ pick_reminder_hours_before_kickoff|pluralize }}
-                                before the week's first kickoff
+                                {{ pick_reminder_hours_before_start_time }} hour{{ pick_reminder_hours_before_start_time|pluralize }}
+                                before the period's first start time
                             </p>
                         </div>
                     </label>
@@ -335,24 +335,24 @@
                     </label>
                 </div>
                 
-                <!-- Weekly Payout Percent -->
+                <!-- Period Payout Percent -->
                 <div class="form-control">
                     <label class="label">
                         <span class="label-text font-semibold">
                             <i class="fas fa-calendar-week text-info mr-1"></i>
-                            Weekly Payout Percent
+                            Period Payout Percent
                         </span>
                     </label>
                     <input type="number" 
-                           name="weekly_payout_percent" 
-                           id="weekly_payout_percent"
-                           value="{% if league_rules.weekly_payout_percent %}{{ league_rules.weekly_payout_percent }}{% endif %}" 
+                           name="period_payout_percent"
+                           id="period_payout_percent"
+                           value="{% if league_rules.period_payout_percent %}{{ league_rules.period_payout_percent }}{% endif %}"
                            min="0"
                            max="100"
                            step="0.01"
                            class="input input-bordered" />
                     <label class="label">
-                        <span class="label-text-alt text-base-content/60">Percent of pool allocated to weekly winners</span>
+                        <span class="label-text-alt text-base-content/60">Percent of pool allocated to period winners</span>
                     </label>
                 </div>
                 
@@ -378,16 +378,16 @@
                 </div>
             </div>
             
-            <!-- Weekly Payout Structure -->
-            <div id="weekly-payout-structure-section" class="mt-4" style="display: none;">
+            <!-- Period Payout Structure -->
+            <div id="period-payout-structure-section" class="mt-4" style="display: none;">
                 <div class="card bg-base-200 border-2 border-info">
                     <div class="card-body p-4">
                         <h3 class="font-bold text-lg flex items-center gap-2 mb-2">
                             <i class="fas fa-calendar-week text-info"></i>
-                            Weekly Payout Structure
+                            Period Payout Structure
                         </h3>
                         <p class="text-sm text-base-content/70 mb-3">
-                            Define how the weekly payout is distributed among winners.
+                            Define how the period payout is distributed among winners.
                         </p>
                         
                         <div class="form-control mb-4">
@@ -395,23 +395,23 @@
                                 <span class="label-text font-semibold">Number of Payout Spots</span>
                             </label>
                             <input type="number" 
-                                   name="weekly_payout_spots" 
-                                   id="weekly_payout_spots"
+                                   name="period_payout_spots"
+                                   id="period_payout_spots"
                                    min="1"
                                    max="20"
                                    class="input input-bordered" />
                             <label class="label">
-                                <span class="label-text-alt text-base-content/60">How many positions get paid out weekly</span>
+                                <span class="label-text-alt text-base-content/60">How many positions get paid out period</span>
                             </label>
                         </div>
                         
-                        <div id="weekly-spots-container" class="space-y-2">
+                        <div id="period-spots-container" class="space-y-2">
                             <!-- Dynamic inputs will be added here -->
                         </div>
                         
                         <div class="mt-4">
-                            <div class="alert" id="weekly-total-alert">
-                                <span class="font-semibold">Total: <span id="weekly-total-percent">0</span>%</span>
+                            <div class="alert" id="period-total-alert">
+                                <span class="font-semibold">Total: <span id="period-total-percent">0</span>%</span>
                             </div>
                         </div>
                     </div>
@@ -481,28 +481,28 @@
                 </div>
             </div>
 
-            <!-- Season End Week -->
+            <!-- Season End Period -->
             <div class="mt-6">
                 <div class="form-control max-w-xl">
                     <label class="label">
                         <span class="label-text font-semibold">
                             <i class="fas fa-flag-checkered text-primary mr-1"></i>
-                            Season End Week
+                            Season End Period
                         </span>
                     </label>
-                    <select name="season_end_week" id="season_end_week" class="select select-bordered">
+                    <select name="season_end_period" id="season_end_period" class="select select-bordered">
                         <option value="">Not set — season stays open</option>
-                        {% for week in season_weeks %}
-                        <option value="{{ week.id }}"
-                                {% if league_rules.season_end_week_id == week.id %}selected{% endif %}>
-                            {{ week.display_name }}{% if week.season_type != 'regular' %} ({{ week.season_type }}){% endif %}
-                            · {{ week.start_date }} – {{ week.end_date }}
+                        {% for schedule_period in season_periods %}
+                        <option value="{{ schedule_period.id }}"
+                                {% if league_rules.season_end_period_id == schedule_period.id %}selected{% endif %}>
+                            {{ schedule_period.display_name }}{% if schedule_period.season_type != 'regular' %} ({{ schedule_period.season_type }}){% endif %}
+                            · {{ schedule_period.start_date }} – {{ schedule_period.end_date }}
                         </option>
                         {% endfor %}
                     </select>
                     <label class="label">
                         <span class="label-text-alt text-base-content/60">
-                            When this week's league slate is all final, or its end date has passed, the season is final and prize money shows on standings. Requires games selected for that week.
+                            When this period's league slate is all final, or its end date has passed, the season is final and prize money shows on standings. Requires games selected for that period.
                         </span>
                     </label>
                 </div>
@@ -540,21 +540,21 @@
                         </div>
                     </div>
                     
-                    <!-- Weekly Payout Breakdown -->
-                    <div id="weekly-payout-calc" class="mb-4" style="display: none;">
+                    <!-- Period Payout Breakdown -->
+                    <div id="period-payout-calc" class="mb-4" style="display: none;">
                         <h3 class="font-bold text-lg mb-2 flex items-center gap-2">
                             <i class="fas fa-calendar-week text-info"></i>
-                            Weekly Payouts (per week)
+                            Period Payouts (per period)
                         </h3>
                         <div class="bg-base-100 rounded-lg p-4 mb-2">
                             <div class="flex justify-between items-center mb-2">
-                                <span class="font-semibold">Weekly Pool:</span>
-                                <span class="text-lg font-bold text-info" id="calc-weekly-pool">$0.00</span>
+                                <span class="font-semibold">Period Pool:</span>
+                                <span class="text-lg font-bold text-info" id="calc-period-pool">$0.00</span>
                             </div>
-                            <div class="text-sm text-base-content/70 mb-3" id="weekly-pool-description">
-                                (0% of total pool ÷ 12 weeks)
+                            <div class="text-sm text-base-content/70 mb-3" id="period-pool-description">
+                                (0% of total pool ÷ 12 periods)
                             </div>
-                            <div id="weekly-payout-breakdown" class="space-y-2">
+                            <div id="period-payout-breakdown" class="space-y-2">
                                 <!-- Dynamic breakdown will be added here -->
                             </div>
                         </div>
@@ -631,7 +631,7 @@
                     <label class="label">
                         <span class="label-text font-semibold">Title</span>
                     </label>
-                    <input type="text" name="title" maxlength="200" required class="input input-bordered" placeholder="Week 4 reminder" />
+                    <input type="text" name="title" maxlength="200" required class="input input-bordered" placeholder="Period 4 reminder" />
                 </div>
                 <div class="form-control md:col-span-2">
                     <label class="label">
@@ -829,12 +829,12 @@
             <h2 class="card-title flex-wrap gap-2">
                 <span class="flex items-center">
                     <i class="fas fa-football text-primary mr-2"></i>
-                    Games This Week
+                    Games This Period
                 </span>
-                {% if league_rules and league_rules.pickable_games_per_week > 0 %}
+                {% if league_rules and league_rules.pickable_games_per_period > 0 %}
                 <div class="badge badge-info badge-lg whitespace-nowrap">
                     <i class="fas fa-info-circle mr-1"></i>
-                    Limit: {{ league_rules.pickable_games_per_week }} games
+                    Limit: {{ league_rules.pickable_games_per_period }} games
                 </div>
                 {% endif %}
                 {% if currently_selected_count %}
@@ -847,7 +847,7 @@
             {% if currently_selected_count %}
             <p class="text-sm text-base-content/70 mt-2">
                 Games marked <span class="badge badge-success badge-outline badge-sm">Currently selected</span>
-                are already in this week's slate. Saving a new selection will replace them.
+                are already in this period's slate. Saving a new selection will replace them.
             </p>
             {% endif %}
         </div>
@@ -939,7 +939,7 @@
                        data-has-ranked="{% if g.home_team.id in team_rankings or g.away_team.id in team_rankings %}true{% else %}false{% endif %}"
                        data-home-rank="{% if g.home_team.id in team_rankings %}{{ team_rankings|get_item:g.home_team.id }}{% else %}999{% endif %}"
                        data-away-rank="{% if g.away_team.id in team_rankings %}{{ team_rankings|get_item:g.away_team.id }}{% else %}999{% endif %}"
-                       data-weekday="{{ g.kickoff|eastern_weekday }}"
+                       data-weekday="{{ g.start_time|eastern_weekday }}"
                        data-home-conference="{{ g.home_team.conference|default:'' }}"
                        data-away-conference="{{ g.away_team.conference|default:'' }}"
                        data-currently-selected="{% if lg %}true{% else %}false{% endif %}">
@@ -954,7 +954,7 @@
                         <div class="flex-shrink-0 flex flex-wrap items-center gap-2">
                             <div class="badge badge-ghost">
                                 <i class="fas fa-clock mr-1"></i>
-                                {{ g.kickoff|eastern_time }}
+                                {{ g.start_time|eastern_time }}
                             </div>
                             {% if lg %}
                             <span class="badge badge-success badge-sm whitespace-nowrap">
@@ -967,7 +967,7 @@
                         <!-- Away Team -->
                         <div class="flex items-center gap-2 flex-1">
                             {% if g.away_team|team_logo_url %}
-                            <img src="{% static g.away_team|team_logo_url %}" 
+                            <img src="{{ g.away_team|team_logo_url }}"
                                  alt="{{ g.away_team.name }}" 
                                  class="team-logo w-8 h-8 object-contain" />
                             {% endif %}
@@ -988,7 +988,7 @@
                         <!-- Home Team -->
                         <div class="flex items-center gap-2 flex-1">
                             {% if g.home_team|team_logo_url %}
-                            <img src="{% static g.home_team|team_logo_url %}" 
+                            <img src="{{ g.home_team|team_logo_url }}"
                                  alt="{{ g.home_team.name }}" 
                                  class="team-logo w-8 h-8 object-contain" />
                             {% endif %}
@@ -1047,7 +1047,7 @@
         {% else %}
         <div class="text-center py-8">
             <i class="fas fa-inbox text-4xl text-base-300 mb-2"></i>
-            <p class="text-base-content/70">No games found for this week.</p>
+            <p class="text-base-content/70">No games found for this period.</p>
         </div>
         {% endif %}
     </div>
@@ -1237,11 +1237,11 @@
           const teamNames = gameCardContent.querySelectorAll('.font-semibold.text-sm.md\\:text-base');
           const awayTeamName = teamNames[0]?.textContent?.trim() || '';
           const homeTeamName = teamNames[1]?.textContent?.trim() || '';
-          const kickoffTime = gameCardContent.querySelector('.badge.badge-ghost')?.textContent?.trim() || '';
+          const start_timeTime = gameCardContent.querySelector('.badge.badge-ghost')?.textContent?.trim() || '';
           
           const option = document.createElement('option');
           option.value = gameId;
-          option.textContent = `${awayTeamName} @ ${homeTeamName} - ${kickoffTime}`;
+          option.textContent = `${awayTeamName} @ ${homeTeamName} - ${start_timeTime}`;
           
           // Check if this game is currently marked as total points game
           const hiddenInput = checkbox.nextElementSibling; // game_X_id input
@@ -1297,7 +1297,7 @@
     }
     
     // Pick limit validation
-    const pickLimit = {{ league_rules.pickable_games_per_week|default:0 }};
+    const pickLimit = {{ league_rules.pickable_games_per_period|default:0 }};
     const gameCheckboxes = document.querySelectorAll('.game-checkbox');
     const selectedCount = document.querySelectorAll('.game-checkbox:checked').length;
     const gamesForm = document.getElementById('games-form');
@@ -1625,36 +1625,36 @@
     }
     
     // Payout Structure Management
-    const weeklyPayoutPercent = document.getElementById('weekly_payout_percent');
+    const periodPayoutPercent = document.getElementById('period_payout_percent');
     const seasonPayoutPercent = document.getElementById('season_payout_percent');
-    const weeklyPayoutStructureSection = document.getElementById('weekly-payout-structure-section');
+    const periodPayoutStructureSection = document.getElementById('period-payout-structure-section');
     const seasonPayoutStructureSection = document.getElementById('season-payout-structure-section');
     const seasonLastPercentSection = document.getElementById('season-last-percent-section');
-    const weeklyPayoutSpots = document.getElementById('weekly_payout_spots');
+    const periodPayoutSpots = document.getElementById('period_payout_spots');
     const seasonPayoutSpots = document.getElementById('season_payout_spots');
-    const weeklySpotsContainer = document.getElementById('weekly-spots-container');
+    const periodSpotsContainer = document.getElementById('period-spots-container');
     const seasonSpotsContainer = document.getElementById('season-spots-container');
     // leagueRulesForm is already declared above in the tiebreaker section
     const saveRulesBtn = document.getElementById('save-rules-btn');
     
     // Debug: Check if elements are found
     console.log('Payout structure elements:', {
-      weeklyPayoutPercent: !!weeklyPayoutPercent,
+      periodPayoutPercent: !!periodPayoutPercent,
       seasonPayoutPercent: !!seasonPayoutPercent,
-      weeklyPayoutStructureSection: !!weeklyPayoutStructureSection,
+      periodPayoutStructureSection: !!periodPayoutStructureSection,
       seasonPayoutStructureSection: !!seasonPayoutStructureSection
     });
     
     // Load existing payout structures if they exist
-    let existingWeeklyStructure = {};
+    let existingPeriodStructure = {};
     let existingSeasonStructure = {};
     try {
-        const weeklyJson = '{{ weekly_payout_structure_json|safe }}';
-        if (weeklyJson && weeklyJson !== '{}') {
-            existingWeeklyStructure = JSON.parse(weeklyJson);
+        const periodJson = '{{ period_payout_structure_json|safe }}';
+        if (periodJson && periodJson !== '{}') {
+            existingPeriodStructure = JSON.parse(periodJson);
         }
     } catch (e) {
-        existingWeeklyStructure = {};
+        existingPeriodStructure = {};
     }
     try {
         const seasonJson = '{{ season_payout_structure_json|safe }}';
@@ -1692,7 +1692,7 @@
       const input = div.querySelector('input');
       input.addEventListener('input', function() {
         // Get current total
-        const container = type === 'weekly' ? weeklySpotsContainer : seasonSpotsContainer;
+        const container = type === 'period' ? periodSpotsContainer : seasonSpotsContainer;
         const inputs = container.querySelectorAll('.spot-percent-input');
         let currentTotal = 0;
         inputs.forEach(inp => {
@@ -1735,9 +1735,9 @@
     
     // Function to update total percentage
     function updateTotal(type) {
-      const container = type === 'weekly' ? weeklySpotsContainer : seasonSpotsContainer;
-      const totalSpan = type === 'weekly' ? document.getElementById('weekly-total-percent') : document.getElementById('season-total-percent');
-      const alertDiv = type === 'weekly' ? document.getElementById('weekly-total-alert') : document.getElementById('season-total-alert');
+      const container = type === 'period' ? periodSpotsContainer : seasonSpotsContainer;
+      const totalSpan = type === 'period' ? document.getElementById('period-total-percent') : document.getElementById('season-total-percent');
+      const alertDiv = type === 'period' ? document.getElementById('period-total-alert') : document.getElementById('season-total-alert');
       
       if (!container || !totalSpan || !alertDiv) {
         console.log('Missing elements for updateTotal:', { container: !!container, totalSpan: !!totalSpan, alertDiv: !!alertDiv, type });
@@ -1785,18 +1785,18 @@
       }
       
       // Update the alert content while preserving the span
-      const existingSpan = alertDiv.querySelector(`#${type === 'weekly' ? 'weekly' : 'season'}-total-percent`);
+      const existingSpan = alertDiv.querySelector(`#${type === 'period' ? 'period' : 'season'}-total-percent`);
       if (existingSpan) {
         // Span exists, just update the alert content around it
-        alertDiv.innerHTML = `<i class="${iconClass}"></i> <span class="font-semibold">Total: <span id="${type === 'weekly' ? 'weekly' : 'season'}-total-percent">${totalText}</span>%${messageText} ${iconText}</span>`;
+        alertDiv.innerHTML = `<i class="${iconClass}"></i> <span class="font-semibold">Total: <span id="${type === 'period' ? 'period' : 'season'}-total-percent">${totalText}</span>%${messageText} ${iconText}</span>`;
         // Update the span text again after innerHTML
-        const updatedSpan = document.getElementById(`${type === 'weekly' ? 'weekly' : 'season'}-total-percent`);
+        const updatedSpan = document.getElementById(`${type === 'period' ? 'period' : 'season'}-total-percent`);
         if (updatedSpan) {
           updatedSpan.textContent = totalText;
         }
       } else {
         // Span doesn't exist, create it
-        alertDiv.innerHTML = `<i class="${iconClass}"></i> <span class="font-semibold">Total: <span id="${type === 'weekly' ? 'weekly' : 'season'}-total-percent">${totalText}</span>%${messageText} ${iconText}</span>`;
+        alertDiv.innerHTML = `<i class="${iconClass}"></i> <span class="font-semibold">Total: <span id="${type === 'period' ? 'period' : 'season'}-total-percent">${totalText}</span>%${messageText} ${iconText}</span>`;
       }
     }
     
@@ -1805,29 +1805,29 @@
       let isValid = true;
       let errorMessage = '';
       
-      // Check weekly payout structure
-      if (weeklyPayoutPercent && weeklyPayoutPercent.value && parseFloat(weeklyPayoutPercent.value) > 0) {
-        const weeklySpotsValue = weeklyPayoutSpots ? weeklyPayoutSpots.value : '';
+      // Check period payout structure
+      if (periodPayoutPercent && periodPayoutPercent.value && parseFloat(periodPayoutPercent.value) > 0) {
+        const periodSpotsValue = periodPayoutSpots ? periodPayoutSpots.value : '';
         
         // Only validate if spots are configured
-        if (weeklySpotsValue && parseInt(weeklySpotsValue) > 0) {
+        if (periodSpotsValue && parseInt(periodSpotsValue) > 0) {
           // Calculate total directly from inputs to avoid precision issues
-          let weeklyTotal = 0;
-          if (weeklySpotsContainer) {
-            const inputs = weeklySpotsContainer.querySelectorAll('.spot-percent-input');
+          let periodTotal = 0;
+          if (periodSpotsContainer) {
+            const inputs = periodSpotsContainer.querySelectorAll('.spot-percent-input');
             inputs.forEach(input => {
               const value = parseFloat(input.value) || 0;
-              weeklyTotal += value;
+              periodTotal += value;
             });
           }
           
           // Use a more lenient tolerance (0.1%) to account for floating point precision
-          if (Math.abs(weeklyTotal - 100) > 0.1) {
+          if (Math.abs(periodTotal - 100) > 0.1) {
             isValid = false;
-            if (weeklyTotal > 100.1) {
-              errorMessage += `Weekly payout structure totals ${weeklyTotal.toFixed(2)}%, which EXCEEDS 100%. Please reduce the percentages. `;
+            if (periodTotal > 100.1) {
+              errorMessage += `Period payout structure totals ${periodTotal.toFixed(2)}%, which EXCEEDS 100%. Please reduce the percentages. `;
             } else {
-              errorMessage += `Weekly payout structure must total 100% (currently ${weeklyTotal.toFixed(2)}%). `;
+              errorMessage += `Period payout structure must total 100% (currently ${periodTotal.toFixed(2)}%). `;
             }
           }
         } else {
@@ -1888,45 +1888,45 @@
       return { isValid, errorMessage };
     }
     
-    // Function to handle weekly payout percent change
-    function handleWeeklyPayoutPercentChange() {
-      console.log('handleWeeklyPayoutPercentChange called', weeklyPayoutPercent?.value);
-      if (!weeklyPayoutPercent || !weeklyPayoutStructureSection) {
-        console.error('Missing elements for weekly payout');
+    // Function to handle period payout percent change
+    function handlePeriodPayoutPercentChange() {
+      console.log('handlePeriodPayoutPercentChange called', periodPayoutPercent?.value);
+      if (!periodPayoutPercent || !periodPayoutStructureSection) {
+        console.error('Missing elements for period payout');
         return;
       }
       
-      const value = weeklyPayoutPercent.value;
-      console.log('Weekly payout percent value:', value);
+      const value = periodPayoutPercent.value;
+      console.log('Period payout percent value:', value);
       
       if (value && parseFloat(value) > 0) {
-        console.log('Showing weekly payout structure section');
-        weeklyPayoutStructureSection.style.display = 'block';
+        console.log('Showing period payout structure section');
+        periodPayoutStructureSection.style.display = 'block';
         // Load existing spots if available
-        if (Object.keys(existingWeeklyStructure).length > 0) {
-          const numSpots = Math.max(...Object.keys(existingWeeklyStructure).map(k => parseInt(k)));
-          if (weeklyPayoutSpots) {
-            weeklyPayoutSpots.value = numSpots;
-            generateSpotInputs('weekly', numSpots);
+        if (Object.keys(existingPeriodStructure).length > 0) {
+          const numSpots = Math.max(...Object.keys(existingPeriodStructure).map(k => parseInt(k)));
+          if (periodPayoutSpots) {
+            periodPayoutSpots.value = numSpots;
+            generateSpotInputs('period', numSpots);
           }
         }
       } else {
-        console.log('Hiding weekly payout structure section');
-        weeklyPayoutStructureSection.style.display = 'none';
-        if (weeklySpotsContainer) {
-          weeklySpotsContainer.innerHTML = '';
+        console.log('Hiding period payout structure section');
+        periodPayoutStructureSection.style.display = 'none';
+        if (periodSpotsContainer) {
+          periodSpotsContainer.innerHTML = '';
         }
-        if (weeklyPayoutSpots) {
-          weeklyPayoutSpots.value = '';
+        if (periodPayoutSpots) {
+          periodPayoutSpots.value = '';
         }
         // Reset total display
-        const weeklyTotalSpan = document.getElementById('weekly-total-percent');
-        if (weeklyTotalSpan) {
-          weeklyTotalSpan.textContent = '0';
+        const periodTotalSpan = document.getElementById('period-total-percent');
+        if (periodTotalSpan) {
+          periodTotalSpan.textContent = '0';
         }
-        const weeklyAlert = document.getElementById('weekly-total-alert');
-        if (weeklyAlert) {
-          weeklyAlert.className = 'alert';
+        const periodAlert = document.getElementById('period-total-alert');
+        if (periodAlert) {
+          periodAlert.className = 'alert';
         }
       }
       validatePayoutStructure();
@@ -1984,8 +1984,8 @@
     
     // Function to generate spot inputs
     function generateSpotInputs(type, numSpots) {
-      const container = type === 'weekly' ? weeklySpotsContainer : seasonSpotsContainer;
-      const existingStructure = type === 'weekly' ? existingWeeklyStructure : existingSeasonStructure;
+      const container = type === 'period' ? periodSpotsContainer : seasonSpotsContainer;
+      const existingStructure = type === 'period' ? existingPeriodStructure : existingSeasonStructure;
       
       container.innerHTML = '';
       
@@ -2001,24 +2001,24 @@
     }
     
     // Event listeners - use multiple event types for better compatibility
-    if (weeklyPayoutPercent) {
-      console.log('Attaching event listener to weekly payout percent');
+    if (periodPayoutPercent) {
+      console.log('Attaching event listener to period payout percent');
       // Use multiple event types
       ['input', 'change', 'keyup', 'blur'].forEach(eventType => {
-        weeklyPayoutPercent.addEventListener(eventType, function(e) {
-          console.log('Weekly payout percent event:', eventType, this.value);
-          handleWeeklyPayoutPercentChange();
+        periodPayoutPercent.addEventListener(eventType, function(e) {
+          console.log('Period payout percent event:', eventType, this.value);
+          handlePeriodPayoutPercentChange();
         });
       });
       // Trigger on load if value exists
       setTimeout(() => {
-        if (weeklyPayoutPercent.value) {
-          console.log('Triggering initial weekly payout percent change');
-          handleWeeklyPayoutPercentChange();
+        if (periodPayoutPercent.value) {
+          console.log('Triggering initial period payout percent change');
+          handlePeriodPayoutPercentChange();
         }
       }, 100);
     } else {
-      console.error('weeklyPayoutPercent element not found!');
+      console.error('periodPayoutPercent element not found!');
     }
     
     if (seasonPayoutPercent) {
@@ -2044,9 +2044,9 @@
     // Also use event delegation as a fallback
     if (leagueRulesForm) {
       leagueRulesForm.addEventListener('input', function(e) {
-        if (e.target && e.target.id === 'weekly_payout_percent') {
-          console.log('Delegated event for weekly payout percent');
-          handleWeeklyPayoutPercentChange();
+        if (e.target && e.target.id === 'period_payout_percent') {
+          console.log('Delegated event for period payout percent');
+          handlePeriodPayoutPercentChange();
         } else if (e.target && e.target.id === 'season_payout_percent') {
           console.log('Delegated event for season payout percent');
           handleSeasonPayoutPercentChange();
@@ -2054,31 +2054,31 @@
       });
     }
     
-    if (weeklyPayoutSpots) {
-      weeklyPayoutSpots.addEventListener('input', function() {
+    if (periodPayoutSpots) {
+      periodPayoutSpots.addEventListener('input', function() {
         const numSpots = parseInt(this.value) || 0;
         if (numSpots > 0 && numSpots <= 20) {
-          generateSpotInputs('weekly', numSpots);
+          generateSpotInputs('period', numSpots);
         } else if (numSpots === 0 || !this.value) {
-          weeklySpotsContainer.innerHTML = '';
-          const weeklyTotalSpan = document.getElementById('weekly-total-percent');
-          if (weeklyTotalSpan) {
-            weeklyTotalSpan.textContent = '0';
+          periodSpotsContainer.innerHTML = '';
+          const periodTotalSpan = document.getElementById('period-total-percent');
+          if (periodTotalSpan) {
+            periodTotalSpan.textContent = '0';
           }
-          const weeklyAlert = document.getElementById('weekly-total-alert');
-          if (weeklyAlert) {
-            weeklyAlert.className = 'alert';
-            weeklyAlert.innerHTML = '<span class="font-semibold">Total: <span id="weekly-total-percent">0</span>%</span>';
+          const periodAlert = document.getElementById('period-total-alert');
+          if (periodAlert) {
+            periodAlert.className = 'alert';
+            periodAlert.innerHTML = '<span class="font-semibold">Total: <span id="period-total-percent">0</span>%</span>';
           }
           validatePayoutStructure();
         }
       });
       
       // Also trigger on change for better compatibility
-      weeklyPayoutSpots.addEventListener('change', function() {
+      periodPayoutSpots.addEventListener('change', function() {
         const numSpots = parseInt(this.value) || 0;
         if (numSpots > 0 && numSpots <= 20) {
-          generateSpotInputs('weekly', numSpots);
+          generateSpotInputs('period', numSpots);
         }
       });
     }
@@ -2140,18 +2140,18 @@
     validatePayoutStructure();
     
     // Payout Calculator
-    const WEEKS_IN_SEASON = 12; // Constant for number of weeks
+    const WEEKS_IN_SEASON = 12; // Constant for number of schedule_periods
     const memberCount = {{ league_member_count }};
     
     function updatePayoutCalculator() {
       const entryFeeInput = document.getElementById('entry_fee');
-      const weeklyPercentInput = document.getElementById('weekly_payout_percent');
+      const periodPercentInput = document.getElementById('period_payout_percent');
       const seasonPercentInput = document.getElementById('season_payout_percent');
-      const weeklyPayoutCalc = document.getElementById('weekly-payout-calc');
+      const periodPayoutCalc = document.getElementById('period-payout-calc');
       const seasonPayoutCalc = document.getElementById('season-payout-calc');
       
       const entryFee = parseFloat(entryFeeInput?.value || 0) || 0;
-      const weeklyPercent = parseFloat(weeklyPercentInput?.value || 0) || 0;
+      const periodPercent = parseFloat(periodPercentInput?.value || 0) || 0;
       const seasonPercent = parseFloat(seasonPercentInput?.value || 0) || 0;
       
       // Calculate total pool
@@ -2161,7 +2161,7 @@
         entryFee,
         memberCount,
         totalPool,
-        weeklyPercent,
+        periodPercent,
         seasonPercent
       });
       
@@ -2171,12 +2171,12 @@
       if (calcEntryFee) calcEntryFee.textContent = '$' + entryFee.toFixed(2);
       if (calcTotalPool) calcTotalPool.textContent = '$' + totalPool.toFixed(2);
       
-      // Calculate weekly pool (percent of total pool divided by weeks)
-      const weeklyPool = (totalPool * weeklyPercent / 100) / WEEKS_IN_SEASON;
-      const calcWeeklyPool = document.getElementById('calc-weekly-pool');
-      const weeklyPoolDesc = document.getElementById('weekly-pool-description');
-      if (calcWeeklyPool) calcWeeklyPool.textContent = '$' + weeklyPool.toFixed(2);
-      if (weeklyPoolDesc) weeklyPoolDesc.textContent = `(${weeklyPercent.toFixed(2)}% of total pool ÷ ${WEEKS_IN_SEASON} weeks)`;
+      // Calculate period pool (percent of total pool divided by schedule_periods)
+      const periodPool = (totalPool * periodPercent / 100) / WEEKS_IN_SEASON;
+      const calcPeriodPool = document.getElementById('calc-period-pool');
+      const periodPoolDesc = document.getElementById('period-pool-description');
+      if (calcPeriodPool) calcPeriodPool.textContent = '$' + periodPool.toFixed(2);
+      if (periodPoolDesc) periodPoolDesc.textContent = `(${periodPercent.toFixed(2)}% of total pool ÷ ${WEEKS_IN_SEASON} schedule_periods)`;
       
       // Calculate season pool
       const seasonPool = totalPool * seasonPercent / 100;
@@ -2186,27 +2186,27 @@
       if (seasonPoolDesc) seasonPoolDesc.textContent = `(${seasonPercent.toFixed(2)}% of total pool)`;
       
       // Calculate remaining pool
-      // First, calculate what's not allocated to weekly/season at all
-      const baseAllocatedPercent = weeklyPercent + seasonPercent;
+      // First, calculate what's not allocated to period/season at all
+      const baseAllocatedPercent = periodPercent + seasonPercent;
       const baseRemainingPercent = 100 - baseAllocatedPercent;
       
-      // Then, calculate what's allocated to weekly/season but not distributed to spots
-      let weeklyUnallocatedPercent = 0;
-      if (weeklyPercent > 0 && weeklyPayoutSpots && weeklyPayoutSpots.value) {
-        const numWeeklySpots = parseInt(weeklyPayoutSpots.value) || 0;
-        if (numWeeklySpots > 0) {
-          let weeklySpotsTotal = 0;
-          for (let i = 1; i <= numWeeklySpots; i++) {
-            const spotInput = document.getElementById(`weekly_spot_${i}_percent`);
+      // Then, calculate what's allocated to period/season but not distributed to spots
+      let periodUnallocatedPercent = 0;
+      if (periodPercent > 0 && periodPayoutSpots && periodPayoutSpots.value) {
+        const numPeriodSpots = parseInt(periodPayoutSpots.value) || 0;
+        if (numPeriodSpots > 0) {
+          let periodSpotsTotal = 0;
+          for (let i = 1; i <= numPeriodSpots; i++) {
+            const spotInput = document.getElementById(`period_spot_${i}_percent`);
             if (spotInput) {
-              weeklySpotsTotal += parseFloat(spotInput.value || 0) || 0;
+              periodSpotsTotal += parseFloat(spotInput.value || 0) || 0;
             }
           }
           // If spots don't add up to 100%, the difference is unallocated
-          const weeklyUnallocated = 100 - weeklySpotsTotal;
-          if (weeklyUnallocated > 0) {
-            // This is a percentage of the weekly pool, so convert to percentage of total pool
-            weeklyUnallocatedPercent = (weeklyPercent * weeklyUnallocated) / 100;
+          const periodUnallocated = 100 - periodSpotsTotal;
+          if (periodUnallocated > 0) {
+            // This is a percentage of the period pool, so convert to percentage of total pool
+            periodUnallocatedPercent = (periodPercent * periodUnallocated) / 100;
           }
         }
       }
@@ -2236,8 +2236,8 @@
         }
       }
       
-      // Total remaining = base remaining + unallocated within weekly + unallocated within season
-      const totalRemainingPercent = baseRemainingPercent + weeklyUnallocatedPercent + seasonUnallocatedPercent;
+      // Total remaining = base remaining + unallocated within period + unallocated within season
+      const totalRemainingPercent = baseRemainingPercent + periodUnallocatedPercent + seasonUnallocatedPercent;
       const remainingPool = totalPool > 0 ? (totalPool * totalRemainingPercent / 100) : 0;
       const calcRemainingPool = document.getElementById('calc-remaining-pool');
       
@@ -2245,11 +2245,11 @@
         entryFee,
         memberCount,
         totalPool,
-        weeklyPercent,
+        periodPercent,
         seasonPercent,
         baseAllocatedPercent,
         baseRemainingPercent,
-        weeklyUnallocatedPercent,
+        periodUnallocatedPercent,
         seasonUnallocatedPercent,
         totalRemainingPercent,
         remainingPool,
@@ -2268,10 +2268,10 @@
           if (totalPool > 0) {
             let descParts = [];
             if (baseRemainingPercent > 0) {
-              descParts.push(`${baseRemainingPercent.toFixed(2)}% not allocated to weekly/season`);
+              descParts.push(`${baseRemainingPercent.toFixed(2)}% not allocated to period/season`);
             }
-            if (weeklyUnallocatedPercent > 0) {
-              descParts.push(`${weeklyUnallocatedPercent.toFixed(2)}% unallocated within weekly`);
+            if (periodUnallocatedPercent > 0) {
+              descParts.push(`${periodUnallocatedPercent.toFixed(2)}% unallocated within period`);
             }
             if (seasonUnallocatedPercent > 0) {
               descParts.push(`${seasonUnallocatedPercent.toFixed(2)}% unallocated within season`);
@@ -2300,12 +2300,12 @@
         }
       }
       
-      // Show/hide and update weekly payout breakdown
-      if (weeklyPercent > 0 && weeklyPool > 0) {
-        if (weeklyPayoutCalc) weeklyPayoutCalc.style.display = 'block';
-        updateWeeklyPayoutBreakdown(weeklyPool);
+      // Show/hide and update period payout breakdown
+      if (periodPercent > 0 && periodPool > 0) {
+        if (periodPayoutCalc) periodPayoutCalc.style.display = 'block';
+        updatePeriodPayoutBreakdown(periodPool);
       } else {
-        if (weeklyPayoutCalc) weeklyPayoutCalc.style.display = 'none';
+        if (periodPayoutCalc) periodPayoutCalc.style.display = 'none';
       }
       
       // Show/hide and update season payout breakdown
@@ -2317,23 +2317,23 @@
       }
     }
     
-    function updateWeeklyPayoutBreakdown(weeklyPool) {
-      const breakdownContainer = document.getElementById('weekly-payout-breakdown');
+    function updatePeriodPayoutBreakdown(periodPool) {
+      const breakdownContainer = document.getElementById('period-payout-breakdown');
       if (!breakdownContainer) return;
       
-      const weeklySpotsValue = weeklyPayoutSpots ? weeklyPayoutSpots.value : '';
-      if (!weeklySpotsValue || parseInt(weeklySpotsValue) <= 0) {
+      const periodSpotsValue = periodPayoutSpots ? periodPayoutSpots.value : '';
+      if (!periodSpotsValue || parseInt(periodSpotsValue) <= 0) {
         breakdownContainer.innerHTML = '<p class="text-sm text-base-content/70">Enter number of payout spots above</p>';
         return;
       }
       
       let html = '<div class="space-y-1">';
-      const numSpots = parseInt(weeklySpotsValue);
+      const numSpots = parseInt(periodSpotsValue);
       
       for (let i = 1; i <= numSpots; i++) {
-        const spotInput = document.getElementById(`weekly_spot_${i}_percent`);
+        const spotInput = document.getElementById(`period_spot_${i}_percent`);
         const spotPercent = parseFloat(spotInput?.value || 0) || 0;
-        const spotAmount = weeklyPool * spotPercent / 100;
+        const spotAmount = periodPool * spotPercent / 100;
         
         const placeSuffix = i === 1 ? 'st' : i === 2 ? 'nd' : i === 3 ? 'rd' : 'th';
         html += `
@@ -2354,11 +2354,11 @@
       const entryFee = parseFloat(document.getElementById('entry_fee')?.value || 0) || 0;
       const totalPool = entryFee * memberCount;
       
-      if (type === 'weekly') {
-        const weeklyPercent = parseFloat(document.getElementById('weekly_payout_percent')?.value || 0) || 0;
-        const weeklyPool = (totalPool * weeklyPercent / 100) / WEEKS_IN_SEASON;
-        if (weeklyPercent > 0 && weeklyPool > 0) {
-          updateWeeklyPayoutBreakdown(weeklyPool);
+      if (type === 'period') {
+        const periodPercent = parseFloat(document.getElementById('period_payout_percent')?.value || 0) || 0;
+        const periodPool = (totalPool * periodPercent / 100) / WEEKS_IN_SEASON;
+        if (periodPercent > 0 && periodPool > 0) {
+          updatePeriodPayoutBreakdown(periodPool);
         }
       } else if (type === 'season') {
         const seasonPercent = parseFloat(document.getElementById('season_payout_percent')?.value || 0) || 0;
@@ -2432,9 +2432,9 @@
       });
     }
     
-    if (weeklyPayoutPercent) {
-      weeklyPayoutPercent.addEventListener('input', updatePayoutCalculator);
-      weeklyPayoutPercent.addEventListener('change', updatePayoutCalculator);
+    if (periodPayoutPercent) {
+      periodPayoutPercent.addEventListener('input', updatePayoutCalculator);
+      periodPayoutPercent.addEventListener('change', updatePayoutCalculator);
     }
     
     if (seasonPayoutPercent) {
@@ -2442,8 +2442,8 @@
       seasonPayoutPercent.addEventListener('change', updatePayoutCalculator);
     }
     
-    if (weeklyPayoutSpots) {
-      weeklyPayoutSpots.addEventListener('input', function() {
+    if (periodPayoutSpots) {
+      periodPayoutSpots.addEventListener('input', function() {
         updatePayoutCalculator();
         // Also update when spots change
         setTimeout(updatePayoutCalculator, 100);
@@ -2480,15 +2480,15 @@
           // Get current pool values first
           const entryFee = parseFloat(document.getElementById('entry_fee')?.value || 0) || 0;
           const totalPool = entryFee * memberCount;
-          const weeklyPercent = parseFloat(document.getElementById('weekly_payout_percent')?.value || 0) || 0;
+          const periodPercent = parseFloat(document.getElementById('period_payout_percent')?.value || 0) || 0;
           const seasonPercent = parseFloat(document.getElementById('season_payout_percent')?.value || 0) || 0;
-          const weeklyPool = (totalPool * weeklyPercent / 100) / WEEKS_IN_SEASON;
+          const periodPool = (totalPool * periodPercent / 100) / WEEKS_IN_SEASON;
           const seasonPool = totalPool * seasonPercent / 100;
           
           // Update breakdowns directly
-          if (e.target.id && e.target.id.startsWith('weekly_spot_')) {
-            if (weeklyPercent > 0 && weeklyPool > 0) {
-              updateWeeklyPayoutBreakdown(weeklyPool);
+          if (e.target.id && e.target.id.startsWith('period_spot_')) {
+            if (periodPercent > 0 && periodPool > 0) {
+              updatePeriodPayoutBreakdown(periodPool);
             }
           } else if (e.target.id && e.target.id.startsWith('season_spot_')) {
             if (seasonPercent > 0 && seasonPool > 0) {

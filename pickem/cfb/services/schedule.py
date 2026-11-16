@@ -1,16 +1,17 @@
 from datetime import datetime
 from typing import Tuple, Optional
 from django.utils import timezone
-from ..models import DEFAULT_SPORT, League, LeagueGame, Season, Week
+from django.db.models import Case, When, Value, IntegerField, Exists, OuterRef
+from ..models import DEFAULT_SPORT, League, LeagueGame, Season, SchedulePeriod, Game
 from .sports import get_active_season
 
 
-def get_current_week(season: Optional[Season] = None, now: Optional[datetime] = None) -> Optional[Week]:
+def get_current_period(season: Optional[Season] = None, now: Optional[datetime] = None) -> Optional[SchedulePeriod]:
     """
-    Get the Week that actually contains `now` on the calendar.
+    Get the SchedulePeriod that actually contains `now` on the calendar.
 
     Background jobs (spreads, rankings, stats) must use this so they do not
-    treat a future week as current before it starts.
+    treat a future schedule_period as current before it starts.
     """
     now = now or timezone.now()
 
@@ -20,34 +21,29 @@ def get_current_week(season: Optional[Season] = None, now: Optional[datetime] = 
     if not season:
         return None
 
-    current_date = now.date()
+    current_date = timezone.localdate(now)
 
-    # Prefer a week whose start_date is today (handles adjacent-week overlap)
-    week = Week.objects.filter(
-        season=season,
-        start_date=current_date
-    ).first()
+    candidates = SchedulePeriod.objects.filter(season=season, start_date__lte=current_date, end_date__gte=current_date)
+    # Named rounds/slates take precedence over automatically created daily periods.
+    candidates = candidates.annotate(
+        has_games=Exists(Game.objects.filter(schedule_period_id=OuterRef("pk"))),
+        explicit_priority=Case(When(kind="day", then=Value(0)), default=Value(1), output_field=IntegerField()),
+    )
+    schedule_period = candidates.order_by("-has_games", "-explicit_priority", "-start_date", "number").first()
 
-    if not week:
-        week = Week.objects.filter(
-            season=season,
-            start_date__lte=current_date,
-            end_date__gte=current_date
-        ).exclude(start_date=current_date).first()
-
-    return week
+    return schedule_period
 
 
-def get_display_week(season: Optional[Season] = None, now: Optional[datetime] = None) -> Optional[Week]:
+def get_display_period(season: Optional[Season] = None, now: Optional[datetime] = None) -> Optional[SchedulePeriod]:
     """
-    Week to show in Settings/Picks.
+    SchedulePeriod to show in Settings/Picks.
 
-    Same as get_current_week during the season; before week 1, returns the next
-    upcoming week so the UI is not empty.
+    Same as get_current_period during the season; before schedule_period 1, returns the next
+    upcoming schedule_period so the UI is not empty.
     """
-    week = get_current_week(season=season, now=now)
-    if week:
-        return week
+    schedule_period = get_current_period(season=season, now=now)
+    if schedule_period:
+        return schedule_period
 
     now = now or timezone.now()
     if season is None:
@@ -56,63 +52,63 @@ def get_display_week(season: Optional[Season] = None, now: Optional[datetime] = 
         return None
 
     return (
-        Week.objects.filter(season=season, start_date__gt=now.date())
+        SchedulePeriod.objects.filter(season=season, start_date__gt=timezone.localdate(now))
         .order_by("start_date")
         .first()
     )
 
 
-def get_live_week(league: League, now: Optional[datetime] = None) -> Optional[Week]:
-    """Keep the prior week's slate visible until this league's first kickoff.
+def get_live_period(league: League, now: Optional[datetime] = None) -> Optional[SchedulePeriod]:
+    """Keep the prior schedule_period's slate visible until this league's first start_time.
 
-    Use the same calendar windows as the live page, rather than provider week
-    numbers. Once a current-week game has kicked off, stay on that week even
+    Use the same calendar windows as the live page, rather than provider schedule_period
+    numbers. Once a current-schedule_period game has kicked off, stay on that schedule_period even
     between games or after all games are final. Picks/Settings remain unchanged.
     """
     now = now or timezone.now()
     season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
-    week = get_display_week(season=season, now=now) if season else None
-    if week is None or league is None:
-        return week
+    schedule_period = get_display_period(season=season, now=now) if season else None
+    if schedule_period is None or league is None:
+        return schedule_period
 
     games = LeagueGame.objects.filter(
-        league=league, is_active=True, game__season=week.season
+        league=league, is_active=True, game__season=schedule_period.season
     )
-    start, end = get_week_datetime_range(week)
+    start, end = get_period_datetime_range(schedule_period)
     if games.filter(
-        game__kickoff__range=(start, end), game__kickoff__lte=now
+        **period_game_filters(schedule_period), game__start_time__lte=now
     ).exists():
-        return week
+        return schedule_period
 
-    previous_week = (
-        Week.objects.filter(season=week.season, start_date__lt=week.start_date)
+    previous_period = (
+        SchedulePeriod.objects.filter(season=schedule_period.season, start_date__lt=schedule_period.start_date)
         .order_by('-start_date', '-pk')
         .first()
     )
-    if previous_week:
-        start, end = get_week_datetime_range(previous_week)
+    if previous_period:
+        start, end = get_period_datetime_range(previous_period)
         if games.filter(
-            game__kickoff__range=(start, end), game__kickoff__lte=now
+            **period_game_filters(previous_period), game__start_time__lte=now
         ).exists():
-            return previous_week
-    return week
+            return previous_period
+    return schedule_period
 
 
-def get_week_datetime_range(week: Week) -> Tuple[datetime, datetime]:
+def get_period_datetime_range(schedule_period: SchedulePeriod) -> Tuple[datetime, datetime]:
     """
-    Convert a Week model's start_date and end_date to timezone-aware datetimes.
+    Convert a SchedulePeriod model's start_date and end_date to timezone-aware datetimes.
     
     Args:
-        week: Week object with start_date and end_date
+        schedule_period: SchedulePeriod object with start_date and end_date
     
     Returns:
         Tuple of (start_datetime, end_datetime) as timezone-aware datetimes
     """
     # Convert dates to datetimes
     # Start at midnight on the start date
-    start = datetime.combine(week.start_date, datetime.min.time())
+    start = datetime.combine(schedule_period.start_date, datetime.min.time())
     # End at 23:59:59 on the end date
-    end = datetime.combine(week.end_date, datetime.max.time())
+    end = datetime.combine(schedule_period.end_date, datetime.max.time())
     
     # Make timezone-aware
     if timezone.is_naive(start):
@@ -123,6 +119,13 @@ def get_week_datetime_range(week: Week) -> Tuple[datetime, datetime]:
     return start, end
 
 
-def get_display_week_for_league(league, now=None):
+def get_display_period_for_league(league, now=None):
     season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
-    return get_display_week(season=season, now=now) if season else None
+    return get_display_period(season=season, now=now) if season else None
+
+
+def period_game_filters(schedule_period, prefix="game__"):
+    """Football retains provider-calendar grouping; other sports use explicit slates."""
+    if schedule_period.season.sport_id == DEFAULT_SPORT:
+        return {prefix + "start_time__range": get_period_datetime_range(schedule_period)}
+    return {prefix + "schedule_period": schedule_period}

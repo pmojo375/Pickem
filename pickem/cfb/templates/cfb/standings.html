@@ -34,21 +34,21 @@
     </div>
 </div>
 
-<!-- Week/Season Selection Tabs -->
-{% if current_league and available_weeks %}
+<!-- SchedulePeriod/Season Selection Tabs -->
+{% if current_league and available_periods %}
 <div class="mb-6">
     <div class="card bg-base-100 shadow-xl">
         <div class="card-body py-4">
             <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                 <!-- Tab Selection -->
                 <div class="tabs tabs-boxed standings-tabs">
-                    <a class="tab standings-tab {% if not show_week_standings and not show_league_picks and not show_what_if %}tab-active{% endif %}" onclick="switchToSeasonStandings()">
+                    <a class="tab standings-tab {% if not show_period_standings and not show_league_picks and not show_what_if %}tab-active{% endif %}" onclick="switchToSeasonStandings()">
                         <i class="fas fa-calendar-alt mr-2"></i>
                         Season
                     </a>
-                    <a class="tab standings-tab {% if show_week_standings and not show_league_picks and not show_what_if %}tab-active{% endif %}" onclick="switchToWeekStandings()">
+                    <a class="tab standings-tab {% if show_period_standings and not show_league_picks and not show_what_if %}tab-active{% endif %}" onclick="switchToPeriodStandings()">
                         <i class="fas fa-calendar-week mr-2"></i>
-                        Week
+                        Period
                     </a>
                     <a class="tab standings-tab {% if show_league_picks %}tab-active{% endif %}" onclick="switchToLeaguePicks()">
                         <i class="fas fa-users mr-2"></i>
@@ -62,17 +62,17 @@
                     {% endif %}
                 </div>
                 
-                <!-- Week Selector (shown when week tab, league picks, or what-if is active) -->
-                {% if available_weeks and show_week_standings or available_weeks and show_league_picks %}
+                <!-- Period Selector (shown when schedule_period tab, league picks, or what-if is active) -->
+                {% if available_periods and show_period_standings or available_periods and show_league_picks %}
                 <div class="form-control w-full lg:w-auto">
-                    <select class="select select-bordered select-primary" onchange="changeWeek(this.value)">
-                        {% for week_data in available_weeks %}
-                        <option value="{{ week_data.week.id }}" 
-                                {% if selected_week and selected_week.id == week_data.week.id %}selected{% endif %}>
-                            {{ week_data.week.display_name }}
-                            {% if week_data.has_live_games %}
+                    <select class="select select-bordered select-primary" onchange="changePeriod(this.value)">
+                        {% for period_data in available_periods %}
+                        <option value="{{ period_data.schedule_period.id }}"
+                                {% if selected_period and selected_period.id == period_data.schedule_period.id %}selected{% endif %}>
+                            {{ period_data.schedule_period.display_name }}
+                            {% if period_data.has_live_games %}
                                 (Live)
-                            {% elif week_data.all_games_final %}
+                            {% elif period_data.all_games_final %}
                                 (Final)
                             {% endif %}
                         </option>
@@ -97,11 +97,11 @@
                         <i class="fas fa-medal text-warning"></i>
                         {{ current_league.name }}
                     </span>
-                    {% if show_pick_status_only and pick_status_week %}
-                        <span class="font-normal text-base-content/80">{{ pick_status_week.display_name }} Pick Status</span>
-                    {% elif show_week_standings and selected_week %}
-                        <span class="font-normal text-base-content/80">{{ selected_week.display_name }}</span>
-                        {% if week_is_final %}
+                    {% if show_pick_status_only and pick_status_period %}
+                        <span class="font-normal text-base-content/80">{{ pick_status_period.display_name }} Pick Status</span>
+                    {% elif show_period_standings and selected_period %}
+                        <span class="font-normal text-base-content/80">{{ selected_period.display_name }}</span>
+                        {% if period_is_final %}
                         <span class="badge badge-success badge-sm">Final</span>
                         {% elif prizes_are_projected %}
                         <span class="badge badge-warning badge-sm">Projected</span>
@@ -119,7 +119,7 @@
                 <p class="text-sm text-base-content/70 mt-2">
                     Picks are hidden until games start — this only shows how many each player has submitted.
                 </p>
-                {% elif show_total_points_tiebreak and show_week_standings %}
+                {% elif show_total_points_tiebreak and show_period_standings %}
                 <p class="text-sm text-base-content/70 mt-2">
                     Total Points tiebreaker:
                     {% if tiebreak_points_actual != None %}
@@ -133,7 +133,7 @@
             </div>
 
             {% if not show_league_picks and not show_pick_status_only %}
-                {% if can_project_prizes or not show_week_standings and league_rules and league_rules.drop_weeks > 0 %}
+                {% if can_project_prizes or not show_period_standings and league_rules and league_rules.drop_periods > 0 %}
                 <div class="w-full flex flex-col gap-3">
                     {% if can_project_prizes %}
                     <div class="rounded-lg bg-base-200/70 px-3 py-2">
@@ -141,7 +141,7 @@
                             <span class="min-w-0">
                                 <span class="block text-sm font-medium leading-snug">Show as-is winnings</span>
                                 <span class="block text-xs text-base-content/60 mt-0.5 leading-snug">
-                                    Adds projected this-week and season payouts from current standings.
+                                    Adds projected this-period and season payouts from current standings.
                                 </span>
                             </span>
                             <input type="checkbox"
@@ -152,7 +152,7 @@
                     </div>
                     {% endif %}
 
-                    {% if not show_week_standings and league_rules and league_rules.drop_weeks > 0 %}
+                    {% if not show_period_standings and league_rules and league_rules.drop_periods > 0 %}
                     <div class="rounded-lg bg-base-200/70 px-3 py-2">
                         <label class="flex items-start justify-between gap-3 cursor-pointer">
                             <span class="min-w-0">
@@ -160,14 +160,14 @@
                                     {% if show_full_standings %}
                                         Full season standings
                                     {% else %}
-                                        Drop {{ league_rules.drop_weeks }} worst week{{ league_rules.drop_weeks|pluralize }}
+                                        Drop {{ league_rules.drop_periods }} worst period{{ league_rules.drop_periods|pluralize }}
                                     {% endif %}
                                 </span>
                                 <span class="block text-xs text-base-content/60 mt-0.5 leading-snug">
                                     {% if show_full_standings %}
-                                        Showing every week with no drops applied.
+                                        Showing every period with no drops applied.
                                     {% else %}
-                                        Showing adjusted standings with worst weeks removed.
+                                        Showing adjusted standings with worst periods removed.
                                     {% endif %}
                                 </span>
                             </span>
@@ -189,18 +189,18 @@
                     <tr>
                         {% if show_pick_status_only %}
                         <th class="standings-sticky-player bg-base-200">Player</th>
-                        <th class="bg-base-200">W{{ pick_status_week.number }} Picks</th>
+                        <th class="bg-base-200">{{ pick_status_period.display_name }} Picks</th>
                         {% else %}
                         <th class="standings-sticky-rank bg-base-200">#</th>
                         <th class="standings-sticky-player bg-base-200">Player</th>
                         {% if show_prizes %}
-                            {% if show_weeks_won_col %}
-                            <th class="bg-base-200">{% if show_week_standings %}Week ${% else %}Weeks ${% endif %}</th>
+                            {% if show_periods_won_col %}
+                            <th class="bg-base-200">{% if show_period_standings %}Period ${% else %}Periods ${% endif %}</th>
                             {% endif %}
-                            {% if show_projected_week_col %}
+                            {% if show_projected_period_col %}
                             <th class="bg-base-200">
-                                <span class="md:hidden">W{% if prize_week %}{{ prize_week.number }}{% endif %} $</span>
-                                <span class="hidden md:inline">Week{% if prize_week %} {{ prize_week.number }}{% endif %} proj. $</span>
+                                <span class="md:hidden">W{% if prize_period %}{{ prize_period.number }}{% endif %} $</span>
+                                <span class="hidden md:inline">Period{% if prize_period %} {{ prize_period.number }}{% endif %} proj. $</span>
                             </th>
                             {% endif %}
                             {% if show_season_prize_col %}
@@ -248,8 +248,8 @@
                             <span class="md:hidden">Picks</span>
                             <span class="hidden md:inline">Total Picks</span>
                         </th>
-                        {% if show_week_pick_status %}
-                        <th class="bg-base-200">W{{ pick_status_week.number }}</th>
+                        {% if show_period_pick_status %}
+                        <th class="bg-base-200">{{ pick_status_period.display_name }}</th>
                         {% endif %}
                         {% endif %}
                     </tr>
@@ -276,12 +276,12 @@
                             </span>
                         </td>
                         <td>
-                            {% if standing.week_picks_made >= standing.week_picks_total %}
-                            <span class="badge badge-success badge-sm font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
-                            {% elif standing.week_picks_made > 0 %}
-                            <span class="badge badge-warning badge-sm font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
+                            {% if standing.period_picks_made >= standing.period_picks_total %}
+                            <span class="badge badge-success badge-sm font-medium">{{ standing.period_picks_made }}/{{ standing.period_picks_total }}</span>
+                            {% elif standing.period_picks_made > 0 %}
+                            <span class="badge badge-warning badge-sm font-medium">{{ standing.period_picks_made }}/{{ standing.period_picks_total }}</span>
                             {% else %}
-                            <span class="badge badge-ghost badge-sm font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
+                            <span class="badge badge-ghost badge-sm font-medium">{{ standing.period_picks_made }}/{{ standing.period_picks_total }}</span>
                             {% endif %}
                         </td>
                         {% else %}
@@ -306,19 +306,19 @@
                             </span>
                         </td>
                         {% if show_prizes %}
-                            {% if show_weeks_won_col %}
+                            {% if show_periods_won_col %}
                             <td class="tabular-nums whitespace-nowrap">
-                                {% if standing.weeks_won_amount != None %}
-                                <span class="font-semibold text-success">${{ standing.weeks_won_amount|floatformat:2 }}</span>
+                                {% if standing.periods_won_amount != None %}
+                                <span class="font-semibold text-success">${{ standing.periods_won_amount|floatformat:2 }}</span>
                                 {% else %}
                                 <span class="text-base-content/40">—</span>
                                 {% endif %}
                             </td>
                             {% endif %}
-                            {% if show_projected_week_col %}
+                            {% if show_projected_period_col %}
                             <td class="tabular-nums whitespace-nowrap">
-                                {% if standing.projected_week_amount != None %}
-                                <span class="font-semibold text-warning">${{ standing.projected_week_amount|floatformat:2 }}</span>
+                                {% if standing.projected_period_amount != None %}
+                                <span class="font-semibold text-warning">${{ standing.projected_period_amount|floatformat:2 }}</span>
                                 {% else %}
                                 <span class="text-base-content/40">—</span>
                                 {% endif %}
@@ -390,14 +390,14 @@
                         </td>
                         {% endif %}
                         <td class="tabular-nums">{{ standing.picks_made|default:0 }}</td>
-                        {% if show_week_pick_status %}
+                        {% if show_period_pick_status %}
                         <td class="whitespace-nowrap">
-                            {% if standing.week_picks_made >= standing.week_picks_total %}
-                            <span class="badge badge-success badge-sm font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
-                            {% elif standing.week_picks_made > 0 %}
-                            <span class="badge badge-warning badge-sm font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
+                            {% if standing.period_picks_made >= standing.period_picks_total %}
+                            <span class="badge badge-success badge-sm font-medium">{{ standing.period_picks_made }}/{{ standing.period_picks_total }}</span>
+                            {% elif standing.period_picks_made > 0 %}
+                            <span class="badge badge-warning badge-sm font-medium">{{ standing.period_picks_made }}/{{ standing.period_picks_total }}</span>
                             {% else %}
-                            <span class="badge badge-ghost badge-sm font-medium">{{ standing.week_picks_made }}/{{ standing.week_picks_total }}</span>
+                            <span class="badge badge-ghost badge-sm font-medium">{{ standing.period_picks_made }}/{{ standing.period_picks_total }}</span>
                             {% endif %}
                         </td>
                         {% endif %}
@@ -418,7 +418,7 @@
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
             <h2 class="card-title">
                 <i class="fas fa-users text-primary mr-2"></i>
-                {{ current_league.name }} - {{ selected_week.display_name }} Picks
+                {{ current_league.name }} - {{ selected_period.display_name }} Picks
             </h2>
             
             <!-- Manager Switch for Unstarted Picks -->
@@ -454,7 +454,7 @@
                                 <!-- Away Team -->
                                 <div class="flex items-center gap-1 league-picks-team">
                                     {% if game.away_team|team_logo_url %}
-                                    <img src="{% static game.away_team|team_logo_url %}" 
+                                    <img src="{{ game.away_team|team_logo_url }}"
                                          alt="{{ game.away_team.name }}" 
                                          class="team-logo w-6 h-6 object-contain"
                                          onerror="this.style.display='none'">
@@ -467,7 +467,7 @@
                                 <!-- Home Team -->
                                 <div class="flex items-center gap-1 league-picks-team">
                                     {% if game.home_team|team_logo_url %}
-                                    <img src="{% static game.home_team|team_logo_url %}" 
+                                    <img src="{{ game.home_team|team_logo_url }}"
                                          alt="{{ game.home_team.name }}" 
                                          class="team-logo w-6 h-6 object-contain"
                                          onerror="this.style.display='none'">
@@ -476,7 +476,7 @@
                                 </div>
                             </div>
                             <div class="text-xs text-base-content/70">
-                                {{ game.kickoff|date:"M j, g:i A" }}
+                                {{ game.start_time|date:"M j, g:i A" }}
                             </div>
                             {% if not game.has_started and not game.is_final %}
                             <div class="text-xs text-warning font-medium">
@@ -528,7 +528,7 @@
                                         <div class="flex flex-col items-center">
                                             <div class="flex items-center gap-1 font-medium {% if pick.is_correct == True %}text-success{% elif pick.is_correct == False %}text-error{% endif %}">
                                                 {% if pick.picked_team|team_logo_url %}
-                                                <img src="{% static pick.picked_team|team_logo_url %}" 
+                                                <img src="{{ pick.picked_team|team_logo_url }}"
                                                      alt="{{ pick.picked_team.name }}" 
                                                      class="team-logo w-5 h-5 object-contain"
                                                      onerror="this.style.display='none'">
@@ -567,18 +567,18 @@
 {% endif %}
 
 <!-- What If Simulator -->
-{% if show_what_if and current_league and selected_week %}
+{% if show_what_if and current_league and selected_period %}
 <div class="card bg-base-100 shadow-xl mb-6" id="what-if-panel"
      data-endpoint="{{ what_if_endpoint }}"
      data-league-id="{{ current_league.id }}"
-     data-week-id="{{ selected_week.id }}"
+     data-period-id="{{ selected_period.id }}"
      data-ats="{% if what_if_against_the_spread %}true{% else %}false{% endif %}">
     <div class="card-body">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
             <div>
                 <h2 class="card-title flex-wrap gap-2">
                     <i class="fas fa-flask text-secondary"></i>
-                    {{ current_league.name }} — {{ selected_week.display_name }}
+                    {{ current_league.name }} — {{ selected_period.display_name }}
                     <span class="badge badge-secondary badge-sm">Hypothetical</span>
                 </h2>
                 <p class="text-sm text-base-content/70 mt-1">
@@ -630,7 +630,7 @@
                             onclick="whatIfSetOutcome({{ game.id }}, 'away', this)">
                         <div class="what-if-team-card flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-lg border-2 border-base-300 bg-base-200/50 hover:bg-base-200 transition-all w-full">
                             {% if game.away_team|team_logo_url %}
-                            <img src="{% static game.away_team|team_logo_url %}"
+                            <img src="{{ game.away_team|team_logo_url }}"
                                  alt="{{ game.away_team.name }}"
                                  class="team-logo w-10 h-10 md:w-12 md:h-12 object-contain flex-shrink-0" />
                             {% endif %}
@@ -646,7 +646,7 @@
                             onclick="whatIfSetOutcome({{ game.id }}, 'home', this)">
                         <div class="what-if-team-card flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-lg border-2 border-base-300 bg-base-200/50 hover:bg-base-200 transition-all w-full">
                             {% if game.home_team|team_logo_url %}
-                            <img src="{% static game.home_team|team_logo_url %}"
+                            <img src="{{ game.home_team|team_logo_url }}"
                                  alt="{{ game.home_team.name }}"
                                  class="team-logo w-10 h-10 md:w-12 md:h-12 object-contain flex-shrink-0" />
                             {% endif %}
@@ -663,7 +663,7 @@
         {% else %}
         <div class="alert mb-6">
             <i class="fas fa-info-circle"></i>
-            <span>No started, unfinished games to simulate for this week. Check back once games kick off.</span>
+            <span>No started, unfinished games to simulate for this period. Check back once games kick off.</span>
         </div>
         {% endif %}
 
@@ -673,11 +673,11 @@
             <div>
                 <h3 class="font-bold mb-2 flex items-center gap-2">
                     <i class="fas fa-calendar-week text-primary"></i>
-                    Week standings
+                    Period standings
                     <span class="badge badge-ghost badge-sm">Hypothetical</span>
                 </h3>
                 <div class="overflow-x-auto">
-                    <table class="table table-zebra table-sm w-full" id="what-if-week-table">
+                    <table class="table table-zebra table-sm w-full" id="what-if-schedule_period-table">
                         <thead>
                             <tr>
                                 <th>Rank</th>
@@ -1086,7 +1086,7 @@
 function toggleStandings(showFull) {
     const url = new URL(window.location);
     
-    // Preserve existing query parameters (like league_id and week)
+    // Preserve existing query parameters (like league_id and schedule_period)
     if (showFull) {
         url.searchParams.set('full', 'true');
     } else {
@@ -1108,24 +1108,24 @@ function toggleProjectedPrizes(showPrizes) {
 
 function switchToSeasonStandings() {
     const url = new URL(window.location);
-    url.searchParams.delete('week');
+    url.searchParams.delete('schedule_period');
     url.searchParams.delete('full');
     url.searchParams.delete('league_picks');
     url.searchParams.delete('what_if');
     window.location.href = url.toString();
 }
 
-function switchToWeekStandings() {
+function switchToPeriodStandings() {
     const url = new URL(window.location);
     
-    // Remove full parameter when switching to week view
+    // Remove full parameter when switching to schedule_period view
     url.searchParams.delete('full');
     url.searchParams.delete('league_picks');
     url.searchParams.delete('what_if');
     
-    // Add a week parameter to trigger week view, even if empty
-    // Backend will handle setting the default week
-    url.searchParams.set('week', 'latest');
+    // Add a schedule_period parameter to trigger schedule_period view, even if empty
+    // Backend will handle setting the default schedule_period
+    url.searchParams.set('schedule_period', 'latest');
     
     window.location.href = url.toString();
 }
@@ -1141,9 +1141,9 @@ function switchToLeaguePicks() {
     // Add league_picks parameter to trigger league picks view
     url.searchParams.set('league_picks', 'true');
     
-    // Add a week parameter to trigger week view, even if empty
-    // Backend will handle setting the default week
-    url.searchParams.set('week', 'latest');
+    // Add a schedule_period parameter to trigger schedule_period view, even if empty
+    // Backend will handle setting the default schedule_period
+    url.searchParams.set('schedule_period', 'latest');
     
     window.location.href = url.toString();
 }
@@ -1154,20 +1154,20 @@ function switchToWhatIf() {
     url.searchParams.delete('prizes');
     url.searchParams.delete('league_picks');
     url.searchParams.set('what_if', 'true');
-    url.searchParams.delete('week');
+    url.searchParams.delete('schedule_period');
     window.location.href = url.toString();
 }
 
-function changeWeek(weekId) {
+function changePeriod(periodId) {
     const url = new URL(window.location);
     
-    if (weekId) {
-        url.searchParams.set('week', weekId);
+    if (periodId) {
+        url.searchParams.set('schedule_period', periodId);
     } else {
-        url.searchParams.delete('week');
+        url.searchParams.delete('schedule_period');
     }
     
-    // Remove full parameter when switching weeks
+    // Remove full parameter when switching schedule_periods
     url.searchParams.delete('full');
     
     // Preserve league_picks / prizes / what_if parameters if they exist
@@ -1179,7 +1179,7 @@ function changeWeek(weekId) {
 function toggleUnstartedPicks(showUnstarted) {
     const url = new URL(window.location);
     
-    // Preserve existing query parameters (like league_id, week, league_picks)
+    // Preserve existing query parameters (like league_id, schedule_period, league_picks)
     if (showUnstarted) {
         url.searchParams.set('show_unstarted', 'true');
     } else {
@@ -1228,9 +1228,9 @@ function whatIfReset() {
 
 function whatIfRenderEmpty() {
     const empty = '<tr><td colspan="5" class="text-center text-base-content/50 py-6">Set an outcome to see results</td></tr>';
-    const weekBody = document.querySelector('#what-if-week-table tbody');
+    const periodBody = document.querySelector('#what-if-schedule_period-table tbody');
     const seasonBody = document.querySelector('#what-if-season-table tbody');
-    if (weekBody) weekBody.innerHTML = empty;
+    if (periodBody) periodBody.innerHTML = empty;
     if (seasonBody) seasonBody.innerHTML = empty;
     const status = document.getElementById('what-if-status');
     if (status) {
@@ -1280,11 +1280,11 @@ async function whatIfRefresh() {
     const status = document.getElementById('what-if-status');
     const endpoint = panel.dataset.endpoint;
     const leagueId = panel.dataset.leagueId;
-    const weekId = panel.dataset.weekId;
+    const periodId = panel.dataset.periodId;
 
     if (!Object.keys(whatIfState.outcomes).length) {
         whatIfRenderEmpty();
-        // Still fetch baseline with empty outcomes so finals-only weeks show current hypo
+        // Still fetch baseline with empty outcomes so finals-only schedule_periods show current hypo
         // (finals already counted). Keep empty prompt until user picks something.
         return;
     }
@@ -1305,7 +1305,7 @@ async function whatIfRefresh() {
             credentials: 'same-origin',
             body: JSON.stringify({
                 league_id: Number(leagueId),
-                week_id: Number(weekId),
+                schedule_period_id: Number(periodId),
                 outcomes: whatIfState.outcomes,
             }),
         });
@@ -1316,7 +1316,7 @@ async function whatIfRefresh() {
             }
             return;
         }
-        whatIfRenderRows(document.querySelector('#what-if-week-table tbody'), data.week_standings);
+        whatIfRenderRows(document.querySelector('#what-if-schedule_period-table tbody'), data.period_standings);
         whatIfRenderRows(document.querySelector('#what-if-season-table tbody'), data.season_standings);
         if (status) {
             status.textContent = 'Hypothetical results — not official.';

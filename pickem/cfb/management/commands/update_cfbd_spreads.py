@@ -13,7 +13,7 @@ from cfb.services.cfbd_api import get_cfbd_client
 
 
 class Command(BaseCommand):
-    help = 'Fetch and store spreads from CFBD API for a specific week and season'
+    help = 'Fetch and store spreads from CFBD API for a specific schedule_period and season'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -22,9 +22,9 @@ class Command(BaseCommand):
             help='Season year (e.g., 2025)',
         )
         parser.add_argument(
-            'week',
+            'schedule_period',
             type=int,
-            help='Week number (e.g., 1, 2, 3...)',
+            help='SchedulePeriod number (e.g., 1, 2, 3...)',
         )
         parser.add_argument(
             '--season-type',
@@ -42,7 +42,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         season_year = options['season']
-        week = options['week']
+        schedule_period = options['schedule_period']
         season_type = options['season_type']
         preferred_provider = options['provider']
         
@@ -54,7 +54,7 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.WARNING(
-                f'Fetching spreads from CFBD for {season_year} Week {week} ({season_type})...'
+                f'Fetching spreads from CFBD for {season_year} SchedulePeriod {schedule_period} ({season_type})...'
             )
         )
 
@@ -62,7 +62,7 @@ class Command(BaseCommand):
         cfbd_client = get_cfbd_client()
         lines_data = cfbd_client.fetch_lines(
             year=season_year,
-            week=week,
+            week=schedule_period,
             season_type=season_type
         )
         
@@ -81,7 +81,7 @@ class Command(BaseCommand):
             result = self._process_game_lines(
                 game_data,
                 season,
-                week,
+                schedule_period,
                 season_type,
                 preferred_provider
             )
@@ -109,7 +109,7 @@ class Command(BaseCommand):
         self,
         game_data: Dict,
         season: Season,
-        week: int,
+        schedule_period: int,
         season_type: str,
         preferred_provider: str
     ) -> str:
@@ -134,7 +134,7 @@ class Command(BaseCommand):
             return 'no_lines'
 
         # Find the game in our database
-        game = self._find_game(season, week, season_type, home_team_name, away_team_name)
+        game = self._find_game(season, schedule_period, season_type, home_team_name, away_team_name)
         
         if not game:
             self.stdout.write(
@@ -170,17 +170,17 @@ class Command(BaseCommand):
     def _find_game(
         self,
         season: Season,
-        week: int,
+        schedule_period: int,
         season_type: str,
         home_team_name: str,
         away_team_name: str
     ) -> Optional[Game]:
         """
-        Find a game in the database by season, week, and team names.
+        Find a game in the database by season, schedule_period, and team names.
         Uses fuzzy matching for team names.
         """
-        # week is a week *number*; Game.week is a FK to Week
-        week_filter = {'week__number': week, 'week__season_type': season_type}
+        # schedule_period is a schedule_period *number*; Game.schedule_period is a FK to SchedulePeriod
+        period_filter = {'schedule_period__number': schedule_period, 'schedule_period__season_type': season_type}
 
         # First try exact match
         game = Game.objects.filter(
@@ -188,17 +188,17 @@ class Command(BaseCommand):
             season_type=season_type,
             home_team__name__iexact=home_team_name,
             away_team__name__iexact=away_team_name,
-            **week_filter,
+            **period_filter,
         ).first()
         
         if game:
             return game
 
-        # Try fuzzy matching - find games in this week and match team names
+        # Try fuzzy matching - find games in this schedule_period and match team names
         games = Game.objects.filter(
             season=season,
             season_type=season_type,
-            **week_filter,
+            **period_filter,
         ).select_related('home_team', 'away_team')
 
         for g in games:
