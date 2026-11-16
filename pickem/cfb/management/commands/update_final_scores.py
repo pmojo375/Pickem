@@ -60,7 +60,7 @@ class Command(BaseCommand):
         # Apply season filter if provided
         if season_year:
             try:
-                season = Season.objects.get(year=season_year)
+                season = Season.objects.get(sport_id="college-football", year=season_year)
                 games_query = games_query.filter(season=season)
             except Season.DoesNotExist:
                 raise CommandError(f'Season {season_year} does not exist')

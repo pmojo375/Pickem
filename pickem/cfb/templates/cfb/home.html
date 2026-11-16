@@ -1,6 +1,6 @@
 {% extends 'cfb/base.html' %}
 
-{% block title %}{% if request.user.is_authenticated %}Home | BigPicks{% else %}BigPicks | College Football Pick'em{% endif %}{% endblock %}
+{% block title %}{% if request.user.is_authenticated %}Home | BigPicks{% else %}BigPicks | Sports Pick'em{% endif %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -46,7 +46,7 @@
                     <p class="text-base-content/80">
                         {% if current_league %}
                             {{ current_league.name }}
-                            {% if current_week %} · Week {{ current_week.number }}{% endif %}
+                            {% if current_week %} · {{ current_week.display_name }}{% endif %}
                         {% else %}
                             Join a league to start picking this Saturday.
                         {% endif %}
@@ -106,7 +106,7 @@
                 <div class="flex flex-col lg:flex-row lg:items-center gap-6">
                     <div class="flex-1">
                         {% if current_week %}
-                            <div class="badge badge-primary mb-3">Week {{ current_week.number }}</div>
+                            <div class="badge badge-primary mb-3">{{ current_week.display_name }}</div>
                         {% endif %}
                         {% if week_games_count == 0 %}
                             <h2 class="card-title text-2xl">The board is not up yet</h2>
@@ -114,7 +114,7 @@
                                 Games for this week have not been posted in {{ current_league.name }}. Check back soon, or jump into live scores.
                             </p>
                         {% elif week_games_final %}
-                            <h2 class="card-title text-2xl">Week {{ current_week.number }} is final</h2>
+                            <h2 class="card-title text-2xl">{{ current_week.display_name }} is final</h2>
                             {% if week_picks_count == 0 %}
                             <p class="text-base-content/70">
                                 The slate is done. You did not have picks in for this week.
@@ -278,10 +278,10 @@
                         Big<span class="text-primary">Picks</span>
                     </h1>
                     <p class="text-xl md:text-2xl text-base-content mb-3">
-                        Private college football pick'em. Your league, your rules.
+                        Private sports pick'em. Your league, your rules.
                     </p>
                     <p class="text-base-content/80 max-w-xl mx-auto mb-8">
-                        Create a league, set how you score it, and find out who actually knows CFB — not who talks the most in the group chat.
+                        Create a league, set how you score it, and find out who actually knows the game — not who talks the most in the group chat.
                     </p>
                     <div class="flex gap-3 justify-center flex-wrap">
                         <a href="{% url 'account_login' %}" class="btn btn-primary btn-lg">

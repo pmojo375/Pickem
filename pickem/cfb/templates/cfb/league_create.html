@@ -18,6 +18,15 @@
             <form method="POST" action="{% url 'league_create' %}">
                 {% csrf_token %}
                 
+                <div class="form-control mb-4">
+                    <label class="label" for="sport"><span class="label-text font-semibold">Sport</span></label>
+                    <select id="sport" name="sport" class="select select-bordered w-full" required>
+                        {% for sport in sports %}
+                        <option value="{{ sport.pk }}" {% if sport.pk == selected_sport %}selected{% endif %}>{{ sport.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
                 <!-- League Name -->
                 <div class="form-control mb-4">
                     <label class="label">

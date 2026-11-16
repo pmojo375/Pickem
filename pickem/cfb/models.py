@@ -17,7 +17,56 @@ PERSONAL_INVITE_EXPIRY_DAYS = 30
 PERSONAL_INVITE_TOKEN_BYTES = 32
 
 
+DEFAULT_SPORT = "college-football"
+
+
+class Sport(models.Model):
+    """Configurable competition/feed namespace; add sports without schema changes."""
+
+    slug = models.SlugField(primary_key=True, max_length=64)
+    name = models.CharField(max_length=100)
+    espn_sport = models.SlugField(max_length=64, blank=True)
+    espn_league = models.SlugField(max_length=64, blank=True)
+    period_label = models.CharField(max_length=16, default="Period")
+    regulation_periods = models.PositiveSmallIntegerField(default=4)
+    has_possession = models.BooleanField(default=False)
+    has_downs = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def scoreboard_urls(self):
+        if not self.espn_sport or not self.espn_league:
+            return ()
+        path = f"{self.espn_sport}/{self.espn_league}/scoreboard"
+        return tuple(
+            f"https://{host}/apis/site/v2/sports/{path}"
+            for host in ("site.web.api.espn.com", "site.api.espn.com")
+        )
+
+    def format_period(self, period):
+        if not period:
+            return ""
+        if period > self.regulation_periods:
+            overtime = period - self.regulation_periods
+            return "OT" if overtime == 1 else f"{overtime}OT"
+        separator = "" if self.period_label == "Q" else " "
+        return f"{self.period_label}{separator}{period}"
+
+
+def sport_field():
+    return models.ForeignKey(
+        Sport, on_delete=models.PROTECT, default=DEFAULT_SPORT,
+    )
+
+
 class League(models.Model):
+    sport = sport_field()
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="created_leagues")
@@ -40,6 +89,9 @@ class League(models.Model):
         return self.name
 
     def clean(self):
+        super().clean()
+        if self.pk and League.objects.filter(pk=self.pk).exclude(sport_id=self.sport_id).exists():
+            raise ValidationError({"sport": "Create a separate league to use a different sport."})
         # Ensure unique league name (case-insensitive)
         if League.objects.filter(name__iexact=self.name).exclude(pk=self.pk).exists():
             raise ValidationError({"name": "A league with this name already exists."})
@@ -313,6 +365,13 @@ class LeagueRules(models.Model):
         verbose_name_plural = "League Rules"
         verbose_name = "League Rule"
 
+    def clean(self):
+        super().clean()
+        if self.league_id and self.season_id and self.league.sport_id != self.season.sport_id:
+            raise ValidationError({"season": "Season and league must belong to the same sport."})
+        if self.season_end_week_id and self.season_end_week.season_id != self.season_id:
+            raise ValidationError({"season_end_week": "Must belong to the selected season."})
+
     def __str__(self) -> str:
         return f"{self.league.name} - {self.season.year} Rules"
 
@@ -367,19 +426,28 @@ class LeagueMembership(models.Model):
 
 
 class Season(models.Model):
-    year = models.PositiveIntegerField(unique=True)
+    sport = sport_field()
+    year = models.PositiveIntegerField()
     name = models.CharField(max_length=64, blank=True)
     is_active = models.BooleanField(default=False)
     
-    # One-time data pull flags for CFBD API
-    teams_pulled = models.BooleanField(default=False, help_text="Teams data pulled from CFBD for this season")
-    games_pulled = models.BooleanField(default=False, help_text="Games data pulled from CFBD for this season")
+    # Provider import state for this season
+    teams_pulled = models.BooleanField(default=False, help_text="Teams imported for this season")
+    games_pulled = models.BooleanField(default=False, help_text="Games imported for this season")
 
     class Meta:
-        ordering = ["-year"]
+        ordering = ["-year", "sport_id"]
+        constraints = [
+            models.UniqueConstraint(fields=["sport", "year"], name="season_sport_year_unique"),
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.pk and Season.objects.filter(pk=self.pk).exclude(sport_id=self.sport_id).exists():
+            raise ValidationError({"sport": "Create a separate season to use a different sport."})
 
     def __str__(self) -> str:
-        return self.name or str(self.year)
+        return self.name or f"{self.sport.name} {self.year}"
 
 
 class Location(models.Model):
@@ -416,7 +484,9 @@ class Team(models.Model):
     classification = models.CharField(max_length=16, blank=True)  # fbs, fcs, etc.
     logo_url = models.URLField(blank=True, null=True)
     
-    # API IDs
+    provider_ids = models.JSONField(default=dict, blank=True, help_text="External IDs keyed by provider, e.g. {\"espn\": \"150\"}")
+
+    # Legacy CFBD and ESPN identifiers retained for existing integrations
     cfbd_id = models.IntegerField(null=True, blank=True, db_index=True)
     espn_id = models.CharField(max_length=32, null=True, blank=True, db_index=True)
     
@@ -446,6 +516,12 @@ class Team(models.Model):
 
 
 class Week(models.Model):
+    name = models.CharField(max_length=64, blank=True, help_text="Optional round or slate name, e.g. Sweet 16")
+
+    @property
+    def display_name(self):
+        return self.name or f"Week {self.number}"
+
     season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="weeks")
     number = models.PositiveIntegerField()
     season_type = models.CharField(max_length=32, default="regular", help_text="regular, postseason, etc.")
@@ -460,10 +536,16 @@ class Week(models.Model):
         ]
         
     def __str__(self) -> str:
-        return f"Week {self.number} - {self.season.year}"
+        return f"{self.display_name} - {self.season.year}"
 
 
 class Game(models.Model):
+    provider_ids = models.JSONField(default=dict, blank=True, help_text="External IDs keyed by provider")
+
+    @property
+    def period_display(self):
+        return self.season.sport.format_period(self.quarter)
+
     season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="games")
     external_id = models.CharField(max_length=64, null=True, blank=True, db_index=True)
     week = models.ForeignKey(Week, on_delete=models.CASCADE, related_name="games", null=True, blank=True)
@@ -506,9 +588,21 @@ class Game(models.Model):
         ]
 
     def __str__(self) -> str:
-        week_str = f"Week {self.week.number} - " if self.week else ""
+        week_str = f"{self.week.display_name} - " if self.week else ""
         return f"{week_str}{self.away_team} at {self.home_team}"
     
+    def clean(self):
+        super().clean()
+        errors = {}
+        for field in ("home_team", "away_team", "week"):
+            obj = getattr(self, field, None)
+            if obj and obj.season_id != self.season_id:
+                errors[field] = "Must belong to the game's season."
+        if self.home_team_id and self.home_team_id == self.away_team_id:
+            errors["away_team"] = "Teams must be different."
+        if errors:
+            raise ValidationError(errors)
+
     def has_started(self):
         """Check if the game has started (kickoff time has passed)"""
         from django.utils import timezone
@@ -592,6 +686,11 @@ class LeagueGame(models.Model):
     def __str__(self) -> str:
         return f"{self.league.name}: {self.game}"
     
+    def clean(self):
+        super().clean()
+        if self.league_id and self.game_id and self.league.sport_id != self.game.season.sport_id:
+            raise ValidationError({"game": "Game and league must belong to the same sport."})
+
     def lock_spread(self):
         """Lock the current spread for this league's game"""
         from django.utils import timezone

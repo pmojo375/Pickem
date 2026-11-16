@@ -70,7 +70,7 @@ class Command(BaseCommand):
 
         try:
             # Get or verify season exists
-            season = Season.objects.get(year=season_year)
+            season = Season.objects.get(sport_id="college-football", year=season_year)
             self.stdout.write(
                 self.style.SUCCESS(f'Using season: {season}')
             )

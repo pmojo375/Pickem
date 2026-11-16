@@ -51,6 +51,7 @@ urlpatterns = [
     path('update-live-scores/', views.update_live_scores, name='update_live_scores'),
     
     # Public API endpoints for game data
+    path('api/sports/', api_views.sports_list, name='api_sports_list'),
     path('api/games/', api_views.games_list, name='api_games_list'),
     path('api/games/<int:game_id>/', api_views.game_detail, name='api_game_detail'),
     path('api/games/<int:game_id>/spread-history/', api_views.game_spread_history, name='api_game_spread_history'),

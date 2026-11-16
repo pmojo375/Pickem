@@ -17,7 +17,7 @@
         
         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
             {% if request.user.is_staff %}
-            <a href="{% url 'start_new_season' %}" class="btn btn-secondary">
+            <a href="{% url 'start_new_season' %}{% if current_league %}?sport={{ current_league.sport_id|urlencode }}{% endif %}" class="btn btn-secondary">
                 <i class="fas fa-flag-checkered mr-2"></i>Start New Season
             </a>
             {% endif %}
@@ -60,7 +60,7 @@
             <span>
                 No active season found.
                 {% if request.user.is_staff %}
-                <a href="{% url 'start_new_season' %}" class="link font-semibold">Start a new season</a> first.
+                <a href="{% url 'start_new_season' %}{% if current_league %}?sport={{ current_league.sport_id|urlencode }}{% endif %}" class="link font-semibold">Start a new season</a> first.
                 {% else %}
                 Ask a site admin to start a season before configuring rules.
                 {% endif %}
@@ -495,7 +495,7 @@
                         {% for week in season_weeks %}
                         <option value="{{ week.id }}"
                                 {% if league_rules.season_end_week_id == week.id %}selected{% endif %}>
-                            Week {{ week.number }}{% if week.season_type != 'regular' %} ({{ week.season_type }}){% endif %}
+                            {{ week.display_name }}{% if week.season_type != 'regular' %} ({{ week.season_type }}){% endif %}
                             · {{ week.start_date }} – {{ week.end_date }}
                         </option>
                         {% endfor %}

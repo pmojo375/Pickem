@@ -78,15 +78,11 @@ def poll_espn_scores(self):
 
         # Check if there are active games
         now = timezone.now()
-        active_season = Season.objects.filter(is_active=True).first()
-        if not active_season:
-            logger.warning("No active season found")
-            return
-
         start_date = now - timedelta(days=settings.GAME_CHECK_WINDOW_PAST)
 
         active_count = Game.objects.filter(
-            season=active_season,
+            season__is_active=True,
+            season__sport__is_active=True,
             kickoff__gte=start_date,
             is_final=False,
             kickoff__lte=now,
@@ -162,11 +158,12 @@ def cleanup_old_game_cache():
         old_games = Game.objects.filter(
             kickoff__lt=cutoff_date,
             is_final=True
-        ).values_list('external_id', flat=True)
+        ).select_related("season__sport")
 
+        from .services.sports import game_cache_key
         deleted_count = 0
-        for external_id in old_games:
-            cache_key = f"{settings.REDIS_KEY_GAME_PREFIX}{external_id}"
+        for game in old_games:
+            cache_key = game_cache_key(game)
             if cache.delete(cache_key):
                 deleted_count += 1
 
@@ -190,7 +187,7 @@ def pull_calendar(season_year: int, force: bool = False):
             return
         logger.info("Processing %s calendar weeks for %s", len(calendar_data), season_year)
 
-        season = Season.objects.get(year=season_year)
+        season = Season.objects.get(sport_id="college-football", year=season_year)
 
         for calendar_item in calendar_data:
             logger.debug("Processing calendar item: %s", calendar_item)
@@ -260,7 +257,7 @@ def update_spreads(self, season_year: int = None, season_type: str = 'regular', 
         
         # Verify season exists
         try:
-            season = Season.objects.get(year=season_year)
+            season = Season.objects.get(sport_id="college-football", year=season_year)
         except Season.DoesNotExist:
             logger.error(f"Season {season_year} not found")
             return
@@ -471,7 +468,7 @@ def update_rankings(self, season_year: int = None, season_type: str = 'regular',
 
         # Verify season exists
         try:
-            season = Season.objects.get(year=season_year)
+            season = Season.objects.get(sport_id="college-football", year=season_year)
         except Season.DoesNotExist:
             logger.error(f"Season {season_year} not found")
             return
@@ -665,7 +662,7 @@ def pull_season_teams(season_year: int, force: bool = False):
         force: If True, pull even if already pulled
     """
     try:
-        season = Season.objects.get(year=season_year)
+        season = Season.objects.get(sport_id="college-football", year=season_year)
         
         # Check if already pulled
         if season.teams_pulled and not force:
@@ -817,7 +814,7 @@ def pull_season_games(season_year: int = None, season_type: str = 'regular', for
         # Use the active season even before week 1 starts so kickoff refreshes
         # still run. Only borrow season_type from the current week when one exists.
         if season_year is None:
-            active_season = Season.objects.filter(is_active=True).first()
+            active_season = Season.objects.filter(sport_id="college-football", is_active=True).first()
             if not active_season:
                 logger.error("No active season found and season_year not provided")
                 return
@@ -827,7 +824,7 @@ def pull_season_games(season_year: int = None, season_type: str = 'regular', for
                 if current_week:
                     season_type = current_week.season_type
         
-        season = Season.objects.get(year=season_year)
+        season = Season.objects.get(sport_id="college-football", year=season_year)
         
         # Check if already pulled
         if season.games_pulled and not force:
@@ -1057,7 +1054,7 @@ def lock_league_spreads_for_week(season_year: int = None, season_type: str = 're
         
         # Verify season exists
         try:
-            season = Season.objects.get(year=season_year)
+            season = Season.objects.get(sport_id="college-football", year=season_year)
         except Season.DoesNotExist:
             logger.error(f"Season {season_year} not found")
             return
@@ -1146,6 +1143,7 @@ def initialize_season(season_year: int, force: bool = False):
     try:
         # Get or create season
         season, created = Season.objects.get_or_create(
+            sport_id="college-football",
             year=season_year,
             defaults={'name': f'{season_year} Season', 'is_active': True}
         )
@@ -1333,7 +1331,7 @@ def update_team_stats(self, season_year: int = None, week: int = None):
         
         # Verify season exists
         try:
-            season = Season.objects.get(year=season_year)
+            season = Season.objects.get(sport_id="college-football", year=season_year)
         except Season.DoesNotExist:
             logger.error(f"Season {season_year} not found")
             return

@@ -1,7 +1,8 @@
 from datetime import datetime
 from typing import Tuple, Optional
 from django.utils import timezone
-from ..models import League, LeagueGame, Season, Week
+from ..models import DEFAULT_SPORT, League, LeagueGame, Season, Week
+from .sports import get_active_season
 
 
 def get_current_week(season: Optional[Season] = None, now: Optional[datetime] = None) -> Optional[Week]:
@@ -14,7 +15,7 @@ def get_current_week(season: Optional[Season] = None, now: Optional[datetime] = 
     now = now or timezone.now()
 
     if season is None:
-        season = Season.objects.filter(is_active=True).first()
+        season = get_active_season()
 
     if not season:
         return None
@@ -50,7 +51,7 @@ def get_display_week(season: Optional[Season] = None, now: Optional[datetime] = 
 
     now = now or timezone.now()
     if season is None:
-        season = Season.objects.filter(is_active=True).first()
+        season = get_active_season()
     if not season:
         return None
 
@@ -69,7 +70,8 @@ def get_live_week(league: League, now: Optional[datetime] = None) -> Optional[We
     between games or after all games are final. Picks/Settings remain unchanged.
     """
     now = now or timezone.now()
-    week = get_display_week(now=now)
+    season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
+    week = get_display_week(season=season, now=now) if season else None
     if week is None or league is None:
         return week
 
@@ -119,3 +121,8 @@ def get_week_datetime_range(week: Week) -> Tuple[datetime, datetime]:
         end = timezone.make_aware(end)
     
     return start, end
+
+
+def get_display_week_for_league(league, now=None):
+    season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
+    return get_display_week(season=season, now=now) if season else None

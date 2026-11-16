@@ -391,7 +391,7 @@ class CFBDAPIClient:
         from ..models import Season, Team, TeamStat
         
         try:
-            season = Season.objects.get(year=year)
+            season = Season.objects.get(sport_id="college-football", year=year)
         except Season.DoesNotExist:
             logger.error(f"Season {year} not found, cannot save stats")
             return

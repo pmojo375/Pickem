@@ -15,7 +15,7 @@ class Command(BaseCommand):
 
         # 1. Check active season
         self.stdout.write('1. Checking active season...')
-        active_season = Season.objects.filter(is_active=True).first()
+        active_season = Season.objects.filter(sport_id="college-football", is_active=True).first()
         if active_season:
             self.stdout.write(self.style.SUCCESS(f'   Active season: {active_season.year} - {active_season.name}'))
         else:

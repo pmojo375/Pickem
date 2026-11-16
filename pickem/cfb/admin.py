@@ -1,11 +1,17 @@
 from django.contrib import admin
-from .models import Season, Team, Game, GameSpread, Pick, League, LeagueAnnouncement, LeagueInvite, LeagueMembership, LeagueGame, LeagueRules, Location, Week, Ranking, MemberWeek, MemberSeason, MemberSeasonPayment, TeamStat, UserAnnouncementDismissal, UserProfile
+from .models import Sport, Season, Team, Game, GameSpread, Pick, League, LeagueAnnouncement, LeagueInvite, LeagueMembership, LeagueGame, LeagueRules, Location, Week, Ranking, MemberWeek, MemberSeason, MemberSeasonPayment, TeamStat, UserAnnouncementDismissal, UserProfile
+
+
+@admin.register(Sport)
+class SportAdmin(admin.ModelAdmin):
+    list_display = ("name", "slug", "espn_sport", "espn_league", "is_active")
+    search_fields = ("name", "slug")
 
 
 @admin.register(Season)
 class SeasonAdmin(admin.ModelAdmin):
-    list_display = ("year", "name", "is_active", "teams_pulled", "games_pulled")
-    list_filter = ("is_active", "teams_pulled", "games_pulled")
+    list_display = ("year", "sport", "name", "is_active", "teams_pulled", "games_pulled")
+    list_filter = ("sport", "is_active", "teams_pulled", "games_pulled")
     search_fields = ("year", "name")
 
 
@@ -86,8 +92,8 @@ class PickAdmin(admin.ModelAdmin):
 
 @admin.register(League)
 class LeagueAdmin(admin.ModelAdmin):
-    list_display = ("name", "created_by", "is_active", "created_at", "member_count")
-    list_filter = ("is_active", "season_opt_in_required", "created_at")
+    list_display = ("name", "sport", "created_by", "is_active", "created_at", "member_count")
+    list_filter = ("sport", "is_active", "season_opt_in_required", "created_at")
     search_fields = ("name", "description", "created_by__username")
     readonly_fields = ("created_at", "invite_version")
     exclude = ("join_password",)

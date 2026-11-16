@@ -8,7 +8,7 @@
         <h1 class="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
             <i class="fas fa-flag-checkered mr-2"></i>Start New Season
         </h1>
-        <p class="text-base-content/70 mt-2">Deactivate the current season, create a new one, copy league rules, close existing leagues until owners open them, and pull CFBD data.</p>
+        <p class="text-base-content/70 mt-2">Create a season for the selected sport, copy its league rules, and close its leagues until owners reopen them. College football also starts its CFBD import.</p>
     </div>
 
     {% if active_season %}
@@ -36,6 +36,15 @@
                 {% csrf_token %}
 
                 <div class="form-control mb-4">
+                    <label class="label" for="sport"><span class="label-text font-semibold">Sport</span></label>
+                    <select id="sport" name="sport" class="select select-bordered w-full" required onchange="window.location.href='{% url 'start_new_season' %}?sport=' + encodeURIComponent(this.value)">
+                        {% for sport in sports %}
+                        <option value="{{ sport.pk }}" {% if sport.pk == selected_sport %}selected{% endif %}>{{ sport.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-control mb-4">
                     <label class="label" for="year">
                         <span class="label-text font-semibold">Season Year <span class="text-error">*</span></span>
                     </label>
@@ -50,7 +59,7 @@
                         value="{{ year }}"
                     >
                     <label class="label">
-                        <span class="label-text-alt text-base-content/60">Must be a year that does not already have a season.</span>
+                        <span class="label-text-alt text-base-content/60">Must be a year that does not already have a season for this sport.</span>
                     </label>
                 </div>
 
@@ -78,7 +87,7 @@
                         <span class="label-text">
                             I understand this will deactivate
                             {% if active_season %}the {{ active_season.year }} season{% else %}any currently active season{% endif %}
-                            for <strong>all leagues</strong>, close those leagues until owners open them for the new year, and start a CFBD data pull.
+                            for <strong>the selected sport</strong>, and close its leagues until owners open them for the new year.
                         </span>
                     </label>
                 </div>

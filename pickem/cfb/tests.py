@@ -2157,3 +2157,202 @@ class LastPlaceDroppedWeekPayoutTests(TestCase):
             )
             winners = [row["user_id"] for row in rows if row["prize_amount"] is not None]
             self.assertEqual(winners, [users[0].id])
+
+
+class MultiSportFoundationTests(TestCase):
+    """Keep sport namespaces isolated while preserving the football defaults."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from cfb.models import Sport
+
+        cls.football = Sport.objects.get(pk="college-football")
+        cls.basketball = Sport.objects.get(pk="mens-college-basketball")
+        cls.user = User.objects.create_user(username="multi-sport-owner", password="test-pass")
+        cls.football_season = Season.objects.create(year=2026, is_active=True)
+        cls.basketball_season = Season.objects.create(year=2026, sport=cls.basketball, is_active=True)
+        cls.football_league = League.objects.create(name="Football League", created_by=cls.user)
+        cls.basketball_league = League.objects.create(name="Basketball League", created_by=cls.user, sport=cls.basketball)
+        for league in (cls.football_league, cls.basketball_league):
+            LeagueMembership.objects.create(league=league, user=cls.user, role="owner")
+        cls.games = []
+        today = timezone.localdate()
+        for season in (cls.football_season, cls.basketball_season):
+            week = Week.objects.create(season=season, number=1, start_date=today, end_date=today + timedelta(days=6))
+            home = Team.objects.create(season=season, name="Michigan State", provider_ids={"espn": "127"})
+            away = Team.objects.create(season=season, name="Michigan", provider_ids={"espn": "130"})
+            cls.games.append(Game.objects.create(
+                season=season, week=week, home_team=home, away_team=away,
+                external_id="same-provider-id", kickoff=timezone.now() - timedelta(minutes=5),
+            ))
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    def test_existing_rows_default_to_football_and_same_year_can_coexist(self):
+        from cfb.services.sports import get_active_season
+        self.assertEqual(self.football_league.sport_id, "college-football")
+        self.assertEqual(get_active_season(), self.football_season)
+        self.assertEqual(get_active_season(self.basketball), self.basketball_season)
+        self.assertEqual(Team.objects.filter(name="Michigan State").count(), 2)
+
+    def test_sport_year_is_unique(self):
+        from django.db import IntegrityError, transaction
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Season.objects.create(sport=self.basketball, year=2026)
+
+    @patch("cfb.services.season._start_initialize")
+    def test_basketball_rollover_preserves_football_and_skips_cfbd(self, initialize):
+        from cfb.services.season import start_new_season
+        LeagueRules.objects.create(league=self.basketball_league, season=self.basketball_season, points_per_correct_pick=3)
+        result = start_new_season(2027, sport=self.basketball)
+        self.football_season.refresh_from_db()
+        self.football_league.refresh_from_db()
+        self.basketball_season.refresh_from_db()
+        self.basketball_league.refresh_from_db()
+        self.assertTrue(self.football_season.is_active)
+        self.assertTrue(self.football_league.is_active)
+        self.assertFalse(self.basketball_season.is_active)
+        self.assertFalse(self.basketball_league.is_active)
+        self.assertEqual(result["leagues_paused"], 1)
+        self.assertEqual(result["rules_copied"], 1)
+        self.assertEqual(result["season"].league_rules.get().points_per_correct_pick, 3)
+        initialize.assert_not_called()
+
+    @patch("cfb.services.season._start_initialize", return_value=(True, "queued", None))
+    def test_football_rollover_preserves_basketball_and_starts_cfbd(self, initialize):
+        from cfb.services.season import start_new_season
+        start_new_season(2027)
+        self.basketball_season.refresh_from_db()
+        self.basketball_league.refresh_from_db()
+        self.assertTrue(self.basketball_season.is_active)
+        self.assertTrue(self.basketball_league.is_active)
+        initialize.assert_called_once_with(2027)
+
+    def test_league_schedule_resolves_its_sport(self):
+        from cfb.services.schedule import get_display_week_for_league, get_live_week
+        self.assertEqual(get_display_week_for_league(self.basketball_league).season, self.basketball_season)
+        self.assertEqual(get_live_week(self.basketball_league).season, self.basketball_season)
+
+    def test_cross_sport_and_cross_season_relationships_are_rejected(self):
+        with self.assertRaises(ValidationError):
+            LeagueGame(league=self.football_league, game=self.games[1]).full_clean()
+        with self.assertRaises(ValidationError):
+            LeagueRules(league=self.football_league, season=self.basketball_season).full_clean()
+        game = self.games[1]
+        game.home_team = self.games[0].home_team
+        with self.assertRaises(ValidationError):
+            game.full_clean()
+
+    def test_api_filters_same_year_by_sport_and_returns_neutral_fields(self):
+        response = self.client.get(reverse("api_games_list"), {"sport": self.basketball.pk, "season": 2026})
+        self.assertEqual(response.status_code, 200)
+        games = response.json()["games"]
+        self.assertEqual([g["id"] for g in games], [self.games[1].pk])
+        self.assertEqual(games[0]["sport"], self.basketball.pk)
+        self.assertEqual(games[0]["start_time"], games[0]["kickoff"])
+        self.assertEqual(games[0]["period"], games[0]["quarter"])
+
+    def test_polling_ids_can_resolve_basketball_without_a_sport_query(self):
+        response = self.client.get(reverse("api_games_list"), {"ids": self.games[1].pk})
+        self.assertEqual([g["id"] for g in response.json()["games"]], [self.games[1].pk])
+
+    def test_unknown_sport_does_not_leak_football_games(self):
+        response = self.client.get(reverse("api_games_list"), {"sport": "unknown"})
+        self.assertEqual(response.json()["games"], [])
+
+    def test_cache_ids_are_namespaced_by_sport(self):
+        from cfb.services.sports import game_cache_key
+        self.assertNotEqual(game_cache_key(self.games[0]), game_cache_key(self.games[1]))
+
+    def test_configurable_periods_and_named_rounds(self):
+        from cfb.models import Sport
+        self.assertEqual(self.football.format_period(1), "Q1")
+        self.assertEqual(self.basketball.format_period(2), "Half 2")
+        self.assertEqual(self.basketball.format_period(3), "OT")
+        self.assertEqual(self.basketball.format_period(4), "2OT")
+        hockey = Sport.objects.create(slug="nhl", name="NHL", espn_sport="hockey", espn_league="nhl", regulation_periods=3)
+        self.assertIn("hockey/nhl/scoreboard", hockey.scoreboard_urls[0])
+        week = self.games[1].week
+        week.name = "Sweet 16"
+        self.assertEqual(week.display_name, "Sweet 16")
+
+    @patch("cfb.services.live.requests.get")
+    def test_basketball_feed_is_selected_from_configuration(self, get):
+        from cfb.services.live import _fetch_scoreboard
+        get.return_value.json.return_value = {"events": []}
+        self.assertEqual(_fetch_scoreboard({"dates": "20260320"}, sport=self.basketball), {"events": []})
+        self.assertIn("basketball/mens-college-basketball/scoreboard", get.call_args.args[0])
+
+    @patch("cfb.services.live._fetch_scoreboard")
+    def test_polling_keeps_overlapping_provider_ids_in_separate_feeds(self, fetch):
+        from cfb.services.live import fetch_and_store_live_scores
+
+        def scoreboard(params, sport):
+            score = "10" if sport.pk == self.football.pk else "75"
+            return {"events": [{"id": "same-provider-id", "status": {"type": {"state": "in"}, "period": 2, "displayClock": "12:00"}, "competitions": [{"competitors": [{"homeAway": "home", "id": "127", "score": score}, {"homeAway": "away", "id": "130", "score": "5"}], "situation": {"down": 3, "shortDownDistanceText": "3rd & 5", "possession": "127"}}]}]}
+
+        fetch.side_effect = scoreboard
+        self.assertEqual(fetch_and_store_live_scores(), 2)
+        football, basketball = [Game.objects.get(pk=g.pk) for g in self.games]
+        self.assertEqual(football.home_score, 10)
+        self.assertEqual(basketball.home_score, 75)
+        self.assertEqual(football.down_distance_text, "3rd & 5")
+        self.assertEqual(basketball.down_distance_text, "")
+        self.assertEqual(basketball.possession, "")
+        self.assertEqual(basketball.period_display, "Half 2")
+
+    @patch("cfb.tasks.queue_team_records_update")
+    def test_basketball_final_does_not_queue_football_stats(self, queue):
+        game = self.games[1]
+        game.home_score, game.away_score, game.is_final = 75, 70, True
+        game.save()
+        queue.assert_not_called()
+
+    def test_new_league_can_choose_basketball(self):
+        self.client.force_login(self.user)
+        response = self.client.post(reverse("league_create"), {"name": "March Madness", "sport": self.basketball.pk, "join_password": "testing", "join_password_confirm": "testing"})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(League.objects.get(name="March Madness").sport_id, self.basketball.pk)
+
+    def test_basketball_pages_use_basketball_season(self):
+        self.client.force_login(self.user)
+        for page in ("home", "picks", "standings", "settings", "live", "roster"):
+            with self.subTest(page=page):
+                response = self.client.get(reverse(page), {"league_id": self.basketball_league.pk})
+                self.assertEqual(response.status_code, 200)
+                if response.context.get("active_season"):
+                    self.assertEqual(response.context["active_season"], self.basketball_season)
+                self.assertEqual(response.context["current_league"], self.basketball_league)
+
+    def test_sport_catalog_exposes_separate_active_seasons(self):
+        response = self.client.get(reverse("api_sports_list"))
+        self.assertEqual(response.status_code, 200)
+        catalog = {sport["slug"]: sport for sport in response.json()["sports"]}
+        self.assertEqual(catalog[self.football.pk]["active_season"]["id"], self.football_season.pk)
+        self.assertEqual(catalog[self.basketball.pk]["active_season"]["id"], self.basketball_season.pk)
+
+    def test_settings_excludes_other_sports_and_allows_non_fbs_teams(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("settings"), {"league_id": self.basketball_league.pk})
+        self.assertEqual([g.pk for g, selection in response.context["games_with_selection"]], [self.games[1].pk])
+        response = self.client.post(reverse("settings"), {
+            "do": "save_selections", "league_id": self.basketball_league.pk,
+            f"game_{self.games[0].pk}_id": self.games[0].pk,
+            f"game_{self.games[0].pk}_select": "on",
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(LeagueGame.objects.filter(league=self.basketball_league, game=self.games[0]).exists())
+
+    def test_basketball_opt_in_uses_its_season_when_football_has_another_year(self):
+        self.football_season.year = 2027
+        self.football_season.save(update_fields=["year"])
+        membership = self.basketball_league.memberships.get(user=self.user)
+        membership.is_active = False
+        membership.save(update_fields=["is_active"])
+        self.client.force_login(self.user)
+        response = self.client.post(reverse("league_opt_in", kwargs={"token": membership.get_opt_in_token(2026)}))
+        self.assertEqual(response.status_code, 302)
+        membership.refresh_from_db()
+        self.assertTrue(membership.is_active)

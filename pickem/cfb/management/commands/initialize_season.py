@@ -48,6 +48,7 @@ class Command(BaseCommand):
 
         # Get or create season
         season, created = Season.objects.get_or_create(
+            sport_id="college-football",
             year=year,
             defaults={'name': f'{year} Season', 'is_active': False}
         )

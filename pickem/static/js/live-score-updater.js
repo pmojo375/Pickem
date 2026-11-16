@@ -13,6 +13,12 @@
  */
 
 class LiveScoreUpdater {
+    escapeHTML(value) {
+        const span = document.createElement('span');
+        span.textContent = String(value);
+        return span.innerHTML;
+    }
+
     constructor(options = {}) {
         // Configuration
         this.config = {
@@ -989,7 +995,7 @@ ${spreadBadgeHTML}`;
             statusHTML = `
 <div class="text-center">
     <div class="text-xl md:text-2xl font-bold text-warning animate-pulse mb-1">
-        Q${game.quarter}
+        ${this.escapeHTML(game.period_display || `Period ${game.quarter}`)}
     </div>
     <div class="text-sm md:text-base font-semibold text-warning">${game.clock || ''}</div>
     ${downHTML}

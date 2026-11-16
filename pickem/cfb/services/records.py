@@ -41,7 +41,7 @@ def update_team_records(season_year, dry_run=False):
         ValueError: If no teams found for the season
     """
     try:
-        season = Season.objects.get(year=season_year)
+        season = Season.objects.get(sport_id="college-football", year=season_year)
     except Season.DoesNotExist:
         raise Season.DoesNotExist(f'Season {season_year} does not exist')
 
@@ -173,7 +173,7 @@ def get_team_record_summary(season_year, limit=10):
         list: List of team objects with their records, ordered by wins descending
     """
     try:
-        season = Season.objects.get(year=season_year)
+        season = Season.objects.get(sport_id="college-football", year=season_year)
     except Season.DoesNotExist:
         raise Season.DoesNotExist(f'Season {season_year} does not exist')
     

@@ -16,6 +16,8 @@ import logging
 from . import analytics
 from .models import (
     JOIN_PASSWORD_MIN_LENGTH,
+    DEFAULT_SPORT,
+    Sport,
     Game,
     Pick,
     Team,
@@ -37,6 +39,7 @@ from .models import (
 from django.utils import timezone
 from datetime import datetime
 from . import services
+from .services.sports import get_active_season
 from .forms import (
     AccountNameForm,
     ContactForm,
@@ -221,7 +224,7 @@ def entry_fee_receipt_dismiss_view(request, league_id):
         messages.error(request, "You are not a member of that league.")
         return redirect("home")
 
-    active_season = Season.objects.filter(is_active=True).first()
+    active_season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
     if not active_season:
         return redirect(request.META.get("HTTP_REFERER") or reverse("home"))
 
@@ -245,7 +248,7 @@ def home_view(request):
     
     if request.user.is_authenticated:
         league, user_leagues = _resolve_user_league(request)
-        active_season = Season.objects.filter(is_active=True).first()
+        active_season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
         context["user_leagues"] = user_leagues
         context["current_league"] = league
         context["entry_fee_statuses"] = _user_entry_fee_statuses(
@@ -255,7 +258,7 @@ def home_view(request):
         if league:
             from django.db.models import Count, Q
 
-            current_week = services.schedule.get_display_week()
+            current_week = services.schedule.get_display_week_for_league(league)
             now = timezone.now()
 
             week_picks_count = 0
@@ -373,7 +376,7 @@ def picks_view(request):
     
     if not league:
         # No league - show message instead of redirecting
-        current_week = services.schedule.get_display_week()
+        current_week = services.schedule.get_display_week_for_league(league)
         context = {
             "games_with_picks": [],
             "current_league": None,
@@ -411,10 +414,10 @@ def picks_view(request):
         from datetime import timedelta
         
         # Get current week and its date range
-        current_week = services.schedule.get_display_week()
+        current_week = services.schedule.get_display_week_for_league(league)
         
         # Get active season and league rules
-        active_season = Season.objects.filter(is_active=True).first()
+        active_season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
         league_rules = None
         if active_season:
             league_rules = LeagueRules.objects.filter(league=league, season=active_season).first()
@@ -642,10 +645,10 @@ def picks_view(request):
     from datetime import timedelta
     
     # Get current week and its date range
-    current_week = services.schedule.get_display_week()
+    current_week = services.schedule.get_display_week_for_league(league)
     
     # Get league games for this league - current week of the active season only
-    active_season = Season.objects.filter(is_active=True).first()
+    active_season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
     league_games = LeagueGame.objects.filter(
         league=league, 
         is_active=True
@@ -946,7 +949,7 @@ def live_view(request):
         })
     
     # Get league rules for force_hooks setting
-    active_season = Season.objects.filter(is_active=True).first()
+    active_season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
     league_rules = None
     if active_season:
         league_rules = LeagueRules.objects.filter(league=league, season=active_season).first()
@@ -1504,7 +1507,7 @@ def standings_view(request):
     
     if league:
         # Get active season
-        active_season = Season.objects.filter(is_active=True).first()
+        active_season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
         
         if active_season:
             # Get league rules to check drop_weeks setting
@@ -2013,7 +2016,7 @@ def standings_what_if_view(request):
     if not league:
         return JsonResponse({"ok": False, "error": "No league selected"}, status=400)
 
-    active_season = Season.objects.filter(is_active=True).first()
+    active_season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
     if not active_season:
         return JsonResponse({"ok": False, "error": "No active season"}, status=400)
 
@@ -2253,7 +2256,7 @@ def settings_view(request):
                         memberships__role__in=["owner", "admin"],
                     )
                 
-                target_season = get_object_or_404(Season, pk=season_id)
+                target_season = get_object_or_404(Season, pk=season_id, sport_id=target_league.sport_id)
                 
                 # Get or create league rules for this season
                 try:
@@ -2484,7 +2487,7 @@ def settings_view(request):
                         game_ids.append(game_id)
             
             # Get league rules to check pick limit
-            active_season = Season.objects.filter(is_active=True).first()
+            active_season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
             league_rules = None
             if active_season:
                 league_rules = LeagueRules.objects.filter(league=league, season=active_season).first()
@@ -2515,7 +2518,7 @@ def settings_view(request):
                 is_selected = request.POST.get(f"game_{game_id}_select") == "on"
                 
                 try:
-                    game = Game.objects.get(pk=game_id)
+                    game = Game.objects.get(pk=game_id, season__sport_id=league.sport_id)
                     
                     if is_selected:
                         # Create or update LeagueGame
@@ -2573,7 +2576,7 @@ def settings_view(request):
             # Set the new total points game if one was selected
             if total_points_game_id:
                 try:
-                    game = Game.objects.get(pk=total_points_game_id)
+                    game = Game.objects.get(pk=total_points_game_id, season__sport_id=league.sport_id)
                     # Verify this game is in the selected games
                     league_game = LeagueGame.objects.get(league=league, game=game, is_active=True)
                     league_game.is_total_points_game = True
@@ -2604,7 +2607,7 @@ def settings_view(request):
             return redirect(f"/settings/?league_id={league.id}")
 
     # Get current week and its date range
-    current_week = services.schedule.get_display_week()
+    current_week = services.schedule.get_display_week_for_league(league)
     start, end = None, None
     games = Game.objects.none()
     
@@ -2613,9 +2616,9 @@ def settings_view(request):
         games = Game.objects.filter(
             season=current_week.season,
             kickoff__range=(start, end)
-        ).filter(
-            Q(home_team__classification='fbs') | Q(away_team__classification='fbs')
         ).select_related("home_team", "away_team").order_by("kickoff")
+        if league.sport_id == DEFAULT_SPORT:
+            games = games.filter(Q(home_team__classification="fbs") | Q(away_team__classification="fbs"))
     
     # Get existing league games for this week's games (kickoff already scoped above).
     # Do not filter on selected_at — admins often save the slate before the week starts.
@@ -2635,8 +2638,8 @@ def settings_view(request):
     currently_selected_count = sum(1 for _, lg in games_with_selection if lg)
     
     # Get all seasons and current league rules
-    all_seasons = Season.objects.all().order_by('-year')
-    active_season = Season.objects.filter(is_active=True).first()
+    all_seasons = Season.objects.filter(sport_id=league.sport_id).order_by('-year')
+    active_season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
     
     # Get league rules for active season (or create default)
     league_rules = None
@@ -2746,13 +2749,16 @@ def start_new_season_view(request):
     if not request.user.is_staff:
         return redirect("home")
 
-    active_season = Season.objects.filter(is_active=True).first()
+    sport = get_object_or_404(Sport, pk=request.POST.get("sport", request.GET.get("sport", DEFAULT_SPORT)), is_active=True)
+    active_season = get_active_season(sport)
     default_year = (active_season.year + 1) if active_season else timezone.now().year
 
     def _context(year=None, name=""):
         return {
             "active_season": active_season,
             "year": year if year is not None else default_year,
+            "sports": Sport.objects.filter(is_active=True),
+            "selected_sport": sport.pk,
             "name": name,
         }
 
@@ -2776,7 +2782,7 @@ def start_new_season_view(request):
             return render(request, "cfb/start_new_season.html", _context(year, name))
 
         try:
-            result = services.season.start_new_season(year, name=name)
+            result = services.season.start_new_season(year, name=name, sport=sport)
         except services.season.SeasonAlreadyExistsError as exc:
             messages.error(request, str(exc))
             return render(request, "cfb/start_new_season.html", _context(year, name))
@@ -2807,7 +2813,7 @@ def start_new_season_view(request):
                 f"CFBD data pull for {season.year} started in the background. "
                 f"Teams and games will show up shortly.",
             )
-        else:
+        elif sport.pk == DEFAULT_SPORT:
             messages.warning(
                 request,
                 f"Season created, but the CFBD data pull did not start. "
@@ -2822,7 +2828,7 @@ def start_new_season_view(request):
 def _league_rules_context(league, active_season=None, member_count=None):
     """Read-only rules and payout summary for members (and league detail)."""
     if active_season is None:
-        active_season = Season.objects.filter(is_active=True).first()
+        active_season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
 
     league_rules = None
     if league and active_season:
@@ -2861,7 +2867,7 @@ def roster_view(request):
         memberships = LeagueMembership.objects.filter(league=league).select_related('user').order_by('-role', 'joined_at')
         
         roster = []
-        active_season = Season.objects.filter(is_active=True).first()
+        active_season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
         for membership in memberships:
             picks = Pick.objects.filter(user=membership.user, league=league, is_correct__isnull=False)
             if active_season:
@@ -2952,7 +2958,7 @@ def admin_import_schedule(request):
     from .tasks import pull_season_games
     
     # Get active season
-    active_season = Season.objects.filter(is_active=True).first()
+    active_season = get_active_season(DEFAULT_SPORT)
     if not active_season:
         return JsonResponse({"ok": False, "error": "No active season found"})
     
@@ -3292,13 +3298,21 @@ def league_create_view(request):
     if request.method == "POST":
         name = request.POST.get("name", "").strip()
         description = request.POST.get("description", "").strip()
+        sport_id = request.POST.get("sport", DEFAULT_SPORT)
+        sport = Sport.objects.filter(pk=sport_id, is_active=True).first()
         join_password = request.POST.get("join_password", "")
         join_password_confirm = request.POST.get("join_password_confirm", "")
         form_values = {
             "name": name,
             "description": description,
             "join_password_min_length": JOIN_PASSWORD_MIN_LENGTH,
+            "sports": Sport.objects.filter(is_active=True),
+            "selected_sport": sport_id,
         }
+
+        if not sport:
+            messages.error(request, "Choose an available sport.")
+            return render(request, "cfb/league_create.html", form_values)
 
         if not name:
             messages.error(request, "League name is required.")
@@ -3317,6 +3331,7 @@ def league_create_view(request):
             league = League(
                 name=name,
                 description=description,
+                sport=sport,
                 created_by=request.user,
             )
             league.set_join_password(join_password)
@@ -3339,7 +3354,7 @@ def league_create_view(request):
     return render(
         request,
         "cfb/league_create.html",
-        {"join_password_min_length": JOIN_PASSWORD_MIN_LENGTH},
+        {"join_password_min_length": JOIN_PASSWORD_MIN_LENGTH, "sports": Sport.objects.filter(is_active=True), "selected_sport": DEFAULT_SPORT},
     )
 
 
@@ -3364,7 +3379,7 @@ def league_detail_view(request, league_id):
     memberships = LeagueMembership.objects.filter(league=league).select_related("user").order_by("-role", "joined_at")
     active_member_count = memberships.filter(is_active=True).count()
     pending_opt_in_count = memberships.filter(is_active=False, role="member").count()
-    active_season = Season.objects.filter(is_active=True).first()
+    active_season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
     season_paid = _season_paid_map(league, active_season)
     for membership in memberships:
         membership.season_paid = season_paid.get(membership.user_id, False)
@@ -3551,7 +3566,7 @@ def league_open_for_season_view(request, league_id):
         messages.info(request, f"'{league.name}' does not need a season opt-in.")
         return redirect("league_detail", league_id=league.id)
 
-    active_season = Season.objects.filter(is_active=True).first()
+    active_season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
     year_label = str(active_season.year) if active_season else "this season"
 
     deactivated = LeagueMembership.objects.filter(league=league, role="member").update(is_active=False)
@@ -3587,7 +3602,7 @@ def league_email_opt_in_view(request, league_id):
         messages.error(request, "Open the league for this season before sending opt-in emails.")
         return redirect("league_detail", league_id=league.id)
 
-    active_season = Season.objects.filter(is_active=True).first()
+    active_season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
     if not active_season:
         messages.error(request, "There is no active season.")
         return redirect("league_detail", league_id=league.id)
@@ -3617,7 +3632,7 @@ def league_email_invite_view(request, league_id):
         messages.error(request, "Open the league for this season before sending invites.")
         return redirect("league_detail", league_id=league.id)
 
-    active_season = Season.objects.filter(is_active=True).first()
+    active_season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
     try:
         result, email = services.invites.send_league_email_invite(
             request,
@@ -3666,7 +3681,7 @@ def league_self_activate_view(request, league_id):
 
     membership.is_active = True
     membership.save(update_fields=["is_active"])
-    active_season = Season.objects.filter(is_active=True).first()
+    active_season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
     _ensure_season_payment_row(league, active_season, membership.user)
     logger.info("league_self_activated league=%s", league.id)
     messages.success(request, f"You are active in '{league.name}' for this season.")
@@ -3676,7 +3691,14 @@ def league_self_activate_view(request, league_id):
 @login_required
 def league_opt_in_view(request, token):
     """Activate membership from a personal email link."""
-    active_season = Season.objects.filter(is_active=True).first()
+    try:
+        from django.core import signing
+        from .models import LEAGUE_OPT_IN_SALT
+        data = signing.loads(token, salt=LEAGUE_OPT_IN_SALT)
+        league = League.objects.filter(pk=data.get("l")).first()
+    except (signing.BadSignature, AttributeError, TypeError, ValueError):
+        league = None
+    active_season = get_active_season(league.sport_id) if league else None
     membership = (
         LeagueMembership.from_opt_in_token(token, active_season.year)
         if active_season
@@ -3824,7 +3846,7 @@ def league_member_paid_view(request, league_id, membership_id):
         messages.error(request, "You do not have permission to manage payments in this league.")
         return redirect("league_detail", league_id=league.id)
 
-    active_season = Season.objects.filter(is_active=True).first()
+    active_season = get_active_season(league.sport_id if league else DEFAULT_SPORT)
     if not active_season:
         messages.error(request, "There is no active season.")
         return redirect("league_detail", league_id=league.id)

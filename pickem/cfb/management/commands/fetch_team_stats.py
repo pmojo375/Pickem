@@ -47,7 +47,7 @@ class Command(BaseCommand):
             if season_year is None:
                 # Try to get active season
                 try:
-                    season = Season.objects.filter(is_active=True).first()
+                    season = Season.objects.filter(sport_id="college-football", is_active=True).first()
                     if not season:
                         raise CommandError('No active season found. Please specify --season.')
                     season_year = season.year

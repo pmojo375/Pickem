@@ -15,7 +15,7 @@ from django.dispatch import receiver
 from pickem.log import get_request_id, set_request_context, user_label_for
 
 from . import analytics
-from .models import Game, LeagueGame
+from .models import DEFAULT_SPORT, Game, LeagueGame
 from .services.scoring import update_member_week_for_game
 
 logger = logging.getLogger(__name__)
@@ -109,7 +109,8 @@ def game_finalized(sender, instance, created, update_fields, **kwargs):
 
         try:
             from cfb.tasks import queue_team_records_update
-            queue_team_records_update(instance.season.year)
+            if instance.season.sport_id == DEFAULT_SPORT:
+                queue_team_records_update(instance.season.year)
         except Exception as e:
             logger.error(f"Error queuing team records update for game {instance.id}: {e}", exc_info=True)
 

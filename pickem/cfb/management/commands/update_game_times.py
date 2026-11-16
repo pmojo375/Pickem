@@ -51,7 +51,7 @@ class Command(BaseCommand):
 
         # Verify season exists
         try:
-            season = Season.objects.get(year=year)
+            season = Season.objects.get(sport_id="college-football", year=year)
         except Season.DoesNotExist:
             raise CommandError(f'Season {year} does not exist. Run initialize_season first.')
 

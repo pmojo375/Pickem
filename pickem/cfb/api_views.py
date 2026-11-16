@@ -13,18 +13,21 @@ from django.utils import timezone
 from django.views.decorators.cache import cache_page
 from django.views.decorators.http import require_GET
 
-from .models import Game, Season, GameSpread, LeagueGame
+from .models import DEFAULT_SPORT, Game, Season, Sport, GameSpread, LeagueGame
+from .services.sports import get_active_season, game_cache_key
 
 logger = logging.getLogger(__name__)
 
 
-def _serialize_team(team) -> Dict[str, Any]:
+def _serialize_team(team, sport_id) -> Dict[str, Any]:
     """Serialize a Team instance to dictionary."""
     return {
         'id': team.id,
         'name': team.name,
         'abbreviation': team.abbreviation or team.name[:4].upper(),
         'nickname': team.nickname,
+        'sport': sport_id,
+        'provider_ids': team.provider_ids,
         'logo_url': team.logo_url,
         'conference': team.conference,
         'primary_color': team.primary_color,
@@ -48,13 +51,21 @@ def _serialize_game(game: Game, include_cached_data: bool = True) -> Dict[str, A
     data = {
         'id': game.id,
         'external_id': game.external_id,
-        'home_team': _serialize_team(game.home_team),
-        'away_team': _serialize_team(game.away_team),
+        'sport': game.season.sport_id,
+        'season_id': game.season_id,
+        'provider_ids': game.provider_ids,
+        'start_time': game.kickoff.isoformat(),
+        'period': game.quarter,
+        'period_display': game.period_display,
+        'home_team': _serialize_team(game.home_team, game.season.sport_id),
+        'away_team': _serialize_team(game.away_team, game.season.sport_id),
         'kickoff': game.kickoff.isoformat(),
         'home_score': game.home_score,
         'away_score': game.away_score,
         'quarter': game.quarter,
         'clock': game.clock,
+        'has_possession': game.season.sport.has_possession,
+        'has_downs': game.season.sport.has_downs,
         'possession': game.possession or '',
         'down_distance_text': game.down_distance_text or '',
         'ball_on': game.ball_on or '',
@@ -66,8 +77,8 @@ def _serialize_game(game: Game, include_cached_data: bool = True) -> Dict[str, A
     }
 
     # Include cached ESPN data if requested
-    if include_cached_data and game.external_id:
-        cache_key = f"{settings.REDIS_KEY_GAME_PREFIX}{game.external_id}"
+    if include_cached_data and (game.external_id or game.provider_ids.get("espn")):
+        cache_key = game_cache_key(game)
         cached_data = cache.get(cache_key)
         if cached_data:
             data['status_state'] = cached_data.get('status_state')
@@ -86,7 +97,8 @@ def games_list(request):
     Query parameters:
         - date: Filter by date (YYYY-MM-DD format)
         - live: Filter for live games only (true/false)
-        - season: Filter by season year (defaults to active season)
+        - sport: Sport slug (defaults to college-football)
+        - season: Filter by season year within that sport
         - team: Filter by team ID
         - ids: Comma-separated game IDs to return
         - limit: Maximum number of results (default: 100, max: 500)
@@ -108,13 +120,13 @@ def games_list(request):
         games = Game.objects.select_related(
             'home_team',
             'away_team',
-            'season'
+            'season__sport'
         ).order_by('kickoff')
 
         # Filter by season
         if season_year:
             try:
-                season = Season.objects.get(year=int(season_year))
+                season = Season.objects.get(sport_id=request.GET.get("sport", DEFAULT_SPORT), year=int(season_year))
                 games = games.filter(season=season)
             except (Season.DoesNotExist, ValueError):
                 return JsonResponse({
@@ -122,9 +134,13 @@ def games_list(request):
                 }, status=404)
         else:
             # Default to active season
-            active_season = Season.objects.filter(is_active=True).first()
-            if active_season:
+            active_season = get_active_season(request.GET.get("sport", DEFAULT_SPORT))
+            if game_ids and "sport" not in request.GET:
+                games = games.filter(season__is_active=True)
+            elif active_season:
                 games = games.filter(season=active_season)
+            else:
+                games = games.none()
 
         # Let polling clients request exactly the games rendered on the page.
         # This must happen before slicing so late-season games are not hidden by
@@ -223,7 +239,7 @@ def game_detail(request, game_id):
         game = Game.objects.select_related(
             'home_team',
             'away_team',
-            'season'
+            'season__sport'
         ).get(id=game_id)
 
         game_data = _serialize_game(game, include_cached_data=True)
@@ -262,7 +278,7 @@ def live_games(request):
         now = timezone.now()
         
         # Get active season
-        active_season = Season.objects.filter(is_active=True).first()
+        active_season = get_active_season(request.GET.get("sport", DEFAULT_SPORT))
         if not active_season:
             return JsonResponse({
                 'games': [],
@@ -273,7 +289,8 @@ def live_games(request):
         # Find live games
         live_games_qs = Game.objects.select_related(
             'home_team',
-            'away_team'
+            'away_team',
+            'season__sport'
         ).filter(
             season=active_season,
             kickoff__lte=now,
@@ -316,7 +333,7 @@ def upcoming_games(request):
         end_date = now + timedelta(days=days)
 
         # Get active season
-        active_season = Season.objects.filter(is_active=True).first()
+        active_season = get_active_season(request.GET.get("sport", DEFAULT_SPORT))
         if not active_season:
             return JsonResponse({
                 'games': [],
@@ -327,7 +344,8 @@ def upcoming_games(request):
         # Find upcoming games
         upcoming_games_qs = Game.objects.select_related(
             'home_team',
-            'away_team'
+            'away_team',
+            'season__sport'
         ).filter(
             season=active_season,
             kickoff__gte=now,
@@ -373,10 +391,11 @@ def system_status(request):
             last_poll = datetime.fromtimestamp(last_poll_timestamp).isoformat()
 
         # Get active season info
-        active_season = Season.objects.filter(is_active=True).first()
+        active_season = get_active_season(request.GET.get("sport", DEFAULT_SPORT))
         season_info = None
         if active_season:
             season_info = {
+                'sport': active_season.sport_id,
                 'year': active_season.year,
                 'name': active_season.name,
                 'total_games': Game.objects.filter(season=active_season).count(),
@@ -561,3 +580,26 @@ def game_spread_history(request, game_id):
         return JsonResponse({
             'error': 'Internal server error'
         }, status=500)
+
+
+@require_GET
+@cache_page(60)
+def sports_list(request):
+    """Discover configured sports and their independent active seasons."""
+    active_seasons = {
+        season.sport_id: season
+        for season in Season.objects.filter(is_active=True).order_by("year")
+    }
+    sports = []
+    for sport in Sport.objects.filter(is_active=True):
+        season = active_seasons.get(sport.pk)
+        sports.append({
+            "slug": sport.pk,
+            "name": sport.name,
+            "period_label": sport.period_label,
+            "regulation_periods": sport.regulation_periods,
+            "has_possession": sport.has_possession,
+            "has_downs": sport.has_downs,
+            "active_season": {"id": season.pk, "year": season.year, "name": season.name} if season else None,
+        })
+    return JsonResponse({"sports": sports})

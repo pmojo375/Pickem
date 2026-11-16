@@ -48,7 +48,7 @@ class Command(BaseCommand):
 
         if season_year:
             try:
-                season = Season.objects.get(year=season_year)
+                season = Season.objects.get(sport_id="college-football", year=season_year)
                 games_query = games_query.filter(season=season)
                 self.stdout.write(self.style.SUCCESS(f'Grading picks for season {season_year}'))
             except Season.DoesNotExist:

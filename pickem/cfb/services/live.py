@@ -1,4 +1,4 @@
-from ..models import Game, Season
+from ..models import Game
 import logging
 import requests
 from django.utils import timezone
@@ -15,10 +15,11 @@ ESPN_SCOREBOARD_URLS = (
 )
 
 
-def _fetch_scoreboard(params: dict) -> Optional[Dict[str, Any]]:
+def _fetch_scoreboard(params: dict, sport=None) -> Optional[Dict[str, Any]]:
     """Fetch ESPN scoreboard JSON, trying web then site.api."""
     last_error = None
-    for url in ESPN_SCOREBOARD_URLS:
+    urls = sport.scoreboard_urls if sport is not None else ESPN_SCOREBOARD_URLS
+    for url in urls:
         try:
             resp = requests.get(
                 url,
@@ -132,6 +133,11 @@ def _apply_event_to_game(game: Game, event: dict) -> bool:
     clock = status.get("displayClock", "")
     possession = _possession_side(competition, home_competitor, away_competitor, is_final)
     down_distance_text, ball_on = _situation_down_and_distance(competition, is_final)
+    sport = game.season.sport
+    if not sport.has_possession:
+        possession = ""
+    if not sport.has_downs:
+        down_distance_text, ball_on = "", ""
 
     game.home_score = home_score
     game.away_score = away_score
@@ -167,7 +173,8 @@ def fetch_single_game_score(game: Game) -> bool:
     
     Returns True if the game was updated, False otherwise.
     """
-    if not game.external_id:
+    espn_id = str(game.provider_ids.get("espn") or game.external_id or "")
+    if not espn_id or not game.season.sport.is_active or not game.season.sport.scoreboard_urls:
         return False
     
     try:
@@ -176,12 +183,12 @@ def fetch_single_game_score(game: Game) -> bool:
         game_date = game.kickoff.astimezone(eastern).date()
         params = {"dates": game_date.strftime("%Y%m%d"), "limit": 300}
 
-        data = _fetch_scoreboard(params)
+        data = _fetch_scoreboard(params, sport=game.season.sport)
         if not data:
             return False
 
         for event in data.get("events", []):
-            if str(event.get("id", "")) == game.external_id:
+            if str(event.get("id", "")) == espn_id:
                 return _apply_event_to_game(game, event)
 
         return False
@@ -221,10 +228,7 @@ def fetch_and_store_live_scores() -> int:
     games_qs = Game.objects.filter(
         kickoff__gte=start_of_week,
         kickoff__lte=now + timedelta(days=1)
-    ).select_related('home_team', 'away_team')
-    active_season = Season.objects.filter(is_active=True).first()
-    if active_season:
-        games_qs = games_qs.filter(season=active_season)
+    ).filter(season__is_active=True).select_related('home_team', 'away_team', 'season__sport')
 
     games = list(games_qs)
     if not games:
@@ -232,35 +236,29 @@ def fetch_and_store_live_scores() -> int:
 
     # ESPN scoreboard dates are US/Eastern calendar days, not UTC.
     eastern = pytz.timezone("America/New_York")
-    dates_needed = {now.astimezone(eastern).date()}
-    for game in games:
-        if game.kickoff:
-            dates_needed.add(game.kickoff.astimezone(eastern).date())
-
-    events_by_espn_id = {}
-    for check_date in sorted(dates_needed):
-        try:
-            params = {"dates": check_date.strftime("%Y%m%d"), "limit": 300}
-            data = _fetch_scoreboard(params)
-            if not data:
-                continue
-            for event in data.get("events", []):
-                event_id = str(event.get("id", ""))
-                if event_id:
-                    events_by_espn_id[event_id] = event
-        except requests.RequestException as e:
-            # Don't abort the whole poll if one day fails — other dates can still update.
-            logger.warning("Error fetching ESPN scores for %s: %s", check_date, e)
+    # IDs and scoreboards belong to a sport namespace, never a global feed.
+    events_by_sport = {}
+    sports = {game.season.sport_id: game.season.sport for game in games}
+    for sport_id, sport in sports.items():
+        if not sport.is_active or not sport.scoreboard_urls:
             continue
-
-    if not events_by_espn_id:
-        return 0
+        events = events_by_sport[sport_id] = {}
+        sport_dates = {game.kickoff.astimezone(eastern).date() for game in games if game.season.sport_id == sport_id}
+        for check_date in sorted(sport_dates):
+            try:
+                params = {"dates": check_date.strftime("%Y%m%d"), "limit": 300}
+                data = _fetch_scoreboard(params, sport=sport)
+                for event in (data or {}).get("events", []):
+                    event_id = str(event.get("id", ""))
+                    if event_id:
+                        events[event_id] = event
+            except requests.RequestException as exc:
+                logger.warning("Error fetching ESPN scores for %s %s: %s", sport_id, check_date, exc)
 
     for game in games:
-        if not game.external_id or game.external_id not in events_by_espn_id:
-            continue
-
-        if _apply_event_to_game(game, events_by_espn_id[game.external_id]):
+        espn_id = str(game.provider_ids.get("espn") or game.external_id or "")
+        event = events_by_sport.get(game.season.sport_id, {}).get(espn_id)
+        if event and _apply_event_to_game(game, event):
             updated += 1
 
     return updated

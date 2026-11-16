@@ -34,7 +34,7 @@ class Command(BaseCommand):
         season_year = options['season']
 
         try:
-            season = Season.objects.get(year=season_year)
+            season = Season.objects.get(sport_id="college-football", year=season_year)
         except Season.DoesNotExist:
             self.stdout.write(self.style.ERROR(f'Season {season_year} not found'))
             return

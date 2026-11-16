@@ -17,7 +17,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.HTTP_INFO('=== Game Auto-Update System Status ===\n'))
 
         # Active Season
-        active_season = Season.objects.filter(is_active=True).first()
+        active_season = Season.objects.filter(sport_id="college-football", is_active=True).first()
         if active_season:
             self.stdout.write(
                 self.style.SUCCESS(f'✓ Active Season: {active_season.year} - {active_season.name}')

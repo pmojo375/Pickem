@@ -69,7 +69,7 @@
                         {% for week_data in available_weeks %}
                         <option value="{{ week_data.week.id }}" 
                                 {% if selected_week and selected_week.id == week_data.week.id %}selected{% endif %}>
-                            Week {{ week_data.week.number }}
+                            {{ week_data.week.display_name }}
                             {% if week_data.has_live_games %}
                                 (Live)
                             {% elif week_data.all_games_final %}
@@ -98,9 +98,9 @@
                         {{ current_league.name }}
                     </span>
                     {% if show_pick_status_only and pick_status_week %}
-                        <span class="font-normal text-base-content/80">Week {{ pick_status_week.number }} Pick Status</span>
+                        <span class="font-normal text-base-content/80">{{ pick_status_week.display_name }} Pick Status</span>
                     {% elif show_week_standings and selected_week %}
-                        <span class="font-normal text-base-content/80">Week {{ selected_week.number }}</span>
+                        <span class="font-normal text-base-content/80">{{ selected_week.display_name }}</span>
                         {% if week_is_final %}
                         <span class="badge badge-success badge-sm">Final</span>
                         {% elif prizes_are_projected %}
@@ -418,7 +418,7 @@
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
             <h2 class="card-title">
                 <i class="fas fa-users text-primary mr-2"></i>
-                {{ current_league.name }} - Week {{ selected_week.number }} Picks
+                {{ current_league.name }} - {{ selected_week.display_name }} Picks
             </h2>
             
             <!-- Manager Switch for Unstarted Picks -->
@@ -578,7 +578,7 @@
             <div>
                 <h2 class="card-title flex-wrap gap-2">
                     <i class="fas fa-flask text-secondary"></i>
-                    {{ current_league.name }} — Week {{ selected_week.number }}
+                    {{ current_league.name }} — {{ selected_week.display_name }}
                     <span class="badge badge-secondary badge-sm">Hypothetical</span>
                 </h2>
                 <p class="text-sm text-base-content/70 mt-1">
