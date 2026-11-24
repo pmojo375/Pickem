@@ -1,6 +1,7 @@
 import base64
 import json
 from datetime import timedelta
+from tempfile import TemporaryDirectory
 from unittest.mock import Mock, patch
 
 import http_ece
@@ -179,6 +180,13 @@ class WeeklyPushTests(TestCase):
         deliver_pending_pushes()
         send.assert_not_called()
         self.assertFalse(WeeklyPickPush.objects.exists())
+
+    @override_settings(DEBUG=False)
+    def test_worker_and_account_render_before_collectstatic(self):
+        self.client.force_login(self.member)
+        with TemporaryDirectory() as empty_root, self.settings(STATIC_ROOT=empty_root):
+            self.assertContains(self.client.get(reverse("account")), "/static/pwa/manifest.webmanifest")
+            self.assertContains(self.client.get(reverse("service_worker")), "/static/pwa/icon-192.png")
 
     @override_settings(WEB_PUSH_PRIVATE_KEY="")
     def test_unconfigured_push_leaves_install_and_picks_available(self):

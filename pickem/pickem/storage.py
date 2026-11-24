@@ -13,6 +13,11 @@ class HashedStaticFilesStorage(ManifestStaticFilesStorage):
 
     manifest_strict = False
 
+    def stored_name(self, name):
+        if not self.hashed_files:
+            return name
+        return super().stored_name(name)
+
     def url(self, name, force=False):
         parsed_name = urlsplit(unquote(name))
         clean_name = parsed_name.path.strip()
