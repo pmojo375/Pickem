@@ -5,6 +5,7 @@ from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Case, Count, IntegerField, Q, Sum, Value, When
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.debug import sensitive_post_parameters
@@ -13,7 +14,8 @@ from allauth.account.models import EmailAddress
 from allauth.socialaccount.forms import DisconnectForm
 from allauth.socialaccount.models import SocialAccount
 import logging
-from . import analytics
+from . import analytics, pwa
+from .services.weekly_push import queue_weekly_pushes, slate_games
 from .models import (
     JOIN_PASSWORD_MIN_LENGTH,
     Game,
@@ -2144,6 +2146,7 @@ def account_view(request):
             "google_account": google_account,
             "social_accounts": social_accounts,
             "disconnect_form": disconnect_form,
+            "web_push_public_key": pwa.public_key(),
         },
     )
 
@@ -2206,6 +2209,157 @@ def contact_view(request):
             "sent": sent,
         },
     )
+
+
+@transaction.atomic
+def _save_game_selections(request, league_id):
+    # Serialize manager saves so publication and the notification queue agree.
+    league = League.objects.select_for_update().get(pk=league_id)
+    # Process all game selections from the form
+    lock_spread = request.POST.get("lock_spread") == "on"
+
+    # Find all game IDs in the POST data
+    game_ids = []
+    for key in request.POST.keys():
+        if key.startswith("game_") and key.endswith("_id"):
+            game_id = request.POST.get(key)
+            if game_id:
+                game_ids.append(game_id)
+
+    # Get league rules to check pick limit
+    active_season = Season.objects.filter(is_active=True).first()
+    league_rules = None
+    if active_season:
+        league_rules = LeagueRules.objects.filter(league=league, season=active_season).first()
+
+    # Check if against_the_spread is enabled for this league
+    ats_enabled = league_rules.against_the_spread_enabled if league_rules else False
+    spread_lock_weekday = league_rules.spread_lock_weekday if league_rules else 2
+
+    # Count how many games are being selected
+    selected_games = []
+    for game_id in game_ids:
+        is_selected = request.POST.get(f"game_{game_id}_select") == "on"
+        if is_selected:
+            selected_games.append(game_id)
+
+    # Check pick limit
+    if league_rules and league_rules.pickable_games_per_week > 0:
+        if len(selected_games) > league_rules.pickable_games_per_week:
+            messages.error(request, f"You can only select up to {league_rules.pickable_games_per_week} games for this league. You selected {len(selected_games)} games.")
+            return redirect(f"/settings/?league_id={league.id}")
+
+    selected_count = 0
+    locked_count = 0
+    deselected_count = 0
+
+    week = services.schedule.get_display_week()
+    if request.POST.get("week_id") and (not week or str(week.pk) != request.POST["week_id"]):
+        messages.warning(request, "The picks week has changed. Review the new week before saving.")
+        return redirect(f"/settings/?league_id={league.id}")
+    # Inactive LeagueGame rows are retained, so clearing and restoring a slate
+    # does not announce a previously published week a second time.
+    first_slate = (
+        week and selected_games and league.is_active and pwa.public_key()
+        and not slate_games(league, week).exists()
+    )
+
+    # Process each game
+    for game_id in game_ids:
+        is_selected = request.POST.get(f"game_{game_id}_select") == "on"
+
+        try:
+            game = Game.objects.get(pk=game_id)
+
+            if is_selected:
+                # Create or update LeagueGame
+                league_game, _ = LeagueGame.objects.get_or_create(
+                    league=league,
+                    game=game,
+                    defaults={'is_active': True}
+                )
+
+                # Lock the spread if requested and game has spreads
+                if lock_spread and game.current_home_spread is not None:
+                    league_game.locked_home_spread = game.current_home_spread
+                    league_game.locked_away_spread = game.current_away_spread
+                    league_game.spread_locked_at = timezone.now()
+                    league_game.save(update_fields=["locked_home_spread", "locked_away_spread", "spread_locked_at"])
+                    locked_count += 1
+                elif ats_enabled and league_game.locked_home_spread is None:
+                    # If against_the_spread is enabled and no locked spread yet, apply the spread lock rule
+                    # BUT only if we're on or after the lock day - otherwise let the automated task handle it
+                    from .services.spreads import get_spread_to_lock
+
+                    spread_to_use, _lock_target_date = get_spread_to_lock(game, spread_lock_weekday)
+                    if spread_to_use:
+                        league_game.locked_home_spread = spread_to_use.home_spread
+                        league_game.locked_away_spread = spread_to_use.away_spread
+                        league_game.spread_locked_at = timezone.now()
+                        league_game.save(update_fields=['locked_home_spread', 'locked_away_spread', 'spread_locked_at'])
+                        locked_count += 1
+                if not league_game.is_active:
+                    league_game.is_active = True
+                    league_game.save(update_fields=["is_active"])
+
+                selected_count += 1
+            else:
+                # Deselect by marking as inactive (don't delete to preserve history)
+                LeagueGame.objects.filter(league=league, game=game).update(is_active=False)
+                deselected_count += 1
+
+        except Game.DoesNotExist:
+            continue
+
+    # Handle total points game selection
+    total_points_game_id = request.POST.get("total_points_game_id")
+
+    # Clear any existing total points game for this league
+    old_total_points_games = LeagueGame.objects.filter(league=league, is_total_points_game=True)
+    for old_game in old_total_points_games:
+        old_game.is_total_points_game = False
+        old_game.save(update_fields=["is_total_points_game"])
+
+        # Clear is_total_points_game flag from any picks for this game
+        Pick.objects.filter(league=league, game=old_game.game, is_total_points_game=True).update(is_total_points_game=False)
+
+    # Set the new total points game if one was selected
+    if total_points_game_id:
+        try:
+            game = Game.objects.get(pk=total_points_game_id)
+            # Verify this game is in the selected games
+            league_game = LeagueGame.objects.get(league=league, game=game, is_active=True)
+            league_game.is_total_points_game = True
+            league_game.save(update_fields=["is_total_points_game"])
+
+            # Re-enable is_total_points_game flag for any picks that have points_guess for this game
+            # This handles the case where admin changes tiebreaker game and then changes it back
+            Pick.objects.filter(
+                league=league,
+                game=game,
+                points_guess__isnull=False
+            ).update(is_total_points_game=True)
+        except (Game.DoesNotExist, LeagueGame.DoesNotExist):
+            # Silently ignore if game not found or not selected
+            pass
+
+    if first_slate and slate_games(league, week).filter(
+        is_active=True, game__is_final=False, game__kickoff__gt=timezone.now(),
+    ).exists():
+        queue_weekly_pushes(league, week)
+
+    # Show results
+    if selected_count > 0:
+        msg = f"Successfully selected {selected_count} game{'s' if selected_count != 1 else ''} for {league.name}"
+        if locked_count > 0:
+            msg += f" (locked spreads for {locked_count})"
+        messages.success(request, msg + "! 🏈")
+    elif deselected_count > 0:
+        messages.info(request, f"Deselected {deselected_count} game(s) for {league.name}.")
+    else:
+        messages.info(request, "No changes made.")
+
+    return redirect(f"/settings/?league_id={league.id}")
 
 
 @login_required
@@ -2457,151 +2611,8 @@ def settings_view(request):
             return redirect(f"/settings/?league_id={target_league.id}#announcements")
 
         if action == "save_selections":
-            # Get league from form
-            form_league_id = request.POST.get("league_id")
-            if form_league_id:
-                if request.user.is_staff:
-                    league = get_object_or_404(League, pk=form_league_id)
-                else:
-                    league = get_object_or_404(
-                        League,
-                        pk=form_league_id,
-                        memberships__user=request.user,
-                        memberships__is_active=True,
-                        memberships__role__in=["owner", "admin"],
-                    )
-            
-            # Process all game selections from the form
-            from django.utils import timezone
-            lock_spread = request.POST.get("lock_spread") == "on"
-            
-            # Find all game IDs in the POST data
-            game_ids = []
-            for key in request.POST.keys():
-                if key.startswith("game_") and key.endswith("_id"):
-                    game_id = request.POST.get(key)
-                    if game_id:
-                        game_ids.append(game_id)
-            
-            # Get league rules to check pick limit
-            active_season = Season.objects.filter(is_active=True).first()
-            league_rules = None
-            if active_season:
-                league_rules = LeagueRules.objects.filter(league=league, season=active_season).first()
-            
-            # Check if against_the_spread is enabled for this league
-            ats_enabled = league_rules.against_the_spread_enabled if league_rules else False
-            spread_lock_weekday = league_rules.spread_lock_weekday if league_rules else 2
-            
-            # Count how many games are being selected
-            selected_games = []
-            for game_id in game_ids:
-                is_selected = request.POST.get(f"game_{game_id}_select") == "on"
-                if is_selected:
-                    selected_games.append(game_id)
-            
-            # Check pick limit
-            if league_rules and league_rules.pickable_games_per_week > 0:
-                if len(selected_games) > league_rules.pickable_games_per_week:
-                    messages.error(request, f"You can only select up to {league_rules.pickable_games_per_week} games for this league. You selected {len(selected_games)} games.")
-                    return redirect(f"/settings/?league_id={league.id}")
-            
-            selected_count = 0
-            locked_count = 0
-            deselected_count = 0
-            
-            # Process each game
-            for game_id in game_ids:
-                is_selected = request.POST.get(f"game_{game_id}_select") == "on"
-                
-                try:
-                    game = Game.objects.get(pk=game_id)
-                    
-                    if is_selected:
-                        # Create or update LeagueGame
-                        league_game, created = LeagueGame.objects.get_or_create(
-                            league=league,
-                            game=game,
-                            defaults={'is_active': True}
-                        )
-                        
-                        # Lock the spread if requested and game has spreads
-                        if lock_spread and game.current_home_spread is not None:
-                            league_game.locked_home_spread = game.current_home_spread
-                            league_game.locked_away_spread = game.current_away_spread
-                            league_game.spread_locked_at = timezone.now()
-                            league_game.save(update_fields=["locked_home_spread", "locked_away_spread", "spread_locked_at"])
-                            locked_count += 1
-                        elif ats_enabled and league_game.locked_home_spread is None:
-                            # If against_the_spread is enabled and no locked spread yet, apply the spread lock rule
-                            # BUT only if we're on or after the lock day - otherwise let the automated task handle it
-                            from .services.spreads import get_spread_to_lock
-
-                            spread_to_use, _lock_target_date = get_spread_to_lock(game, spread_lock_weekday)
-                            if spread_to_use:
-                                league_game.locked_home_spread = spread_to_use.home_spread
-                                league_game.locked_away_spread = spread_to_use.away_spread
-                                league_game.spread_locked_at = timezone.now()
-                                league_game.save(update_fields=['locked_home_spread', 'locked_away_spread', 'spread_locked_at'])
-                                locked_count += 1
-                        elif not created:
-                            # Just ensure it's active
-                            league_game.is_active = True
-                            league_game.save(update_fields=["is_active"])
-                        
-                        selected_count += 1
-                    else:
-                        # Deselect by marking as inactive (don't delete to preserve history)
-                        LeagueGame.objects.filter(league=league, game=game).update(is_active=False)
-                        deselected_count += 1
-                        
-                except Game.DoesNotExist:
-                    continue
-            
-            # Handle total points game selection
-            total_points_game_id = request.POST.get("total_points_game_id")
-            
-            # Clear any existing total points game for this league
-            old_total_points_games = LeagueGame.objects.filter(league=league, is_total_points_game=True)
-            for old_game in old_total_points_games:
-                old_game.is_total_points_game = False
-                old_game.save(update_fields=["is_total_points_game"])
-                
-                # Clear is_total_points_game flag from any picks for this game
-                Pick.objects.filter(league=league, game=old_game.game, is_total_points_game=True).update(is_total_points_game=False)
-            
-            # Set the new total points game if one was selected
-            if total_points_game_id:
-                try:
-                    game = Game.objects.get(pk=total_points_game_id)
-                    # Verify this game is in the selected games
-                    league_game = LeagueGame.objects.get(league=league, game=game, is_active=True)
-                    league_game.is_total_points_game = True
-                    league_game.save(update_fields=["is_total_points_game"])
-                    
-                    # Re-enable is_total_points_game flag for any picks that have points_guess for this game
-                    # This handles the case where admin changes tiebreaker game and then changes it back
-                    Pick.objects.filter(
-                        league=league,
-                        game=game,
-                        points_guess__isnull=False
-                    ).update(is_total_points_game=True)
-                except (Game.DoesNotExist, LeagueGame.DoesNotExist):
-                    # Silently ignore if game not found or not selected
-                    pass
-            
-            # Show results
-            if selected_count > 0:
-                msg = f"Successfully selected {selected_count} game{'s' if selected_count != 1 else ''} for {league.name}"
-                if locked_count > 0:
-                    msg += f" (locked spreads for {locked_count})"
-                messages.success(request, msg + "! 🏈")
-            elif deselected_count > 0:
-                messages.info(request, f"Deselected {deselected_count} game(s) for {league.name}.")
-            else:
-                messages.info(request, "No changes made.")
-            
-            return redirect(f"/settings/?league_id={league.id}")
+            target = _get_managed_league_or_404(request.user, request.POST.get("league_id") or league.pk)
+            return _save_game_selections(request, target.pk)
 
     # Get current week and its date range
     current_week = services.schedule.get_display_week()
@@ -2721,6 +2732,8 @@ def settings_view(request):
     context = {
         "games_with_selection": games_with_selection,
         "currently_selected_count": currently_selected_count,
+        "weekly_push_available": bool(pwa.public_key()),
+        "current_week": current_week,
         "current_league": league,
         "manageable_leagues": manageable_leagues,
         "league_rules": league_rules,

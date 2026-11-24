@@ -15,7 +15,8 @@ from django.dispatch import receiver
 from pickem.log import get_request_id, set_request_context, user_label_for
 
 from . import analytics
-from .models import Game, LeagueGame
+from .models import Game, LeagueGame, PushSubscription
+from .pwa import SESSION_DEVICE
 from .services.scoring import update_member_week_for_game
 
 logger = logging.getLogger(__name__)
@@ -55,6 +56,9 @@ def log_user_logged_out(sender, request, user, **kwargs):
         user_label_for(user) if user else "-",
         _client_ip(request),
     )
+    device_id = request.session.get(SESSION_DEVICE) if request is not None else None
+    if user and device_id:
+        PushSubscription.objects.filter(pk=device_id, user=user).delete()
     _capture_auth_event("user_logged_out", user, request)
     set_request_context(request_id=get_request_id(), user_label="-")
 

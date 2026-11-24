@@ -124,6 +124,19 @@
         </div>
     </div>
 
+    <section class="card bg-base-100 shadow-xl" id="app-settings"
+             data-key="{{ web_push_public_key }}" data-subscription-url="{% url 'push_subscription' %}">
+        <div class="card-body items-start gap-3">
+            <h2 class="card-title">BigPicks on this device</h2>
+            <p id="install-help" class="text-sm text-base-content/70">Add BigPicks to your home screen from your browser menu.</p>
+            <button id="install-app" type="button" class="btn btn-outline btn-sm hidden">Install BigPicks</button>
+            <h3 class="font-semibold mt-2">Weekly pick alerts</h3>
+            <p class="text-sm">Get a notification when your league manager posts the week’s games.</p>
+            <p id="push-status" role="status" class="text-sm text-base-content/70"></p>
+            <button id="toggle-push" type="button" class="btn btn-primary btn-sm hidden">Turn on alerts</button>
+        </div>
+    </section>
+
     <div class="card bg-base-100 shadow-xl" id="password">
         <div class="card-body space-y-4">
             <div class="flex items-center gap-3">
