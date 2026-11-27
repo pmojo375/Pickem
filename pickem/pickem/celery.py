@@ -81,6 +81,11 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour=9, minute=0),  # Daily at 9 AM
         'options': {'expires': 3600},
     },
+    'send-weekly-pick-pushes': {
+        'task': 'cfb.tasks.send_weekly_pick_pushes',
+        'schedule': 60.0,
+        'options': {'expires': 55},
+    },
     # Incomplete-pick reminders relative to each league's first kickoff
     'send-pick-reminders': {
         'task': 'cfb.tasks.send_pick_reminders',

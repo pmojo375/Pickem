@@ -567,3 +567,8 @@ REDIS_KEY_GAME_CACHE_TTL = 120  # 2 minutes for individual game cache
 REDIS_KEY_LIVE_STATE_TTL = 180  # 3 minutes for live state
 REDIS_KEY_PICK_REMINDER_TTL = 60 * 60 * 24 * 10  # 10 days; one reminder per league/week
 
+
+# Web Push (the private key is a path readable by the Celery worker).
+WEB_PUSH_PRIVATE_KEY = os.getenv("WEB_PUSH_PRIVATE_KEY", "")
+WEB_PUSH_PUBLIC_KEY = os.getenv("WEB_PUSH_PUBLIC_KEY", "")
+WEB_PUSH_SUBJECT = os.getenv("WEB_PUSH_SUBJECT", f"mailto:{SUPPORT_EMAIL}")

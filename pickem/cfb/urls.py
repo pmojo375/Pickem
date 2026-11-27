@@ -1,10 +1,12 @@
 from django.urls import path
 from django.views.generic import RedirectView
 from . import views
-from . import api_views
+from . import api_views, pwa
 
 urlpatterns = [
     path('', views.home_view, name='home'),
+    path('service-worker.js', pwa.service_worker, name='service_worker'),
+    path('account/push/', pwa.push_subscription, name='push_subscription'),
     # Auth URLs
     path('login/', RedirectView.as_view(pattern_name='account_login', permanent=False), name='login'),
     path('logout/', RedirectView.as_view(pattern_name='account_logout', permanent=False), name='logout'),

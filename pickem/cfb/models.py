@@ -858,3 +858,32 @@ def user_notification_emails(user) -> list[str]:
     except UserProfile.DoesNotExist:
         pass
     return emails
+
+
+class PushSubscription(models.Model):
+    """One browser installation that opted in to weekly pick alerts."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    endpoint = models.URLField(max_length=2048, unique=True)
+    p256dh = models.CharField(max_length=100)
+    auth = models.CharField(max_length=32)
+    remind_day = models.BooleanField(default=False)
+    remind_hours = models.BooleanField(default=False)
+
+
+class WeeklyPickPush(models.Model):
+    """A pending notification, committed together with the manager's selections."""
+    subscription = models.ForeignKey(PushSubscription, on_delete=models.CASCADE)
+    league = models.ForeignKey(League, on_delete=models.CASCADE)
+    week = models.ForeignKey(Week, on_delete=models.CASCADE)
+    event = models.CharField(max_length=48, default="published")
+    payload = models.JSONField(default=dict)
+    expires_at = models.DateTimeField(null=True)
+    next_attempt_at = models.DateTimeField(default=timezone.now, db_index=True, null=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["league", "week", "subscription", "event"], name="unique_device_week_event"
+            )
+        ]

@@ -856,6 +856,7 @@
         <form method="post" action="" id="games-form">
             {% csrf_token %}
             <input type="hidden" name="do" value="save_selections" />
+            <input type="hidden" name="week_id" value="{{ current_week.pk }}" />
             <input type="hidden" name="league_id" value="{{ current_league.id }}" />
             
             <!-- Save All Button - Top -->
@@ -864,6 +865,9 @@
                     <i class="fas fa-save mr-2"></i>
                     Save Game Selections for {{ current_league.name }}
                 </button>
+                {% if weekly_push_available and not currently_selected_count %}
+                <p class="mt-2 text-sm text-base-content/70">Members who enabled weekly alerts get a notification the first time you save games for this week.</p>
+                {% endif %}
             </div>
             
             <!-- Select Top 25 Button -->

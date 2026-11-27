@@ -1,8 +1,13 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#191e24">
+    <link rel="manifest" href="{% static 'pwa/manifest.webmanifest' %}">
+    <link rel="apple-touch-icon" href="{% static 'pwa/apple-touch-icon.png' %}">
+    <script defer src="{% static 'pwa/app.js' %}" data-worker="{% url 'service_worker' %}"></script>
     <title>{% block title %}BigPicks{% endblock %}</title>
     
     <!-- Tailwind CSS + DaisyUI -->
@@ -82,6 +87,11 @@
             .main-content {
                 padding-bottom: 100px !important;
             }
+        }
+
+        @media (display-mode: standalone) and (max-width: 767px) {
+            .bottom-nav { padding-bottom: env(safe-area-inset-bottom); }
+            .navbar.md\:hidden { padding-top: max(.5rem, env(safe-area-inset-top)); }
         }
 
         /*
