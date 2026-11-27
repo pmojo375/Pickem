@@ -131,7 +131,12 @@
             <p id="install-help" class="text-sm text-base-content/70">Add BigPicks to your home screen from your browser menu.</p>
             <button id="install-app" type="button" class="btn btn-outline btn-sm hidden">Install BigPicks</button>
             <h3 class="font-semibold mt-2">Weekly pick alerts</h3>
-            <p class="text-sm">Get a notification when your league manager posts the week’s games.</p>
+            <p class="text-sm">Get the week’s games, final scores, and your weekly result and season rank.</p>
+            <fieldset id="push-reminders" hidden>
+                <legend>Remind me if my picks are incomplete before the league’s first kickoff</legend>
+                <label><input type="checkbox" name="remind_day"> 24 hours before</label>
+                <label><input type="checkbox" name="remind_hours"> 3 hours before</label>
+            </fieldset>
             <p id="push-status" role="status" class="text-sm text-base-content/70"></p>
             <button id="toggle-push" type="button" class="btn btn-primary btn-sm hidden">Turn on alerts</button>
         </div>

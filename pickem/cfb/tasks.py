@@ -1428,5 +1428,7 @@ def send_pick_reminders():
 @shared_task(ignore_result=True)
 def send_weekly_pick_pushes():
     from .services.weekly_push import deliver_pending_pushes
+    from .services.slate_alerts import discover_events
 
+    discover_events()
     deliver_pending_pushes()

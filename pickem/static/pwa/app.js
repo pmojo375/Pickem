@@ -43,21 +43,25 @@
         return;
     }
 
-    async function update(action, subscription) {
+    const reminders = document.getElementById("push-reminders");
+    async function update(action, subscription, preferences = {}) {
         const response = await fetch(panel.dataset.subscriptionUrl, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 "X-CSRFToken": document.querySelector('[name="csrfmiddlewaretoken"]').value
             },
-            body: JSON.stringify({ action, ...subscription.toJSON() })
+            body: JSON.stringify({ action, ...subscription.toJSON(), ...preferences })
         });
         if (!response.ok || response.redirected) throw new Error("Subscription update failed");
-        return (await response.json()).enabled;
+        const saved = await response.json();
+        for (const box of reminders.querySelectorAll("input")) box.checked = !!saved[box.name];
+        return saved.enabled;
     }
 
     let reg, subscription, enabled = false;
     function render() {
+        reminders.hidden = !enabled;
         status.textContent = enabled ? "Alerts are on for this device." : "Alerts are off for this device.";
         toggle.textContent = enabled ? "Turn off alerts" : "Turn on alerts";
         toggle.classList.remove("hidden");
@@ -72,6 +76,21 @@
         render();
     }).catch(() => { status.textContent = "Couldn’t load alert settings. Reload to try again."; });
 
+    reminders.addEventListener("change", async event => {
+        const changed = event.target;
+        reminders.disabled = toggle.disabled = true;
+        try {
+            enabled = await update("preferences", subscription, Object.fromEntries(
+                Array.from(reminders.querySelectorAll("input"), box => [box.name, box.checked])
+            ));
+            render();
+        } catch {
+            changed.checked = !changed.checked;
+            status.textContent = "Couldn’t save reminders. Reload to check your settings.";
+        } finally {
+            reminders.disabled = toggle.disabled = false;
+        }
+    });
     toggle.addEventListener("click", async () => {
         toggle.disabled = true;
         try {

@@ -70,7 +70,18 @@ def deliver_one(push_id, week, session):
     active_membership = LeagueMembership.objects.filter(
         league_id=push.league_id, user_id=device.user_id, is_active=True, user__is_active=True
     )
-    if not week or week.pk != push.week_id or not push.league.is_active or not active_membership.exists():
+    if not push.league.is_active or not active_membership.exists():
+        push.delete()
+        return
+    if push.event != "published":
+        from .slate_alerts import event_still_wanted
+        if push.expires_at <= timezone.now() or not event_still_wanted(push):
+            push.next_attempt_at = None
+            push.save(update_fields=["next_attempt_at"])
+            return
+        send_payload(push, push.payload, push.expires_at, session)
+        return
+    if not week or week.pk != push.week_id:
         push.delete()
         return
     last_kickoff = slate_games(push.league, week).filter(
@@ -86,12 +97,18 @@ def deliver_one(push_id, week, session):
         "url": f"{reverse('picks')}?league_id={push.league_id}",
         "tag": f"picks-{push.league_id}-{week.pk}",
     }
+    send_payload(push, payload, last_kickoff, session)
+
+
+def send_payload(push, payload, expires, session):
+    device = push.subscription
+    push_id = push.pk
     try:
         webpush(
             subscription_info={"endpoint": device.endpoint, "keys": {"p256dh": device.p256dh, "auth": device.auth}},
             data=json.dumps(payload), vapid_private_key=settings.WEB_PUSH_PRIVATE_KEY,
             vapid_claims={"sub": settings.WEB_PUSH_SUBJECT}, requests_session=session,
-            ttl=max(0, min(86400, int((last_kickoff - timezone.now()).total_seconds()))), timeout=5,
+            ttl=max(0, min(86400, int((expires - timezone.now()).total_seconds()))), timeout=5,
         )
     except (WebPushException, requests.RequestException) as exc:
         response = getattr(exc, "response", None)
@@ -111,4 +128,7 @@ def deliver_one(push_id, week, session):
         # Keep this delivery pending so repairing worker config can recover it.
         logger.error("Unable to sign weekly push %s. Check Web Push credentials.", push_id)
         return
-    push.delete()
+    if push.event == "published":
+        push.delete()
+    else:
+        WeeklyPickPush.objects.filter(pk=push_id).update(next_attempt_at=None)

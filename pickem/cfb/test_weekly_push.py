@@ -75,6 +75,40 @@ class WeeklyPushTests(TestCase):
         self.assertEqual(self.api("enable", keys={"p256dh": "invalid"}).status_code, 400)
         self.assertFalse(PushSubscription.objects.exists())
 
+    @patch("cfb.services.weekly_push.webpush")
+    def test_completed_picks_suppress_queued_reminder(self, send):
+        from .models import Pick
+        from .services.slate_alerts import discover_events
+        self.device(self.member, self.endpoint)
+        self.client.force_login(self.member)
+        self.assertTrue(self.api("preferences", remind_day=True, remind_hours=False).json()["remind_day"])
+        self.game.kickoff = timezone.now() + timedelta(hours=20)
+        self.game.save()
+        LeagueGame.objects.create(league=self.league, game=self.game)
+        discover_events()
+        self.assertEqual(WeeklyPickPush.objects.get().event, "remind_day")
+        Pick.objects.create(user=self.member, league=self.league, game=self.game, picked_team=self.game.home_team)
+        deliver_pending_pushes()
+        send.assert_not_called()
+
+    @patch("cfb.services.weekly_push.webpush")
+    def test_final_score_and_graded_recap_sent_once(self, send):
+        from .models import MemberSeason, MemberWeek, Pick
+        from .services.slate_alerts import discover_events
+        self.device(self.member, self.endpoint)
+        Game.objects.filter(pk=self.game.pk).update(kickoff=timezone.now(), is_final=True, home_score=21, away_score=14)
+        LeagueGame.objects.create(league=self.league, game=self.game)
+        Pick.objects.create(user=self.member, league=self.league, game=self.game, picked_team=self.game.home_team)
+        discover_events()
+        self.assertEqual(WeeklyPickPush.objects.count(), 1)
+        MemberWeek.objects.create(user=self.member, league=self.league, week=self.week, picks_made=1, correct=1, points=2)
+        MemberSeason.objects.create(user=self.member, league=self.league, season=self.week.season, rank=2)
+        for _ in range(2):
+            discover_events()
+            deliver_pending_pushes()
+        bodies = [json.loads(call.kwargs["data"])["body"] for call in send.call_args_list]
+        self.assertEqual(bodies, ["Away 14 – Home 21", "1–0–0, 2 points. Season rank #2."])
+
     def test_device_ownership_idempotency_and_logout(self):
         self.client.force_login(self.member)
         self.assertTrue(self.api("enable").json()["enabled"])

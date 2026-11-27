@@ -69,11 +69,17 @@ def push_subscription(request):
         if action == "disable":
             devices.delete()
             return JsonResponse({"enabled": False})
-        if action == "status":
-            device_id = devices.values_list("pk", flat=True).first()
-            if device_id:
-                request.session[SESSION_DEVICE] = device_id
-            return JsonResponse({"enabled": bool(device_id)})
+        if action in ("status", "preferences"):
+            if action == "preferences":
+                prefs = {key: data.get(key) for key in ("remind_day", "remind_hours")}
+                if any(type(value) is not bool for value in prefs.values()):
+                    raise ValueError
+                devices.update(**prefs)
+            device = devices.first()
+            if device:
+                request.session[SESSION_DEVICE] = device.pk
+            return JsonResponse({"enabled": bool(device), "remind_day": bool(device and device.remind_day),
+                                 "remind_hours": bool(device and device.remind_hours)})
         if action != "enable":
             raise ValueError
         keys = data.get("keys")

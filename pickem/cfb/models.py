@@ -866,6 +866,8 @@ class PushSubscription(models.Model):
     endpoint = models.URLField(max_length=2048, unique=True)
     p256dh = models.CharField(max_length=100)
     auth = models.CharField(max_length=32)
+    remind_day = models.BooleanField(default=False)
+    remind_hours = models.BooleanField(default=False)
 
 
 class WeeklyPickPush(models.Model):
@@ -873,12 +875,15 @@ class WeeklyPickPush(models.Model):
     subscription = models.ForeignKey(PushSubscription, on_delete=models.CASCADE)
     league = models.ForeignKey(League, on_delete=models.CASCADE)
     week = models.ForeignKey(Week, on_delete=models.CASCADE)
-    next_attempt_at = models.DateTimeField(default=timezone.now, db_index=True)
+    event = models.CharField(max_length=48, default="published")
+    payload = models.JSONField(default=dict)
+    expires_at = models.DateTimeField(null=True)
+    next_attempt_at = models.DateTimeField(default=timezone.now, db_index=True, null=True)
     attempts = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["league", "week", "subscription"], name="unique_weekly_pick_push"
+                fields=["league", "week", "subscription", "event"], name="unique_device_week_event"
             )
         ]

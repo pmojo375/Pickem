@@ -19,20 +19,32 @@ self.addEventListener("fetch", event => {
     }
 });
 
+let showing = Promise.resolve();
 self.addEventListener("push", event => {
     const data = event.data ? event.data.json() : {};
-    event.waitUntil(self.registration.showNotification(data.title || "BigPicks", {
-        body: data.body || "Your league’s picks are ready.",
+    showing = showing.catch(() => {}).then(async () => {
+        let results = {};
+        if (data.group) {
+            const [previous] = await self.registration.getNotifications({tag: data.group});
+            results = previous?.data?.results || {};
+            results[data.game] = data.body;
+        }
+        const scores = Object.values(results);
+        const title = scores.length ? data.title + " · " + scores.length + (scores.length === 1 ? " game final" : " games final") : data.title;
+        await self.registration.showNotification(title || "BigPicks", {
+        body: scores.length ? scores.join("\n") : data.body || "Your league’s picks are ready.",
         icon: "{% static 'pwa/icon-192.png' %}",
-        tag: data.tag,
-        data: { url: data.url || "/picks/" }
-    }));
+        tag: data.group || data.tag,
+        data: { url: data.url || "/picks/", results }
+        });
+    });
+    event.waitUntil(showing);
 });
 
 self.addEventListener("notificationclick", event => {
     event.notification.close();
     const target = new URL(event.notification.data?.url || "/picks/", self.location.origin);
-    if (target.origin !== self.location.origin || target.pathname !== "/picks/") return;
+    if (target.origin !== self.location.origin || !["/picks/", "/standings/"].includes(target.pathname)) return;
     event.waitUntil((async () => {
         const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
         const open = windows.find(client => client.url === target.href);
